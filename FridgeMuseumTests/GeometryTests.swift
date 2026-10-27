@@ -64,7 +64,9 @@ struct GeometryTests {
 
     @Test func normRectMapsToParent() {
         let r = NormRect(x: 0.2, y: 0.1, width: 0.5, height: 0.4)
-        #expect(r.toParent(.init(x: 0.5, y: 0.5)) == NormPoint(x: 0.45, y: 0.3))
+        let p = r.toParent(.init(x: 0.5, y: 0.5))
+        // Floating point: 0.1 + 0.5 * 0.4 == 0.30000000000000004, so compare with a tolerance.
+        #expect(abs(p.x - 0.45) < 1e-12 && abs(p.y - 0.3) < 1e-12)
     }
 
     @Test func subscriptSetsCorner() {

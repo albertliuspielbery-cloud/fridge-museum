@@ -29,6 +29,9 @@ with open(log_path, errors="replace") as f:
         line = clean(raw)
         if not line or line in seen:
             continue
+        # Runtime log noise from the app under test (e.g. CoreData creating the store on first launch).
+        if "CoreData:" in line or re.match(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+[+-]\d{4} ", line):
+            continue
         if re.search(r"\berror:", line) or "fatal error" in line:
             seen.add(line); errors.append(line)
         elif "✘" in line or "recorded an issue" in line or re.search(r"Test Case .* failed", line):
