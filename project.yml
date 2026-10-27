@@ -1,9 +1,10 @@
 # XcodeGen spec — generate the Xcode project with:  brew install xcodegen && xcodegen generate
 # (CI does this on every push; the .xcodeproj and Info.plist are generated, not committed.)
+# Build with Xcode 26 (iOS 26 SDK, required by App Store Connect); deployment target stays iOS 18.
 name: FridgeMuseum
 
 options:
-  bundleIdPrefix: com.example
+  bundleIdPrefix: tw.starlight
   deploymentTarget:
     iOS: "18.0"
   developmentLanguage: zh-Hant
@@ -13,12 +14,18 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
+    # Xcode 26 new-project defaults are MainActor isolation + approachable concurrency. This code is written for
+    # the classic Swift 6 rules (explicit @MainActor), so pin them; older Xcode ignores these keys.
+    SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+    SWIFT_APPROACHABLE_CONCURRENCY: NO
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     # Overridden by CI (APPLE_TEAM_ID). Leave empty for simulator builds.
     DEVELOPMENT_TEAM: ""
     # Overridden by CI (repository variable APP_BUNDLE_ID).
-    APP_BUNDLE_ID: com.example.fridgemuseum
+    APP_BUNDLE_ID: tw.starlight.fridgemuseum
+    # 版權字串（待擁有者確認）— the only place it is defined.
+    APP_COPYRIGHT: "© 星光工作室 Starlight Studio"
 
 targets:
   FridgeMuseum:
@@ -41,10 +48,10 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.photography
         ITSAppUsesNonExemptEncryption: false
+        NSHumanReadableCopyright: $(APP_COPYRIGHT)
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
-        UIRequiresFullScreen: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSCameraUsageDescription: 用相機拍下孩子的畫作和勞作。照片只會存在這支手機裡。

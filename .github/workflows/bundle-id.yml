@@ -1,0 +1,28 @@
+# 準備 App 識別碼：只用 API 金鑰登記 Bundle ID（已存在就跳過），不編譯、不上傳。
+# 跑完之後，請到 App Store Connect 用這個識別碼「新增 App」（這一步 Apple 不開放用 API 做）。
+name: 準備 App 識別碼
+on:
+  workflow_dispatch:
+
+jobs:
+  register:
+    name: 登記 App 識別碼
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_BUNDLE_ID: ${{ vars.APP_BUNDLE_ID || 'tw.starlight.fridgemuseum' }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 安裝工具
+        run: python3 -m pip install -q --break-system-packages pyjwt cryptography 2>/dev/null || python3 -m pip install -q pyjwt cryptography
+      - name: 確認／登記 App 識別碼
+        run: python3 ci/ci_sign.py --register-only
+      - name: 下一步
+        run: |
+          {
+            echo "### App 識別碼已就緒：\`$APP_BUNDLE_ID\`"
+            echo "下一步：到 https://appstoreconnect.apple.com/apps 按「＋」→「新增 App」，套件識別碼選 \`$APP_BUNDLE_ID\`。"
+          } >> "$GITHUB_STEP_SUMMARY"

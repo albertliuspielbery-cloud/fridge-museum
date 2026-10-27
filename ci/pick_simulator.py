@@ -1,4 +1,4 @@
-"""Prints the UDID of an available iPhone simulator, preferring the newest iOS 18 runtime.
+"""印出一台可用 iPhone 模擬器的 UDID（選最新的 iOS 版本；Xcode 26 會是 iOS 26）。
 
 Usage: xcrun simctl list devices available -j | python3 ci/pick_simulator.py
 """
@@ -15,12 +15,12 @@ for runtime, items in devices.items():
     version = (int(m.group(1)), int(m.group(2)))
     for d in items:
         if d.get("isAvailable", True) and d["name"].startswith("iPhone"):
-            # Prefer iOS 18.x (matches Xcode 16), then anything newer, newest first.
-            rank = (1 if version[0] == 18 else 0, version, d["name"])
+            # 最新的 iOS 優先（App 最低支援 iOS 18，新版模擬器也能跑）。
+            rank = (version, d["name"])
             candidates.append((rank, d["udid"], runtime, d["name"]))
 if not candidates:
-    sys.exit("No iPhone simulator available")
+    sys.exit("::error::找不到可用的 iPhone 模擬器")
 candidates.sort(reverse=True)
 _, udid, runtime, name = candidates[0]
-print(f"Using {name} ({runtime})", file=sys.stderr)
+print(f"使用模擬器：{name}（{runtime}）", file=sys.stderr)
 print(udid)

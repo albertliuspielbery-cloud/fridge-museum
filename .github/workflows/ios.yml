@@ -1,169 +1,156 @@
-name: iOS
-
+# 冰箱美術館 iOS App：雲端 Mac 打包
+# - 推到 main：用模擬器編譯並跑單元測試（不需要任何密鑰）
+# - 手動執行並勾選「上傳」：先跑測試，再簽名、打包、上傳到 App Store Connect（TestFlight）
+#   需要先在 GitHub → Settings → Secrets 放：ASC_KEY_ID、ASC_ISSUER_ID、ASC_KEY_P8、APPLE_TEAM_ID
+#   可選 Variables：APP_BUNDLE_ID（預設 tw.starlight.fridgemuseum）
+name: iOS App
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
-  pull_request:
   workflow_dispatch:
     inputs:
-      testflight:
-        description: "Build and upload to TestFlight"
+      upload:
+        description: '上傳：簽名並上傳到 App Store Connect（TestFlight）'
         type: boolean
-        default: true
+        default: false
+  push:
+    branches: [main]
 
 concurrency:
   group: ios-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
+
+env:
+  APP_BUNDLE_ID: ${{ vars.APP_BUNDLE_ID || 'tw.starlight.fridgemuseum' }}
+  PROFILE_NAME: FridgeMuseum AppStore CI
 
 jobs:
-  # Compile check + unit tests on the iOS Simulator. Needs no secrets.
   test:
-    name: Build & unit tests (Simulator)
+    name: 模擬器編譯＋單元測試
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-
-      - name: Select Xcode 16
+      - name: 用 Xcode 26（App Store 規定要用 iOS 26 SDK 打包）
         run: ci/select_xcode.sh
-
-      - name: Generate Xcode project
+      - name: 產生 Xcode 專案（XcodeGen）
         run: |
           brew install xcodegen
           xcodegen generate
-
-      - name: Pick a simulator
+      - name: 挑一台 iPhone 模擬器
         id: sim
         run: |
           UDID=$(xcrun simctl list devices available -j | python3 ci/pick_simulator.py)
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
-
-      - name: Build and test
+      - name: 編譯並跑單元測試（不簽名）
         run: |
           mkdir -p build
           set +e
-          xcodebuild test \
-            -project FridgeMuseum.xcodeproj \
-            -scheme FridgeMuseum \
-            -configuration Debug \
-            -destination "id=${{ steps.sim.outputs.udid }}" \
-            -derivedDataPath build/DerivedData \
-            -resultBundlePath build/TestResults.xcresult \
-            CODE_SIGNING_ALLOWED=NO \
-            > build/xcodebuild-test.log 2>&1
+          xcodebuild test -project FridgeMuseum.xcodeproj -scheme FridgeMuseum -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath build/DerivedData \
+            -resultBundlePath build/TestResults.xcresult CODE_SIGNING_ALLOWED=NO \
+            > build/test.log 2>&1
           status=$?
           set -e
-          ci/summarize_log.sh build/xcodebuild-test.log "$status"
-
-      - name: Upload logs
+          ci/summarize_log.sh build/test.log "$status" 測試
+      - name: 保存紀錄
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-logs
           path: |
-            build/xcodebuild-test.log
+            build/test.log
             build/TestResults.xcresult
           if-no-files-found: ignore
 
-  # Archive + upload to TestFlight. Runs on manual dispatch or a v* tag.
-  # Required secrets: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (.p8 file content, raw or base64), APPLE_TEAM_ID.
-  # Optional repository variable: APP_BUNDLE_ID (default com.example.fridgemuseum).
-  testflight:
-    name: Archive & upload to TestFlight
+  upload:
+    name: 簽名、打包、上傳
     needs: test
-    if: (github.event_name == 'workflow_dispatch' && inputs.testflight) || startsWith(github.ref, 'refs/tags/v')
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload }}
     runs-on: macos-15
     timeout-minutes: 60
-    env:
-      APP_BUNDLE_ID: ${{ vars.APP_BUNDLE_ID || 'com.example.fridgemuseum' }}
-      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Check secrets
-        run: |
-          missing=0
-          for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
-            if [ -z "${!v}" ]; then echo "::error::Missing secret $v (Settings → Secrets and variables → Actions)"; missing=1; fi
-          done
-          exit $missing
-
-      - name: Select Xcode 16
+      - name: 用 Xcode 26（App Store 規定要用 iOS 26 SDK 打包）
         run: ci/select_xcode.sh
-
-      - name: Generate Xcode project
+      - name: 產生 Xcode 專案（XcodeGen）
         run: |
           brew install xcodegen
           xcodegen generate
-
-      - name: Write App Store Connect API key
+      - name: 簽名、打包、上傳
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
-          # Accept either the .p8 file's text as-is or its base64 encoding.
-          if printf '%s' "$ASC_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
-            printf '%s\n' "$ASC_KEY_P8" > "$KEY_PATH"
-          else
-            printf '%s' "$ASC_KEY_P8" | base64 --decode > "$KEY_PATH"
-          fi
-          grep -q "BEGIN PRIVATE KEY" "$KEY_PATH" || { echo "::error::ASC_KEY_P8 is not a valid .p8 key (paste the file content or its base64)"; exit 1; }
-          echo "KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+          set -eo pipefail
+          [ -n "$APPLE_TEAM_ID" ] || { echo "::error::缺少 GitHub Secret：APPLE_TEAM_ID"; exit 1; }
+          KEY="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          SIGN="$RUNNER_TEMP/sign"; KC="$RUNNER_TEMP/ci.keychain-db"
+          cleanup(){ rm -rf "$KEY" "$SIGN"; security delete-keychain "$KC" 2>/dev/null || true; }
+          trap cleanup EXIT
 
-      - name: Archive
-        run: |
+          # 1. 用 API 金鑰準備上架用的憑證和描述檔（App 識別碼不存在會自動登記；不需要登記 iPhone）
+          python3 -m pip install -q --break-system-packages pyjwt cryptography 2>/dev/null || python3 -m pip install -q pyjwt cryptography
+          python3 ci/ci_sign.py "$SIGN"
+
+          # 2. 把憑證放進這次專用的暫時鑰匙圈
+          PW=$(cat "$SIGN/p12pass")
+          security create-keychain -p "$PW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$PW" "$KC"
+          security import "$SIGN/dist.p12" -k "$KC" -P "$PW" -T /usr/bin/codesign -T /usr/bin/security -f pkcs12
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$PW" "$KC" >/dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          security find-identity -v -p codesigning "$KC"
+
+          # 3. 打包（手動簽名設定用 xcodebuild 參數帶入，不改專案檔）；版本號 = UTC 時間 yyyymmddHHMM
+          BUILD=$(date -u +%Y%m%d%H%M)
+          echo "版本號（Build）：$BUILD"
           set +e
-          xcodebuild archive \
-            -project FridgeMuseum.xcodeproj \
-            -scheme FridgeMuseum \
-            -configuration Release \
-            -destination "generic/platform=iOS" \
-            -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            APP_BUNDLE_ID="$APP_BUNDLE_ID" \
-            CODE_SIGN_STYLE=Automatic \
-            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+          xcodebuild -project FridgeMuseum.xcodeproj -scheme FridgeMuseum -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive" archive \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" APP_BUNDLE_ID="$APP_BUNDLE_ID" \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            OTHER_CODE_SIGN_FLAGS="--keychain $KC" CURRENT_PROJECT_VERSION="$BUILD" \
             > "$RUNNER_TEMP/archive.log" 2>&1
           status=$?
           set -e
-          ci/summarize_log.sh "$RUNNER_TEMP/archive.log" "$status"
+          ci/summarize_log.sh "$RUNNER_TEMP/archive.log" "$status" 打包 || exit 65
 
-      - name: Export and upload to TestFlight
-        run: |
-          cp ci/ExportOptions.plist "$RUNNER_TEMP/ExportOptions.plist"
-          plutil -replace teamID -string "$APPLE_TEAM_ID" "$RUNNER_TEMP/ExportOptions.plist"
+          # 4. 匯出並直接上傳到 App Store Connect
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Apple Distribution</string>
+            <key>provisioningProfiles</key><dict><key>$APP_BUNDLE_ID</key><string>$PROFILE_NAME</string></dict>
+            <key>uploadSymbols</key><true/>
+          </dict></plist>
+          PLIST
           set +e
-          xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive" \
-            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
-            -exportPath "$RUNNER_TEMP/export" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" \
+            -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             > "$RUNNER_TEMP/export.log" 2>&1
           status=$?
           set -e
-          ci/summarize_log.sh "$RUNNER_TEMP/export.log" "$status"
-          echo "### Uploaded build $GITHUB_RUN_NUMBER to App Store Connect" >> "$GITHUB_STEP_SUMMARY"
-          echo "It shows up in TestFlight after Apple finishes processing (usually 5–30 minutes)." >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload logs
+          ci/summarize_log.sh "$RUNNER_TEMP/export.log" "$status" 上傳 || exit 65
+          {
+            echo "### 已上傳版本 $BUILD 到 App Store Connect"
+            echo "Apple 處理完（通常 5～30 分鐘）就會出現在 TestFlight：https://appstoreconnect.apple.com/apps"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: 保存紀錄
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: testflight-logs
+          name: upload-logs
           path: |
             ${{ runner.temp }}/archive.log
             ${{ runner.temp }}/export.log
           if-no-files-found: ignore
-
-      - name: Remove API key
-        if: always()
-        run: rm -f "$KEY_PATH"
