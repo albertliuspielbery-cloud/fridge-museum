@@ -28,7 +28,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: 用 Xcode 26（App Store 規定要用 iOS 26 SDK 打包）
         run: ci/select_xcode.sh
       - name: 產生 Xcode 專案（XcodeGen）
@@ -53,7 +53,7 @@ jobs:
           ci/summarize_log.sh build/test.log "$status" 測試
       - name: 保存紀錄
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-logs
           path: |
@@ -68,7 +68,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: 用 Xcode 26（App Store 規定要用 iOS 26 SDK 打包）
         run: ci/select_xcode.sh
       - name: 產生 Xcode 專案（XcodeGen）
@@ -147,7 +147,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - name: 保存紀錄
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: upload-logs
           path: |

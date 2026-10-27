@@ -5,6 +5,8 @@ LOG="$1"
 STATUS="${2:-0}"
 STAGE="${3:-xcodebuild}"
 grep -E "error:|Test (Suite|Case)|✔|✘|[Tt]est run with|passed|failed|Upload|\*\* " "$LOG" | head -n 300 || true
+# 全部錯誤／測試失敗／警告合併成多行註記（GitHub 每步驟只顯示 10 個錯誤註記）
+python3 "$(dirname "$0")/annotate_log.py" "$LOG" "$STAGE" "$([ "$STATUS" -ne 0 ] && echo 1 || echo 0)" || true
 if [ "$STATUS" -ne 0 ]; then
   echo "----- 紀錄最後 80 行 -----"
   tail -n 80 "$LOG"

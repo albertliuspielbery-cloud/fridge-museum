@@ -16,6 +16,7 @@ struct CaptureView: View {
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var showSession = false
     @State private var showNewChild = false
+    @State private var showPhotoPicker = false
     @State private var flash = false
 
     let openGallery: () -> Void
@@ -174,7 +175,9 @@ struct CaptureView: View {
             .background(Capsule().fill(.thinMaterial))
 
             HStack {
-                PhotosPicker(selection: $pickerItems, maxSelectionCount: 30, matching: .images) {
+                // Button + .photosPicker modifier (not the PhotosPicker view): its label closure is
+                // nonisolated in the iOS 26 SDK, which can't call this main-actor view's helpers.
+                Button { showPhotoPicker = true } label: {
                     sideLabel("相簿") { Image(systemName: "photo.on.rectangle").font(.title3) }
                 }
                 Spacer()
@@ -214,6 +217,7 @@ struct CaptureView: View {
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial)
+        .photosPicker(isPresented: $showPhotoPicker, selection: $pickerItems, maxSelectionCount: 30, matching: .images)
     }
 
     private func sideLabel<Icon: View>(_ title: String, @ViewBuilder icon: () -> Icon) -> some View {
