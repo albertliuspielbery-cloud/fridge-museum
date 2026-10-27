@@ -1,0 +1,169 @@
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      testflight:
+        description: "Build and upload to TestFlight"
+        type: boolean
+        default: true
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Compile check + unit tests on the iOS Simulator. Needs no secrets.
+  test:
+    name: Build & unit tests (Simulator)
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: ci/select_xcode.sh
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Pick a simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 ci/pick_simulator.py)
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Build and test
+        run: |
+          mkdir -p build
+          set +e
+          xcodebuild test \
+            -project FridgeMuseum.xcodeproj \
+            -scheme FridgeMuseum \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build/DerivedData \
+            -resultBundlePath build/TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            > build/xcodebuild-test.log 2>&1
+          status=$?
+          set -e
+          ci/summarize_log.sh build/xcodebuild-test.log "$status"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            build/xcodebuild-test.log
+            build/TestResults.xcresult
+          if-no-files-found: ignore
+
+  # Archive + upload to TestFlight. Runs on manual dispatch or a v* tag.
+  # Required secrets: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (.p8 file content, raw or base64), APPLE_TEAM_ID.
+  # Optional repository variable: APP_BUNDLE_ID (default com.example.fridgemuseum).
+  testflight:
+    name: Archive & upload to TestFlight
+    needs: test
+    if: (github.event_name == 'workflow_dispatch' && inputs.testflight) || startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      APP_BUNDLE_ID: ${{ vars.APP_BUNDLE_ID || 'com.example.fridgemuseum' }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets
+        run: |
+          missing=0
+          for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
+            if [ -z "${!v}" ]; then echo "::error::Missing secret $v (Settings → Secrets and variables → Actions)"; missing=1; fi
+          done
+          exit $missing
+
+      - name: Select Xcode 16
+        run: ci/select_xcode.sh
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Write App Store Connect API key
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          # Accept either the .p8 file's text as-is or its base64 encoding.
+          if printf '%s' "$ASC_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s\n' "$ASC_KEY_P8" > "$KEY_PATH"
+          else
+            printf '%s' "$ASC_KEY_P8" | base64 --decode > "$KEY_PATH"
+          fi
+          grep -q "BEGIN PRIVATE KEY" "$KEY_PATH" || { echo "::error::ASC_KEY_P8 is not a valid .p8 key (paste the file content or its base64)"; exit 1; }
+          echo "KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Archive
+        run: |
+          set +e
+          xcodebuild archive \
+            -project FridgeMuseum.xcodeproj \
+            -scheme FridgeMuseum \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            APP_BUNDLE_ID="$APP_BUNDLE_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            > "$RUNNER_TEMP/archive.log" 2>&1
+          status=$?
+          set -e
+          ci/summarize_log.sh "$RUNNER_TEMP/archive.log" "$status"
+
+      - name: Export and upload to TestFlight
+        run: |
+          cp ci/ExportOptions.plist "$RUNNER_TEMP/ExportOptions.plist"
+          plutil -replace teamID -string "$APPLE_TEAM_ID" "$RUNNER_TEMP/ExportOptions.plist"
+          set +e
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            > "$RUNNER_TEMP/export.log" 2>&1
+          status=$?
+          set -e
+          ci/summarize_log.sh "$RUNNER_TEMP/export.log" "$status"
+          echo "### Uploaded build $GITHUB_RUN_NUMBER to App Store Connect" >> "$GITHUB_STEP_SUMMARY"
+          echo "It shows up in TestFlight after Apple finishes processing (usually 5–30 minutes)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-logs
+          path: |
+            ${{ runner.temp }}/archive.log
+            ${{ runner.temp }}/export.log
+          if-no-files-found: ignore
+
+      - name: Remove API key
+        if: always()
+        run: rm -f "$KEY_PATH"

@@ -1,0 +1,97 @@
+# XcodeGen spec — generate the Xcode project with:  brew install xcodegen && xcodegen generate
+# (CI does this on every push; the .xcodeproj and Info.plist are generated, not committed.)
+name: FridgeMuseum
+
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: zh-Hant
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Overridden by CI (APPLE_TEAM_ID). Leave empty for simulator builds.
+    DEVELOPMENT_TEAM: ""
+    # Overridden by CI (repository variable APP_BUNDLE_ID).
+    APP_BUNDLE_ID: com.example.fridgemuseum
+
+targets:
+  FridgeMuseum:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: FridgeMuseum
+        excludes:
+          - "Info.plist"
+          - "Resources/PrivacyInfo.xcprivacy"
+      - path: FridgeMuseum/Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
+    info:
+      path: FridgeMuseum/Info.plist
+      properties:
+        CFBundleDisplayName: 冰箱美術館
+        CFBundleDevelopmentRegion: zh-Hant
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.photography
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSCameraUsageDescription: 用相機拍下孩子的畫作和勞作。照片只會存在這支手機裡。
+        NSPhotoLibraryAddUsageDescription: 把整理好的作品存到「照片」。
+        NSPhotoLibraryUsageDescription: 為每位小朋友建立「冰箱美術館」相簿，並把整理好的作品放進去。
+        NSMicrophoneUsageDescription: 錄下孩子介紹自己作品的聲音，錄音只會存在這支手機裡。
+        NSSpeechRecognitionUsageDescription: 在手機上把孩子的錄音轉成文字備註，不會上傳到網路。
+    settings:
+      base:
+        PRODUCT_NAME: FridgeMuseum
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: YES
+        # Core Image kernels written in Metal (ProcessingKit/Kernels.metal).
+        MTL_COMPILER_FLAGS: -fcikernel
+        MTLLINKER_FLAGS: -cikernel
+        # Add FM_SWIFT_VISION to try the new Swift Vision API path for document detection (unverified):
+        # SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) FM_SWIFT_VISION"
+
+  FridgeMuseumTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: FridgeMuseumTests
+    dependencies:
+      - target: FridgeMuseum
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).tests
+        CODE_SIGN_STYLE: Automatic
+
+schemes:
+  FridgeMuseum:
+    build:
+      targets:
+        FridgeMuseum: all
+        FridgeMuseumTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - FridgeMuseumTests
+    archive:
+      config: Release
