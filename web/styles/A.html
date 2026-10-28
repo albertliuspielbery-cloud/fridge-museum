@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A 蠟筆手繪</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;600;800&family=Huninn&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FFF7E8; --ink:#3A2E27; --ink2:#6B5B50;
+  --red:#E4573D; --blue:#3E6FD6; --yellow:#F5BE3B; --green:#3FA56F; --purple:#8C5BC6; --pink:#EE8BA8;
+  --mint:#DCF0E4; --mint2:#A9D9BE;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#EFE6D6;font-family:"Chiron GoRound TC","Huninn",system-ui,sans-serif;color:var(--ink);padding:32px 16px 64px}
+.page-head{max-width:1260px;margin:0 auto 24px;}
+.page-head h1{font-family:"Huninn";font-size:28px;font-weight:400}
+.page-head p{color:var(--ink2);margin-top:6px;font-size:15px;line-height:1.6}
+.frames{display:flex;flex-wrap:wrap;gap:36px;justify-content:center;max-width:1300px;margin:0 auto}
+.frame-wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+.frame-wrap .cap{font-size:14px;color:var(--ink2);letter-spacing:.05em}
+
+.phone{position:relative;width:390px;height:844px;border-radius:48px;overflow:hidden;
+  background-color:var(--paper);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .33  0 0 0 0 .2  0 0 0 .11 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  box-shadow:0 30px 60px -24px rgba(80,50,20,.35),0 0 0 1px rgba(58,46,39,.12);
+  font-family:"Chiron GoRound TC","Huninn",sans-serif}
+.abs{position:absolute}
+.status{position:absolute;top:0;left:0;right:0;height:47px;display:flex;align-items:center;justify-content:space-between;padding:6px 30px 0 36px;font-weight:600;font-size:16px;z-index:20}
+.status .r{display:flex;gap:6px;align-items:center}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);z-index:30}
+.hand{font-family:"Huninn",sans-serif}
+.crayon{filter:url(#crayon)}
+.crayonSoft{filter:url(#crayonSoft)}
+.wob{filter:url(#wobble)}
+
+/* hung art */
+.art{position:absolute;background:#fff;padding:7px;box-shadow:0 2px 0 rgba(58,46,39,.08),0 10px 18px -8px rgba(58,46,39,.35)}
+.crop-flat{position:relative;overflow:hidden;aspect-ratio:972/1467;width:100%}
+.crop-flat img{position:absolute;width:138.9%;left:-20.58%;top:-8.52%;height:122.7%;filter:brightness(1.17) contrast(1.16) saturate(1.15)}
+.crop-flat.before img{filter:none}
+.crop-craft{position:relative;overflow:hidden;width:100%;aspect-ratio:1/1}
+.crop-craft img{width:100%;height:100%;object-fit:cover;object-position:50% 66%}
+.art-label{position:absolute;font-family:"Huninn";font-size:15px;line-height:1.25;color:var(--ink);text-align:center;white-space:nowrap}
+.art-label small{display:block;font-family:"Chiron GoRound TC";font-size:12px;color:var(--ink2)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;font-family:"Huninn";font-size:19px;position:absolute}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- wobbly line: low-freq displacement -->
+    <filter id="wobble" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="w"/>
+      <feDisplacementMap in="SourceGraphic" in2="w" scale="3.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <!-- crayon: wobble + waxy speckle holes -->
+    <filter id="crayon" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="w"/>
+      <feDisplacementMap in="SourceGraphic" in2="w" scale="3" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="2" result="g"/>
+      <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  3.4 0 0 0 -0.75" result="ga"/>
+      <feComposite in="d" in2="ga" operator="in"/>
+    </filter>
+    <filter id="crayonSoft" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="w"/>
+      <feDisplacementMap in="SourceGraphic" in2="w" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="1" seed="5" result="g"/>
+      <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  4 0 0 0 -0.6" result="ga"/>
+      <feComposite in="d" in2="ga" operator="in"/>
+    </filter>
+    <pattern id="hatchRedDeep" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(40)">
+      <rect width="6" height="6" fill="#D44A2F"/><line x1="0" y1="0" x2="0" y2="6" stroke="#B23720" stroke-width="2.6"/>
+    </pattern>
+    <pattern id="hatchBlueDeep" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(-40)">
+      <rect width="6" height="6" fill="#3B66C9"/><line x1="0" y1="0" x2="0" y2="6" stroke="#2A4FA6" stroke-width="2.6"/>
+    </pattern>
+    <pattern id="hatchMint" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
+      <rect width="7" height="7" fill="#E3F4EA"/><line x1="0" y1="0" x2="0" y2="7" stroke="#B5E0C8" stroke-width="3.2"/>
+    </pattern>
+    <pattern id="hatchYellow" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+      <rect width="6" height="6" fill="#FBD873"/><line x1="0" y1="0" x2="0" y2="6" stroke="#F2B52C" stroke-width="2.6"/>
+    </pattern>
+    <pattern id="hatchRed" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(40)">
+      <rect width="6" height="6" fill="#F07A5E"/><line x1="0" y1="0" x2="0" y2="6" stroke="#D9472E" stroke-width="2.8"/>
+    </pattern>
+    <pattern id="hatchBlue" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(-40)">
+      <rect width="6" height="6" fill="#7EA2EE"/><line x1="0" y1="0" x2="0" y2="6" stroke="#3E6FD6" stroke-width="2.8"/>
+    </pattern>
+    <pattern id="hatchPink" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(20)">
+      <rect width="6" height="6" fill="#F6B3C5"/><line x1="0" y1="0" x2="0" y2="6" stroke="#EB85A3" stroke-width="2.6"/>
+    </pattern>
+    <pattern id="hatchGreen" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(-25)">
+      <rect width="6" height="6" fill="#86CFA4"/><line x1="0" y1="0" x2="0" y2="6" stroke="#3FA56F" stroke-width="2.6"/>
+    </pattern>
+    <!-- reusable doodles -->
+    <symbol id="star" viewBox="-12 -12 24 24"><path d="M0-10 L3-3 L10-3 L4.5 1.8 L6.5 9 L0 4.8 L-6.5 9 L-4.5 1.8 L-10-3 L-3-3Z"/></symbol>
+    <symbol id="heart" viewBox="-12 -12 24 24"><path d="M0 9 C-9 3 -11-3 -7-7 C-4-9.5 -1-8 0-5 C1-8 4-9.5 7-7 C11-3 9 3 0 9Z"/></symbol>
+    <symbol id="flower" viewBox="-12 -12 24 24"><g><circle cx="0" cy="-6" r="5"/><circle cx="6" cy="-1.5" r="5"/><circle cx="3.6" cy="5.5" r="5"/><circle cx="-3.6" cy="5.5" r="5"/><circle cx="-6" cy="-1.5" r="5"/></g></symbol>
+  </defs>
+</svg>
+
+<header class="page-head">
+  <h1>A · 蠟筆手繪 Crayon Storybook</h1>
+  <p>整個介面像孩子用蠟筆畫在圖畫紙上——但線條經過大人修過。冰箱是一張蠟筆畫，磁鐵是星星、愛心、小花，按鈕是塗了色的蠟筆框。照片保持乾淨，周圍的手繪只當畫框。</p>
+</header>
+
+<main class="frames">
+<!-- ============ HOME ============ -->
+<section class="frame-wrap">
+<div class="phone" id="home">
+  <div class="status"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="#3A2E27"/><rect x="5" y="5" width="3" height="7" rx="1" fill="#3A2E27"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="#3A2E27"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#3A2E27"/></svg><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#3A2E27" opacity=".5"/><rect x="2" y="2" width="17" height="8" rx="2" fill="#3A2E27"/><rect x="23.5" y="4" width="2" height="4" rx="1" fill="#3A2E27" opacity=".5"/></svg></span></div>
+
+  <!-- background doodles -->
+  <svg class="abs crayon" style="left:0;top:0" width="390" height="660" viewBox="0 0 390 660" aria-hidden="true">
+    <g fill="none" stroke-linecap="round">
+      
+      <path d="M382 300 q-8 10 0 20 q 8 10 0 20 q-8 10 0 20" stroke="#EE8BA8" stroke-width="3"/>
+    </g>
+  </svg>
+
+  <!-- FRIDGE drawn in crayon -->
+  <svg class="abs" style="left:0;top:52px" width="390" height="600" viewBox="0 0 390 600" aria-hidden="true">
+    <g class="crayon">
+      <rect x="22" y="6" width="346" height="566" rx="38" fill="url(#hatchMint)"/>
+      <!-- shine streaks -->
+      <path d="M42 168 L42 330" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".9"/>
+      <path d="M54 180 L54 222" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+    </g>
+    <g class="wob" fill="none" stroke="#3A2E27" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="22" y="6" width="346" height="566" rx="38"/>
+      <path d="M24 142 C 120 139, 260 145, 366 141"/>
+      <!-- handles -->
+      <path d="M347 46 L347 108" stroke-width="7"/>
+      <path d="M347 172 L347 296" stroke-width="7"/>
+      <!-- feet -->
+      <path d="M70 574 l-2 14 M320 574 l2 14" stroke-width="5"/>
+    </g>
+    <!-- ground scribble -->
+    <path class="crayon" d="M10 592 C 120 586, 270 596, 380 589" stroke="#C8B79D" stroke-width="5" fill="none" stroke-linecap="round"/>
+  </svg>
+
+  <!-- title as crayon on freezer door -->
+  <div class="abs" style="left:52px;top:78px;width:290px">
+    <div class="hand crayon" style="font-size:44px;line-height:1;letter-spacing:2px;display:flex;gap:2px">
+      <span style="color:#3E6FD6;transform:rotate(-5deg) translateY(2px);display:inline-block">冰</span><span style="color:#E4573D;transform:rotate(4deg);display:inline-block">箱</span><span style="color:#E9A21C;transform:rotate(-3deg) translateY(3px);display:inline-block">美</span><span style="color:#3FA56F;transform:rotate(5deg) translateY(-1px);display:inline-block">術</span><span style="color:#8C5BC6;transform:rotate(-4deg) translateY(2px);display:inline-block">館</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:12px;font-size:13px;color:#4E6A5B;font-weight:600">
+      <svg width="14" height="14" viewBox="0 0 14 14" class="wob"><rect x="2.5" y="6" width="9" height="7" rx="2" fill="none" stroke="#4E6A5B" stroke-width="1.8"/><path d="M4.5 6V4.2a2.5 2.5 0 015 0V6" fill="none" stroke="#4E6A5B" stroke-width="1.8"/></svg>
+      照片只在這支手機上整理，不會上傳
+    </div>
+  </div>
+  <!-- little magnets on freezer -->
+  <svg class="abs crayon" style="left:290px;top:66px" width="46" height="46" viewBox="0 0 46 46"><use href="#star" x="3" y="3" width="40" height="40" fill="url(#hatchYellow)" stroke="#3A2E27" stroke-width="1.6"/></svg>
+
+  <!-- art 1 : flat drawing -->
+  <div class="art" style="left:44px;top:222px;width:150px;transform:rotate(-3.5deg)">
+    <div class="crop-flat"><img src="../samples/flat.jpg" alt="孩子的畫：氣球派對"></div>
+  </div>
+  <svg class="abs crayon" style="left:98px;top:206px" width="40" height="40" viewBox="0 0 40 40"><use href="#heart" x="2" y="2" width="36" height="36" fill="url(#hatchRed)" stroke="#3A2E27" stroke-width="1.6"/></svg>
+  <div class="art-label" style="left:52px;top:458px;width:140px;transform:rotate(-2deg)">氣球派對<small>小米 · 5 歲</small></div>
+
+  <!-- art 2 : craft -->
+  <div class="art" style="left:204px;top:236px;width:140px;transform:rotate(4deg)">
+    <div class="crop-craft"><img src="../samples/craft.jpg" alt="孩子的勞作：國旗"></div>
+  </div>
+  <svg class="abs crayon" style="left:254px;top:220px" width="40" height="40" viewBox="0 0 40 40"><use href="#flower" x="2" y="2" width="36" height="36" fill="url(#hatchBlue)" stroke="#3A2E27" stroke-width="1.4"/><circle cx="20" cy="20" r="4.5" fill="#F5BE3B"/></svg>
+  <div class="art-label" style="left:206px;top:400px;width:140px;transform:rotate(3deg)">我的國旗<small>小米 · 勞作</small></div>
+
+  <!-- empty slot -->
+  <div class="abs" style="left:212px;top:452px;width:126px;height:108px">
+    <svg width="126" height="108" viewBox="0 0 126 108" class="wob"><rect x="4" y="4" width="118" height="100" rx="10" fill="rgba(255,255,255,.55)" stroke="#6E9C84" stroke-width="2.4" stroke-dasharray="7 7"/>
+    <path d="M63 34 v26 M50 47 h26" stroke="#6E9C84" stroke-width="3.2" stroke-linecap="round"/></svg>
+    <div class="abs hand" style="left:0;right:0;top:70px;text-align:center;font-size:13px;color:#4E6A5B">下一張掛這裡</div>
+  </div>
+
+  <!-- quota chip : hand drawn note -->
+  <div class="abs" style="left:50px;top:522px;transform:rotate(-2deg)">
+    <svg width="148" height="42" viewBox="0 0 148 42" class="abs" style="left:0;top:0"><g class="crayon"><rect x="3" y="3" width="142" height="36" rx="18" fill="url(#hatchYellow)"/></g><rect class="wob" x="3" y="3" width="142" height="36" rx="18" fill="none" stroke="#3A2E27" stroke-width="2.2"/></svg>
+    <div class="hand" style="position:relative;width:148px;height:42px;display:flex;align-items:center;justify-content:center;font-size:15px">今天還能收 <b style="font-size:20px;margin:0 4px;color:#C2410C">3</b> 張</div>
+  </div>
+
+  <!-- DOCK : torn paper strip -->
+  <svg class="abs" style="left:0;top:648px" width="390" height="196" viewBox="0 0 390 196" aria-hidden="true">
+    <path class="wob" d="M0 14 C 40 4, 70 18, 110 10 S 190 2, 230 12 S 320 18, 390 6 L390 196 L0 196Z" fill="#FFFDF7" stroke="#3A2E27" stroke-width="2.4"/>
+  </svg>
+  <!-- mode switch -->
+  <div class="abs" style="left:95px;top:672px;width:200px;height:42px">
+    <svg class="abs" width="200" height="42" viewBox="0 0 200 42"><g class="crayonSoft"><rect x="4" y="4" width="96" height="34" rx="17" fill="url(#hatchBlueDeep)"/></g><rect class="wob" x="3" y="3" width="194" height="36" rx="18" fill="none" stroke="#3A2E27" stroke-width="2.2"/></svg>
+    <div class="abs hand" style="left:4px;top:4px;width:96px;height:34px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;text-shadow:0 1px 1px rgba(20,30,80,.6)">畫作</div>
+    <div class="abs hand" style="left:100px;top:4px;width:96px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--ink2);font-size:17px">勞作</div>
+  </div>
+  <!-- album -->
+  <div class="abs" style="left:34px;top:740px;width:62px;text-align:center">
+    <svg width="54" height="54" viewBox="0 0 54 54" class="wob"><rect x="5" y="7" width="44" height="40" rx="9" fill="#fff" stroke="#3A2E27" stroke-width="2.4" transform="rotate(-6 27 27)"/>
+      <g class="crayon"><path d="M12 40 l10-12 l7 8 l5-6 l9 10z" fill="url(#hatchGreen)"/><circle cx="35" cy="18" r="4.5" fill="url(#hatchYellow)"/></g></svg>
+    <div style="font-size:13px;color:var(--ink2);font-weight:600;margin-top:-2px">相簿</div>
+  </div>
+  <!-- shutter -->
+  <div class="abs" style="left:145px;top:724px;width:100px;height:100px">
+    <svg width="100" height="100" viewBox="0 0 100 100">
+      <g class="crayonSoft"><circle cx="50" cy="50" r="40" fill="url(#hatchRedDeep)"/></g>
+      <circle class="wob" cx="50" cy="50" r="46" fill="none" stroke="#3A2E27" stroke-width="3"/>
+      <circle class="wob" cx="50" cy="50" r="40" fill="none" stroke="#3A2E27" stroke-width="2"/>
+      <g class="wob" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M33 42 h7 l4-6 h12 l4 6 h7 v22 h-34z"/><circle cx="50" cy="52" r="7"/>
+      </g>
+    </svg>
+  </div>
+  <!-- tips -->
+  <div class="abs" style="left:296px;top:740px;width:62px;text-align:center">
+    <svg width="54" height="54" viewBox="0 0 54 54" class="wob"><circle cx="27" cy="25" r="20" fill="#fff" stroke="#3A2E27" stroke-width="2.4"/>
+      <g class="crayon"><path d="M27 12 a8 8 0 0 1 5 14 v4 h-10 v-4 a8 8 0 0 1 5-14z" fill="url(#hatchYellow)"/></g>
+      <path d="M22 34 h10" stroke="#3A2E27" stroke-width="2.4" stroke-linecap="round"/></svg>
+    <div style="font-size:13px;color:var(--ink2);font-weight:600;margin-top:-2px">小技巧</div>
+  </div>
+  <div class="homebar"></div>
+</div>
+<div class="cap">首頁 · 冰箱門</div>
+</section>
+
+<!-- ============ EDIT ============ -->
+<section class="frame-wrap">
+<div class="phone" id="edit">
+  <div class="status"><span>9:41</span><span class="r"><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#3A2E27" opacity=".5"/><rect x="2" y="2" width="17" height="8" rx="2" fill="#3A2E27"/></svg></span></div>
+  <!-- top bar -->
+  <div class="abs hand" style="left:18px;top:56px;display:flex;align-items:center;gap:4px;font-size:18px">
+    <svg width="22" height="22" viewBox="0 0 22 22" class="wob"><path d="M14 4 L6 11 L14 18" fill="none" stroke="#3A2E27" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>美術館
+  </div>
+  <div class="abs" style="left:125px;top:52px;width:140px;height:36px">
+    <svg class="abs" width="140" height="36" viewBox="0 0 140 36"><g class="crayonSoft"><rect x="3" y="3" width="68" height="30" rx="15" fill="url(#hatchBlueDeep)"/></g><rect class="wob" x="2" y="2" width="136" height="32" rx="16" fill="none" stroke="#3A2E27" stroke-width="2"/></svg>
+    <div class="abs hand" style="left:3px;top:3px;width:68px;height:30px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px">畫作</div>
+    <div class="abs hand" style="left:70px;top:3px;width:68px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--ink2);font-size:15px">勞作</div>
+  </div>
+  <div class="abs hand" style="right:20px;top:56px;display:flex;align-items:center;gap:6px;font-size:16px">
+    <svg width="22" height="20" viewBox="0 0 22 20" class="wob"><path d="M2 6 h4 l2-3 h6 l2 3 h4 v12 h-18z" fill="none" stroke="#3A2E27" stroke-width="2.2" stroke-linejoin="round"/><circle cx="11" cy="11" r="3.6" fill="none" stroke="#3A2E27" stroke-width="2.2"/></svg>重拍
+  </div>
+
+  <!-- stage : drawing board -->
+  <svg class="abs" style="left:14px;top:100px" width="362" height="420" viewBox="0 0 362 420" aria-hidden="true">
+    <g class="crayon"><rect x="4" y="4" width="354" height="412" rx="28" fill="url(#hatchMint)"/></g>
+    <rect class="wob" x="4" y="4" width="354" height="412" rx="28" fill="none" stroke="#3A2E27" stroke-width="2.6"/>
+  </svg>
+  <!-- photo with compare -->
+  <div class="abs" style="left:68px;top:120px;width:254px;height:383px;box-shadow:0 12px 20px -10px rgba(58,46,39,.45)">
+    <div class="crop-flat before" style="position:absolute;inset:0"><img src="../samples/flat.jpg" alt="整理前"></div>
+    <div class="crop-flat" style="position:absolute;inset:0;clip-path:inset(0 0 0 42%)"><img src="../samples/flat.jpg" alt="整理後"></div>
+    <!-- divider -->
+    <svg class="abs" style="left:calc(42% - 30px);top:-10px" width="60" height="403" viewBox="0 0 60 403">
+      <path class="wob" d="M30 0 L30 403" stroke="#fff" stroke-width="4"/>
+      <path class="wob" d="M30 0 L30 403" stroke="#3A2E27" stroke-width="1.2" stroke-dasharray="5 6" opacity=".7"/>
+      <g transform="translate(30 200)">
+        <g class="crayon"><circle r="23" fill="url(#hatchYellow)"/></g>
+        <circle class="wob" r="24" fill="none" stroke="#3A2E27" stroke-width="2.6"/>
+        <path class="wob" d="M-6 -7 L-13 0 L-6 7 M6 -7 L13 0 L6 7" fill="none" stroke="#3A2E27" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </svg>
+    <div class="abs hand" style="left:8px;bottom:8px;background:rgba(58,46,39,.78);color:#fff;font-size:12px;padding:3px 9px;border-radius:10px">拍的</div>
+    <div class="abs hand" style="right:8px;bottom:8px;background:#fff;color:var(--ink);font-size:12px;padding:3px 9px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.2)">整理後</div>
+  </div>
+  <!-- magnets on board corners -->
+  <svg class="abs crayon" style="left:28px;top:112px" width="34" height="34" viewBox="0 0 34 34"><use href="#star" x="1" y="1" width="32" height="32" fill="url(#hatchPink)" stroke="#3A2E27" stroke-width="1.6"/></svg>
+  <div class="abs hand" style="left:0;right:0;top:528px;text-align:center;font-size:14px;color:var(--ink2)">左右拖曳黃色把手，比較前後</div>
+
+  <!-- adjust card -->
+  <div class="abs" style="left:18px;top:558px;width:354px;height:72px">
+    <svg class="abs" width="354" height="72" viewBox="0 0 354 72"><rect class="wob" x="2" y="2" width="350" height="68" rx="18" fill="#FFFDF7" stroke="#3A2E27" stroke-width="2"/></svg>
+    <div class="abs" style="left:18px;top:12px;font-size:15px;font-weight:600">紙張變白</div>
+    <div class="abs hand" style="right:18px;top:11px;font-size:16px;color:#C2410C">90</div>
+    <svg class="abs" style="left:14px;top:38px" width="326" height="26" viewBox="0 0 326 26">
+      <g class="crayon"><rect width="326" height="26" fill="none"/>
+      <path d="M6 13 C 80 11, 200 15, 320 12" stroke="#E7DCCB" stroke-width="8" stroke-linecap="round" fill="none"/>
+      <path d="M6 13 C 80 11, 200 15, 286 13" stroke="#3FA56F" stroke-width="8" stroke-linecap="round" fill="none"/></g>
+      <circle class="wob" cx="288" cy="13" r="10" fill="#fff" stroke="#3A2E27" stroke-width="2.6"/>
+    </svg>
+  </div>
+
+  <!-- tool bar -->
+  <div class="abs" style="left:14px;top:644px;width:362px;display:flex;justify-content:space-around">
+    <div style="text-align:center;width:76px">
+      <svg width="52" height="52" viewBox="0 0 52 52" class="wob"><circle cx="26" cy="26" r="22" fill="#fff" stroke="#3A2E27" stroke-width="2.2"/><path d="M19 13 v20 h20 M13 19 h20 v20" fill="none" stroke="#3A2E27" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div style="font-size:13px;font-weight:600;color:var(--ink2)">裁切</div>
+    </div>
+    <div style="text-align:center;width:76px">
+      <svg width="52" height="52" viewBox="0 0 52 52"><g class="crayon"><circle cx="26" cy="26" r="22" fill="url(#hatchYellow)"/></g><circle class="wob" cx="26" cy="26" r="23" fill="none" stroke="#3A2E27" stroke-width="2.6"/>
+        <g class="wob" stroke="#3A2E27" stroke-width="2.6" stroke-linecap="round"><path d="M15 20 h22 M15 32 h22"/><circle cx="30" cy="20" r="3.6" fill="#fff"/><circle cx="21" cy="32" r="3.6" fill="#fff"/></g></svg>
+      <div class="hand" style="font-size:14px">調整</div>
+    </div>
+    <div style="text-align:center;width:76px">
+      <svg width="52" height="52" viewBox="0 0 52 52" class="wob"><circle cx="26" cy="26" r="22" fill="#fff" stroke="#3A2E27" stroke-width="2.2"/><path d="M17 36 l3-9 l13-13 l6 6 l-13 13z M20 27 l6 6" fill="none" stroke="#3A2E27" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <div style="font-size:13px;font-weight:600;color:var(--ink2)">筆刷</div>
+    </div>
+    <div style="text-align:center;width:76px">
+      <svg width="52" height="52" viewBox="0 0 52 52" class="wob"><circle cx="26" cy="26" r="22" fill="#fff" stroke="#3A2E27" stroke-width="2.2"/><rect x="14" y="18" width="24" height="16" rx="3" fill="none" stroke="#3A2E27" stroke-width="2.6"/><path d="M19 24 h14 M19 29 h9" stroke="#3A2E27" stroke-width="2.4" stroke-linecap="round"/></svg>
+      <div style="font-size:13px;font-weight:600;color:var(--ink2)">說明牌</div>
+    </div>
+  </div>
+
+  <!-- action buttons -->
+  <div class="abs" style="left:18px;top:740px;width:146px;height:58px">
+    <svg class="abs" width="146" height="58" viewBox="0 0 146 58"><rect class="wob" x="3" y="3" width="140" height="52" rx="26" fill="#FFFDF7" stroke="#3A2E27" stroke-width="2.6"/></svg>
+    <div class="btn" style="inset:0">＋ 收進這次</div>
+  </div>
+  <div class="abs" style="left:174px;top:740px;width:198px;height:58px">
+    <svg class="abs" width="198" height="58" viewBox="0 0 198 58"><g class="crayonSoft"><rect x="4" y="4" width="190" height="50" rx="25" fill="url(#hatchRedDeep)"/></g><rect class="wob" x="3" y="3" width="192" height="52" rx="26" fill="none" stroke="#3A2E27" stroke-width="2.6"/></svg>
+    <div class="btn" style="inset:0;color:#fff;text-shadow:0 1px 1px rgba(90,20,5,.6)">
+      <svg width="20" height="20" viewBox="0 0 20 20" class="wob"><path d="M10 2 v11 M5 8 l5 5 l5-5 M3 17 h14" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>存到手機</div>
+  </div>
+  <div class="homebar"></div>
+</div>
+<div class="cap">整理畫面</div>
+</section>
+
+<!-- ============ MOMENT ============ -->
+<section class="frame-wrap">
+<div class="phone" id="moment">
+  <div class="status"><span>9:41</span><span class="r"><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#3A2E27" opacity=".5"/><rect x="2" y="2" width="17" height="8" rx="2" fill="#3A2E27"/></svg></span></div>
+  <!-- burst of crayon rays -->
+  <svg class="abs" style="left:0;top:70px" width="390" height="520" viewBox="0 0 390 520" aria-hidden="true">
+    <g class="crayon" stroke-linecap="round" fill="none" stroke-width="5">
+      <path d="M195 40 L195 8" stroke="#F5BE3B"/><path d="M110 70 L90 44" stroke="#E4573D"/><path d="M280 70 L300 44" stroke="#3E6FD6"/>
+      <path d="M62 150 L30 136" stroke="#3FA56F"/><path d="M328 150 L360 136" stroke="#EE8BA8"/>
+      <path d="M50 260 L18 264" stroke="#8C5BC6"/><path d="M340 260 L372 264" stroke="#F5BE3B"/>
+    </g>
+    <g class="crayon">
+      <use href="#star" x="40" y="60" width="34" height="34" fill="url(#hatchYellow)" stroke="#3A2E27" stroke-width="1.4"/>
+      <use href="#heart" x="318" y="84" width="30" height="30" fill="url(#hatchPink)" stroke="#3A2E27" stroke-width="1.4"/>
+      <use href="#star" x="330" y="330" width="26" height="26" fill="url(#hatchBlue)" stroke="#3A2E27" stroke-width="1.4"/>
+      <use href="#heart" x="30" y="350" width="26" height="26" fill="url(#hatchRed)" stroke="#3A2E27" stroke-width="1.4"/>
+      <use href="#flower" x="300" y="200" width="22" height="22" fill="url(#hatchGreen)"/>
+      <use href="#flower" x="56" y="210" width="20" height="20" fill="url(#hatchYellow)"/>
+    </g>
+    <!-- mini fridge -->
+    <g transform="translate(105 60)">
+      <g class="crayon"><rect x="0" y="0" width="180" height="300" rx="26" fill="url(#hatchMint)"/></g>
+      <g class="wob" fill="none" stroke="#3A2E27" stroke-width="3.2" stroke-linecap="round">
+        <rect x="0" y="0" width="180" height="300" rx="26"/>
+        <path d="M2 76 C 60 74, 120 78, 178 75"/>
+        <path d="M164 26 v34 M164 96 v70" stroke-width="6"/>
+        <path d="M30 300 l-2 12 M150 300 l2 12" stroke-width="5"/>
+      </g>
+      <!-- fridge face (kid-drawing style) -->
+      <g class="wob" stroke="#3A2E27" stroke-width="3" stroke-linecap="round" fill="none">
+        <path d="M58 34 q6-7 12 0 M106 34 q6-7 12 0"/>
+        <path d="M78 48 q10 14 20 0 z" fill="#E4573D"/>
+        <path d="M0 150 C -14 140, -24 124, -30 104" stroke-width="3.6"/>
+        <path d="M180 150 C 194 140, 204 124, 210 104" stroke-width="3.6"/>
+        <circle cx="-31" cy="98" r="7" fill="#fff"/><circle cx="211" cy="98" r="7" fill="#fff"/>
+      </g>
+      <g class="crayon"><circle cx="50" cy="50" r="7" fill="#F6B3C5"/><circle cx="126" cy="50" r="7" fill="#F6B3C5"/></g>
+    </g>
+    <path class="crayon" d="M70 384 C 150 378, 250 388, 320 381" stroke="#C8B79D" stroke-width="5" fill="none" stroke-linecap="round"/>
+  </svg>
+  <!-- the new artwork on mini fridge -->
+  <div class="art" style="left:140px;top:222px;width:110px;padding:5px;transform:rotate(-4deg)">
+    <div class="crop-flat"><img src="../samples/flat.jpg" alt="剛掛上的畫"></div>
+  </div>
+  <svg class="abs crayon" style="left:178px;top:208px" width="34" height="34" viewBox="0 0 34 34"><use href="#heart" x="1" y="1" width="32" height="32" fill="url(#hatchRed)" stroke="#3A2E27" stroke-width="1.6"/></svg>
+
+  <div class="abs" style="left:0;right:0;top:486px;text-align:center">
+    <div class="hand crayon" style="font-size:42px;color:#E4573D;letter-spacing:2px;transform:rotate(-2deg)">已掛上冰箱！</div>
+    <svg class="crayon" width="220" height="16" viewBox="0 0 220 16" style="margin-top:2px"><path d="M6 10 C 60 2, 120 14, 214 5" stroke="#F5BE3B" stroke-width="6" fill="none" stroke-linecap="round"/></svg>
+    <p style="font-size:16px;line-height:1.7;color:var(--ink2);margin-top:10px">「氣球派對」是小米的第 <b class="hand" style="color:var(--ink);font-size:20px">12</b> 件作品<br>也存進了手機相簿</p>
+  </div>
+  <div class="abs" style="left:40px;top:666px;width:310px;height:60px">
+    <svg class="abs" width="310" height="60" viewBox="0 0 310 60"><g class="crayonSoft"><rect x="4" y="4" width="302" height="52" rx="26" fill="url(#hatchRedDeep)"/></g><rect class="wob" x="3" y="3" width="304" height="54" rx="27" fill="none" stroke="#3A2E27" stroke-width="2.6"/></svg>
+    <div class="btn" style="inset:0;color:#fff;font-size:20px;text-shadow:0 1px 1px rgba(90,20,5,.6)">再拍一張</div>
+  </div>
+  <div class="abs hand" style="left:0;right:0;top:744px;text-align:center;font-size:17px;color:var(--ink)"><span style="border-bottom:2.5px solid #F5BE3B;padding-bottom:2px">去冰箱看看 →</span></div>
+  <div class="homebar"></div>
+</div>
+<div class="cap">成功時刻 · 已掛上冰箱</div>
+</section>
+</main>
+</body>
+</html>

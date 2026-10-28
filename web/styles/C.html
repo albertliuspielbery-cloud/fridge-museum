@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C 紙藝拼貼</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;600;800&family=Huninn&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky:#CFE5F4; --ink:#2C2A4A; --ink2:#5D5A7A;
+  --red:#E5483A; --red-d:#B93427; --yellow:#F7C548; --blue:#2F62C8; --green:#36A26C; --pink:#F4A6BE; --lilac:#B9A6EE; --cream:#FFF8EA;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#E3E7EE;font-family:"Chiron GoRound TC","Huninn",system-ui,sans-serif;color:var(--ink);padding:32px 16px 64px}
+.page-head{max-width:1260px;margin:0 auto 24px}
+.page-head h1{font-family:"Huninn";font-size:28px;font-weight:400}
+.page-head p{color:var(--ink2);margin-top:6px;font-size:15px;line-height:1.6}
+.frames{display:flex;flex-wrap:wrap;gap:36px;justify-content:center;max-width:1300px;margin:0 auto}
+.frame-wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+.frame-wrap .cap{font-size:14px;color:var(--ink2);letter-spacing:.05em}
+.fiber{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.04 .9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .2  0 0 0 0 .25  0 0 0 0 .4  0 0 0 .14 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.felt{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .32 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.phone{position:relative;width:390px;height:844px;border-radius:48px;overflow:hidden;background-color:var(--sky);
+  box-shadow:0 30px 60px -24px rgba(30,40,80,.4),0 0 0 1px rgba(44,42,74,.12)}
+.abs{position:absolute}
+.status{position:absolute;top:0;left:0;right:0;height:47px;display:flex;align-items:center;justify-content:space-between;padding:6px 30px 0 36px;font-weight:600;font-size:16px;z-index:20}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);z-index:30}
+.hand{font-family:"Huninn",sans-serif}
+.paper{filter:drop-shadow(0 1px 0 rgba(30,30,60,.18)) drop-shadow(0 6px 6px rgba(30,30,60,.18))}
+.art{position:absolute;background:#fff;padding:7px;box-shadow:0 1px 1px rgba(0,0,0,.12),0 10px 14px -8px rgba(30,30,60,.45)}
+.crop-flat{position:relative;overflow:hidden;aspect-ratio:972/1467;width:100%}
+.crop-flat img{position:absolute;width:138.9%;left:-20.58%;top:-8.52%;height:122.7%;filter:brightness(1.17) contrast(1.16) saturate(1.15)}
+.crop-flat.before img{filter:none}
+.crop-craft{position:relative;overflow:hidden;width:100%;aspect-ratio:1/1}
+.crop-craft img{width:100%;height:100%;object-fit:cover;object-position:50% 66%}
+.washi{position:absolute;height:20px;opacity:.88;z-index:5;
+  clip-path:polygon(0 0,4% 18%,0 36%,4% 54%,0 72%,4% 90%,0 100%,100% 100%,96% 82%,100% 64%,96% 46%,100% 28%,96% 10%,100% 0)}
+.w-red{background:repeating-linear-gradient(45deg,#F27A6E 0 6px,#FBD2C9 6px 12px)}
+.w-blue{background:repeating-linear-gradient(90deg,#7FA7F0 0 5px,#CFE0FF 5px 10px)}
+.w-yellow{background:radial-gradient(circle,#fff 2px,transparent 2.5px) 0 0/10px 10px,#F7C548}
+.w-green{background:repeating-linear-gradient(-45deg,#7CCB9E 0 6px,#D6F2E2 6px 12px)}
+.w-pink{background:radial-gradient(circle,#E7849F 2px,transparent 2.5px) 0 0/9px 9px,#FBD7E2}
+.letter{display:inline-flex;align-items:center;justify-content:center;width:50px;height:54px;font-family:"Huninn";font-size:34px;color:#fff;border-radius:4px;filter:drop-shadow(0 3px 2px rgba(30,30,60,.25))}
+.tag{position:absolute;background:var(--cream);padding:5px 11px 6px;font-size:14px;line-height:1.3;white-space:nowrap;box-shadow:0 4px 6px -3px rgba(30,30,60,.35);outline:1.5px dashed #C9B48F;outline-offset:-4px}
+.tag b{font-family:"Huninn";font-weight:400;font-size:15px}
+.tag small{display:block;font-size:11.5px;color:var(--ink2)}
+.btn{position:absolute;display:flex;align-items:center;justify-content:center;gap:8px;font-family:"Huninn";font-size:19px}
+.stitch{position:absolute;inset:5px;border:2px dashed rgba(255,255,255,.85);border-radius:inherit;pointer-events:none}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="torn" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" seed="11" result="t"/>
+      <feDisplacementMap in="SourceGraphic" in2="t" scale="7" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="tornS" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.14" numOctaves="2" seed="3" result="t"/>
+      <feDisplacementMap in="SourceGraphic" in2="t" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <pattern id="mat" width="20" height="20" patternUnits="userSpaceOnUse">
+      <rect width="20" height="20" fill="#2F8A66"/><path d="M20 0 V20 H0" fill="none" stroke="#56A887" stroke-width="1"/>
+    </pattern>
+    <pattern id="mat100" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="url(#mat)"/><path d="M100 0 V100 H0" fill="none" stroke="#86C6AA" stroke-width="1.6"/>
+    </pattern>
+  </defs>
+</svg>
+
+<header class="page-head">
+  <h1>C · 紙藝拼貼 Paper-cut Collage</h1>
+  <p>像在美勞課桌上：撕過的色紙疊出冰箱，作品用紙膠帶貼上，標題是剪下的色紙字，按鈕是縫線不織布和鈕扣，額度變成一張「美術館門票」。</p>
+</header>
+
+<main class="frames">
+<!-- ============ HOME ============ -->
+<section class="frame-wrap">
+<div class="phone fiber" id="home">
+  <div class="status"><span>9:41</span><span style="display:flex;gap:6px"><svg width="18" height="12" viewBox="0 0 18 12" fill="#2C2A4A"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#2C2A4A" opacity=".5"/><rect x="2" y="2" width="17" height="8" rx="2" fill="#2C2A4A"/></svg></span></div>
+
+  <!-- background paper scraps -->
+  <svg class="abs paper" style="left:0;top:0" width="390" height="700" viewBox="0 0 390 700" aria-hidden="true">
+    <g filter="url(#torn)">
+      <circle cx="352" cy="98" r="32" fill="#F7C548"/>
+      <path d="M-10 560 q 70-36 140-8 t 140 -4 t 140-14 v160 h-420z" fill="#B9A6EE"/>
+      <path d="M-10 610 q 80-24 160 0 t 160 -6 t 100 4 v100 h-420z" fill="#8FD0A8"/>
+    </g>
+  </svg>
+
+  <!-- cut paper title -->
+  <div class="abs" style="left:20px;top:58px;display:flex;gap:4px;z-index:3">
+    <span class="letter" style="background:#E5483A;transform:rotate(-6deg)">冰</span>
+    <span class="letter" style="background:#2F62C8;transform:rotate(4deg) translateY(3px)">箱</span>
+    <span class="letter" style="background:#36A26C;transform:rotate(-3deg)">美</span>
+    <span class="letter" style="background:#F7C548;color:#2C2A4A;transform:rotate(5deg) translateY(2px)">術</span>
+    <span class="letter" style="background:#F4A6BE;color:#2C2A4A;transform:rotate(-4deg)">館</span>
+  </div>
+  <div class="abs" style="left:24px;top:124px;font-size:12.5px;font-weight:600;color:var(--ink2);display:flex;align-items:center;gap:5px;z-index:3">
+    <svg width="13" height="13" viewBox="0 0 14 14"><rect x="2.5" y="6" width="9" height="7" rx="2" fill="#5D5A7A"/><path d="M4.5 6V4.2a2.5 2.5 0 015 0V6" fill="none" stroke="#5D5A7A" stroke-width="1.8"/></svg>照片只在這支手機上整理，不上傳</div>
+
+  <!-- ticket quota -->
+  <div class="abs" style="left:286px;top:118px;z-index:4;transform:rotate(6deg)">
+    <svg width="92" height="58" viewBox="0 0 92 58" class="paper"><path d="M0 0 h92 v20 a8 8 0 0 0 0 18 v20 h-92 v-20 a8 8 0 0 0 0-18z" fill="#FFF8EA"/><path d="M66 4 v50" stroke="#E5483A" stroke-width="1.5" stroke-dasharray="3 3"/></svg>
+    <div class="abs hand" style="left:0;top:6px;width:66px;text-align:center;line-height:1.1;font-size:11px;color:var(--ink2)">今天門票<br><span style="font-size:24px;color:var(--red)">3</span><span style="font-size:12px;color:var(--ink)"> 張</span></div>
+    <div class="abs hand" style="left:66px;top:0;width:26px;height:58px;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;font-size:10px;color:var(--red);letter-spacing:2px">免費</div>
+  </div>
+
+  <!-- fridge : stacked torn papers -->
+  <svg class="abs paper" style="left:0;top:150px" width="390" height="520" viewBox="0 0 390 520" aria-hidden="true">
+    <g filter="url(#torn)">
+      <rect x="30" y="16" width="338" height="420" rx="30" fill="#F7C548" transform="rotate(1.4 199 226)"/>
+    </g>
+    <g filter="url(#tornS)">
+      <rect x="24" y="10" width="336" height="420" rx="28" fill="#FFFAF0"/>
+    </g>
+    <g filter="url(#tornS)"><rect x="66" y="428" width="34" height="20" rx="5" fill="#2C2A4A"/><rect x="286" y="428" width="34" height="20" rx="5" fill="#2C2A4A"/>
+    </g>
+    <rect x="34" y="20" width="316" height="400" rx="22" fill="none" stroke="#E5483A" stroke-width="2" stroke-dasharray="7 6" opacity=".7"/>
+    <!-- handle -->
+    <g filter="url(#tornS)"><rect x="322" y="54" width="14" height="150" rx="7" fill="#2F62C8"/></g>
+    <path d="M329 62 v134" stroke="#fff" stroke-width="1.6" stroke-dasharray="4 4"/>
+  </svg>
+
+  <!-- art 1 -->
+  <div class="art" style="left:48px;top:186px;width:150px;transform:rotate(-3deg);z-index:3"><div class="crop-flat"><img src="../samples/flat.jpg" alt="孩子的畫：氣球派對"></div></div>
+  <div class="washi w-red" style="left:36px;top:180px;width:62px;transform:rotate(-38deg)"></div>
+  <div class="washi w-red" style="left:150px;top:180px;width:62px;transform:rotate(34deg)"></div>
+  <div class="tag" style="left:66px;top:428px;transform:rotate(-3deg);z-index:4"><b>氣球派對</b><small>小米 · 5 歲</small></div>
+
+  <!-- art 2 -->
+  <div class="art" style="left:210px;top:226px;width:118px;transform:rotate(4deg);z-index:3"><div class="crop-craft"><img src="../samples/craft.jpg" alt="孩子的勞作：國旗"></div></div>
+  <div class="washi w-blue" style="left:236px;top:212px;width:66px;transform:rotate(3deg)"></div>
+  <div class="tag" style="left:222px;top:362px;transform:rotate(3deg);z-index:4"><b>我的國旗</b><small>小米 · 勞作</small></div>
+
+  <!-- empty -->
+  <div class="abs" style="left:214px;top:420px;width:118px;height:92px;border:2.5px dashed #9AA6C8;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink2);font-size:12.5px;font-weight:600;z-index:3">
+    <svg width="28" height="28" viewBox="0 0 28 28"><path d="M8 4 l12 0 l-2 4 l-8 0z" fill="#F7C548" transform="rotate(-10 14 6)"/><path d="M14 9v14M7 16h14" stroke="#5D5A7A" stroke-width="2.6" stroke-linecap="round"/></svg>下一張貼這裡</div>
+
+  <!-- paper flowers on the hill -->
+  <svg class="abs paper" style="left:0;top:574px;z-index:2" width="390" height="96" viewBox="0 0 390 96">
+    <g filter="url(#tornS)">
+      <path d="M22 96 q2-30 -2-50" stroke="#2E8A5A" stroke-width="4" fill="none"/><path d="M20 70 q-14-4 -16-16 q12 2 16 14z" fill="#36A26C"/>
+      <circle cx="20" cy="40" r="13" fill="#F4A6BE"/><circle cx="20" cy="40" r="5" fill="#E5483A"/>
+      <path d="M362 96 q-2-34 2-56" stroke="#2E8A5A" stroke-width="4" fill="none"/><path d="M363 72 q14-6 18-18 q-14 2 -18 14z" fill="#36A26C"/>
+      <path d="M364 18 l5 11 l12 1 l-9 8 l3 12 l-11-6 l-11 6 l3-12 l-9-8 l12-1z" fill="#F7C548"/>
+    </g>
+  </svg>
+  <!-- felt dock -->
+  <div class="abs felt" style="left:0;top:664px;width:390px;height:180px;background-color:#E5483A;border-radius:28px 28px 0 0;z-index:6;box-shadow:0 -6px 14px -6px rgba(60,20,20,.35)">
+    <div class="abs" style="left:8px;right:8px;top:8px;height:200px;border:2px dashed rgba(255,240,220,.8);border-radius:22px"></div>
+  </div>
+  <div class="abs" style="left:95px;top:684px;width:200px;height:40px;z-index:7;display:flex;border-radius:20px;background:#B93427;padding:4px">
+    <div class="hand" style="flex:1;border-radius:16px;background:#FFF8EA;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--red-d);position:relative">畫作<span class="stitch" style="inset:3px;border-color:#F0B9AE;border-width:1.5px"></span></div>
+    <div class="hand" style="flex:1;display:flex;align-items:center;justify-content:center;font-size:17px;color:#FFE1D9">勞作</div>
+  </div>
+  <!-- album: polaroid stack -->
+  <div class="abs" style="left:32px;top:740px;width:64px;text-align:center;z-index:7">
+    <div style="position:relative;width:52px;height:56px;margin:0 auto">
+      <div class="abs" style="inset:0;background:#FFF8EA;transform:rotate(9deg);box-shadow:0 2px 3px rgba(0,0,0,.25)"></div>
+      <div class="abs" style="inset:0;background:#fff;padding:4px 4px 10px;transform:rotate(-5deg);box-shadow:0 3px 5px rgba(0,0,0,.3)"><div style="width:100%;height:100%;overflow:hidden"><div class="crop-flat" style="margin-top:-8px"><img src="../samples/flat.jpg" alt=""></div></div></div>
+    </div>
+    <div style="font-size:13px;color:#FFF3EC;font-weight:600;margin-top:6px">相簿</div>
+  </div>
+  <!-- shutter: big sewing button -->
+  <div class="abs" style="left:149px;top:734px;width:92px;height:92px;z-index:7">
+    <svg width="92" height="92" viewBox="0 0 92 92" style="filter:drop-shadow(0 6px 5px rgba(80,20,10,.45))">
+      <circle cx="46" cy="46" r="44" fill="#F7C548"/>
+      <circle cx="46" cy="46" r="44" fill="none" stroke="#E0A92A" stroke-width="3"/>
+      <circle cx="46" cy="46" r="34" fill="#FBD670"/>
+      <circle cx="46" cy="46" r="34" fill="none" stroke="#E0A92A" stroke-width="1.6" stroke-dasharray="4 4"/>
+      <path d="M29 39 a3 3 0 0 1 3-3 h6 l3-5 h10 l3 5 h6 a3 3 0 0 1 3 3 v19 a3 3 0 0 1 -3 3 h-28 a3 3 0 0 1 -3-3z" fill="#2C2A4A"/>
+      <circle cx="46" cy="48" r="7.5" fill="#FBD670"/><circle cx="46" cy="48" r="4" fill="#2C2A4A"/>
+    </svg>
+  </div>
+  <div class="abs" style="left:294px;top:740px;width:64px;text-align:center;z-index:7">
+    <div style="width:54px;height:54px;margin:0 auto;border-radius:50%;background:#FFF8EA;position:relative;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 5px rgba(80,20,10,.3)"><span class="stitch" style="inset:4px;border-color:#E3C9A3;border-width:1.5px"></span>
+      <svg width="24" height="26" viewBox="0 0 26 28"><path d="M13 2 a9 9 0 0 1 5 16.5 v3 h-10 v-3 a9 9 0 0 1 5-16.5z" fill="#F7C548"/><rect x="8.5" y="23" width="9" height="3" rx="1.5" fill="#2C2A4A"/></svg></div>
+    <div style="font-size:13px;color:#FFF3EC;font-weight:600;margin-top:6px">小技巧</div>
+  </div>
+  <div class="homebar" style="background:#FFF3EC"></div>
+</div>
+<div class="cap">首頁 · 色紙冰箱</div>
+</section>
+
+<!-- ============ EDIT ============ -->
+<section class="frame-wrap">
+<div class="phone fiber" id="edit" style="background-color:#FFF1DA">
+  <div class="status"><span>9:41</span><span><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#2C2A4A" opacity=".5"/><rect x="2" y="2" width="17" height="8" rx="2" fill="#2C2A4A"/></svg></span></div>
+  <div class="abs" style="left:16px;top:56px;display:flex;align-items:center;gap:6px;font-size:16px;font-weight:600"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M13 3 L6 10 L13 17" fill="none" stroke="#2C2A4A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>美術館</div>
+  <div class="abs" style="left:131px;top:52px;width:128px;height:36px;border-radius:18px;background:#F2D9B4;display:flex;padding:3px">
+    <div class="hand" style="flex:1;border-radius:15px;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;position:relative">畫作<span class="stitch" style="inset:3px;border-width:1.5px"></span></div>
+    <div class="hand" style="flex:1;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--ink2)">勞作</div>
+  </div>
+  <div class="abs" style="right:18px;top:58px;display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600"><svg width="20" height="18" viewBox="0 0 20 18"><path d="M2 5 h4 l2-3 h4 l2 3 h4 v11 h-16z" fill="none" stroke="#2C2A4A" stroke-width="2" stroke-linejoin="round"/><circle cx="10" cy="10" r="3.2" fill="none" stroke="#2C2A4A" stroke-width="2"/></svg>重拍</div>
+
+  <!-- cutting mat -->
+  <svg class="abs" style="left:14px;top:102px;filter:drop-shadow(0 8px 8px rgba(30,40,30,.3))" width="362" height="420" viewBox="0 0 362 420" aria-hidden="true">
+    <rect width="362" height="420" rx="20" fill="url(#mat100)"/>
+    <rect x="0" y="0" width="362" height="22" rx="0" fill="#24704F" clip-path="inset(0 round 20px 20px 0 0)"/>
+    <g font-family="Chiron GoRound TC" font-size="8" fill="#BFE3D2">
+      <text x="98" y="15">5</text><text x="198" y="15">10</text><text x="298" y="15">15</text>
+    </g>
+    <g stroke="#BFE3D2" stroke-width="1"><path d="M20 22 v-6 M40 22 v-4 M60 22 v-6 M80 22 v-4 M100 22 v-8 M120 22 v-4 M140 22 v-6 M160 22 v-4 M180 22 v-6 M200 22 v-8 M220 22 v-4 M240 22 v-6 M260 22 v-4 M280 22 v-6 M300 22 v-8 M320 22 v-4 M340 22 v-6"/></g>
+    <path d="M30 400 l 300 -360" stroke="#86C6AA" stroke-width="1" opacity=".5"/>
+  </svg>
+  <div class="abs" style="left:70px;top:132px;width:250px;height:377px;z-index:2;box-shadow:0 2px 2px rgba(0,0,0,.2),0 14px 16px -8px rgba(0,0,0,.45)">
+    <div class="crop-flat before" style="position:absolute;inset:0"><img src="../samples/flat.jpg" alt="整理前"></div>
+    <div class="crop-flat" style="position:absolute;inset:0;clip-path:inset(0 0 0 44%)"><img src="../samples/flat.jpg" alt="整理後"></div>
+    <div class="abs" style="left:calc(44% - 2px);top:0;bottom:0;width:4px;background:#fff;box-shadow:0 0 0 1px rgba(44,42,74,.3)"></div>
+    <div class="abs" style="left:calc(44% - 25px);top:162px;width:50px;height:50px;border-radius:50%;background:#F7C548;display:flex;align-items:center;justify-content:center;box-shadow:0 5px 8px -2px rgba(0,0,0,.4)">
+      <span class="stitch" style="inset:5px;border-color:#B98612;border-width:1.5px;border-radius:50%"></span>
+      <svg width="24" height="16" viewBox="0 0 24 16"><path d="M7 2 L2 8 L7 14 M17 2 L22 8 L17 14" fill="none" stroke="#2C2A4A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="abs" style="left:8px;bottom:8px;background:rgba(44,42,74,.8);color:#fff;font-size:12px;font-weight:600;padding:3px 9px;border-radius:4px">原本</div>
+    <div class="abs" style="right:8px;bottom:8px;background:#FFF8EA;color:var(--ink);font-size:12px;font-weight:600;padding:3px 9px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.25)">整理後</div>
+  </div>
+  <div class="washi w-yellow" style="left:44px;top:132px;width:66px;transform:rotate(-40deg)"></div>
+  <div class="washi w-green" style="left:282px;top:488px;width:66px;transform:rotate(-40deg)"></div>
+  <div class="abs" style="left:0;right:0;top:532px;text-align:center;font-size:13.5px;color:var(--ink2);font-weight:600">拖曳黃色鈕扣，比較前後</div>
+
+  <!-- slider : ribbon -->
+  <div class="abs paper" style="left:18px;top:560px;width:354px;height:74px">
+    <svg class="abs" width="354" height="74" viewBox="0 0 354 74"><g filter="url(#tornS)"><rect x="2" y="2" width="350" height="70" rx="10" fill="#FFFAF0"/></g></svg>
+    <div class="abs" style="left:18px;top:12px;font-size:15px;font-weight:600">紙張變白</div>
+    <div class="abs hand" style="right:18px;top:10px;font-size:16px;color:var(--red)">90</div>
+    <div class="abs" style="left:18px;right:18px;top:44px;height:10px;border-radius:5px;background:#EEE3CF"></div>
+    <div class="abs" style="left:18px;width:268px;top:44px;height:10px;border-radius:5px;background:repeating-linear-gradient(45deg,#E5483A 0 5px,#F27A6E 5px 10px)"></div>
+    <div class="abs" style="left:272px;top:35px;width:28px;height:28px;border-radius:50%;background:#2F62C8;box-shadow:0 2px 3px rgba(0,0,0,.3)"><svg width="28" height="28" viewBox="0 0 28 28"><circle cx="11" cy="11" r="2" fill="#173A86"/><circle cx="17" cy="11" r="2" fill="#173A86"/><circle cx="11" cy="17" r="2" fill="#173A86"/><circle cx="17" cy="17" r="2" fill="#173A86"/></svg></div>
+  </div>
+
+  <!-- tools : paper circles -->
+  <div class="abs" style="left:14px;top:648px;width:362px;display:flex;justify-content:space-around;text-align:center;font-size:13px;font-weight:600;color:var(--ink2)">
+    <div style="width:76px"><svg width="54" height="54" viewBox="0 0 54 54" class="paper"><g filter="url(#tornS)"><circle cx="27" cy="27" r="23" fill="#B9A6EE"/></g><path d="M20 14 v20 h20 M14 20 h20 v20" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><div>裁切</div></div>
+    <div style="width:76px;color:var(--ink)"><svg width="54" height="54" viewBox="0 0 54 54" class="paper"><g filter="url(#tornS)"><circle cx="27" cy="27" r="25" fill="#E5483A"/></g><circle cx="27" cy="27" r="19.5" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="3.5 3"/><g stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M16 21 h22 M16 33 h22"/><circle cx="31" cy="21" r="3.4" fill="#E5483A"/><circle cx="22" cy="33" r="3.4" fill="#E5483A"/></g></svg><div class="hand" style="font-size:14px">調整</div></div>
+    <div style="width:76px"><svg width="54" height="54" viewBox="0 0 54 54" class="paper"><g filter="url(#tornS)"><circle cx="27" cy="27" r="23" fill="#36A26C"/></g><path d="M18 37 l3-9 l13-13 l6 6 l-13 13z M21 28 l6 6" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/></svg><div>筆刷</div></div>
+    <div style="width:76px"><svg width="54" height="54" viewBox="0 0 54 54" class="paper"><g filter="url(#tornS)"><circle cx="27" cy="27" r="23" fill="#2F62C8"/></g><rect x="15" y="19" width="24" height="16" rx="3" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M20 25 h14 M20 30 h9" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg><div>說明牌</div></div>
+  </div>
+
+  <div class="btn" style="left:18px;top:742px;width:146px;height:56px;border-radius:16px;background:#FFFAF0;color:var(--ink);box-shadow:0 2px 0 rgba(0,0,0,.08),0 8px 10px -6px rgba(30,30,60,.4)"><span class="stitch" style="border-color:#D9C29B;inset:5px;border-radius:12px"></span>＋ 收進這次</div>
+  <div class="btn felt" style="left:174px;top:742px;width:198px;height:56px;border-radius:16px;background-color:var(--red);color:#fff;box-shadow:0 3px 0 var(--red-d),0 10px 12px -6px rgba(150,40,30,.6)"><span class="stitch" style="inset:5px;border-radius:12px"></span>
+    <svg width="20" height="20" viewBox="0 0 20 20"><path d="M10 2 v11 M5 8 l5 5 l5-5 M3 17 h14" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>存到手機</div>
+  <div class="homebar"></div>
+</div>
+<div class="cap">整理畫面 · 切割墊</div>
+</section>
+
+<!-- ============ MOMENT ============ -->
+<section class="frame-wrap">
+<div class="phone fiber" id="moment">
+  <div class="status"><span>9:41</span><span><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#2C2A4A" opacity=".5"/><rect x="2" y="2" width="17" height="8" rx="2" fill="#2C2A4A"/></svg></span></div>
+  <svg class="abs" style="left:0;top:0" width="390" height="640" viewBox="0 0 390 640" aria-hidden="true">
+    <!-- bunting -->
+    <path d="M-10 58 Q 195 120 400 58" stroke="#2C2A4A" stroke-width="1.6" fill="none"/>
+    <g class="paper" filter="url(#tornS)">
+      <path d="M14 66 l30 9 l-20 30z" fill="#E5483A"/>
+      <path d="M58 79 l30 6 l-17 32z" fill="#F7C548"/>
+      <path d="M104 89 l30 4 l-14 33z" fill="#2F62C8"/>
+      <path d="M152 94 l30 0 l-15 33z" fill="#36A26C"/>
+      <path d="M200 94 l30 -1 l-14 33z" fill="#F4A6BE"/>
+      <path d="M248 91 l30 -4 l-12 33z" fill="#B9A6EE"/>
+      <path d="M296 84 l30 -7 l-10 32z" fill="#E5483A"/>
+      <path d="M342 73 l30 -10 l-8 32z" fill="#F7C548"/>
+    </g>
+    <!-- paper sun burst -->
+    <g class="paper" filter="url(#torn)">
+      <path d="M192.0 122.0 L218.0 164.3 L257.0 133.5 L267.0 182.1 L314.1 166.5 L306.9 215.6 L356.5 217.0 L333.0 260.7 L379.1 279.0 L342.0 312.0 L379.1 345.0 L333.0 363.3 L356.5 407.0 L306.9 408.4 L314.1 457.5 L267.0 441.9 L257.0 490.5 L218.0 459.7 L192.0 502.0 L166.0 459.7 L127.0 490.5 L117.0 441.9 L69.9 457.5 L77.1 408.4 L27.5 407.0 L51.0 363.3 L4.9 345.0 L42.0 312.0 L4.9 279.0 L51.0 260.7 L27.5 217.0 L77.1 215.6 L69.9 166.5 L117.0 182.1 L127.0 133.5 L166.0 164.3Z" fill="#F7C548"/>
+    </g>
+    <!-- paper fridge -->
+    <g class="paper">
+      <g filter="url(#torn)"><rect x="118" y="170" width="160" height="290" rx="24" fill="#2F62C8" transform="rotate(-2 198 315)"/></g>
+      <g filter="url(#tornS)"><rect x="112" y="166" width="160" height="290" rx="22" fill="#FFFAF0"/></g>
+    </g>
+    <rect x="120" y="174" width="144" height="274" rx="16" fill="none" stroke="#E5483A" stroke-width="1.8" stroke-dasharray="6 5" opacity=".7"/>
+    <path d="M114 244 h156" stroke="#E7D9C0" stroke-width="3"/>
+    <rect x="248" y="190" width="9" height="40" rx="4.5" fill="#2F62C8"/><rect x="248" y="262" width="9" height="70" rx="4.5" fill="#2F62C8"/>
+    <!-- confetti paper -->
+    <g class="paper" filter="url(#tornS)">
+      <rect x="40" y="250" width="22" height="14" fill="#36A26C" transform="rotate(-20 51 257)"/>
+      <rect x="328" y="270" width="20" height="13" fill="#E5483A" transform="rotate(25 338 276)"/>
+      <circle cx="62" cy="380" r="10" fill="#F4A6BE"/>
+      <circle cx="330" cy="400" r="9" fill="#2F62C8"/>
+      <path d="M318 190 l6 12 l13 1 l-10 8 l3 13 l-12-7 l-12 7 l3-13 l-10-8 l13-1z" fill="#B9A6EE"/>
+      <path d="M58 170 q8 0 8 9 q0 9-16 18 q-16-9-16-18 q0-9 8-9 q6 0 8 5 q2-5 8-5z" fill="#E5483A"/>
+    </g>
+  </svg>
+  <svg class="abs paper" style="left:126px;top:178px;z-index:3" width="60" height="78" viewBox="0 0 60 78">
+    <path d="M18 40 l-8 36 l12-8 l6 10 l4-36z M42 40 l8 36 l-12-8 l-6 10 l-4-36z" fill="#2F62C8"/>
+    <g filter="url(#tornS)"><path d="M30.0 1.0 L35.4 7.7 L43.5 4.6 L44.8 13.2 L53.4 14.5 L50.3 22.6 L57.0 28.0 L50.3 33.4 L53.4 41.5 L44.8 42.8 L43.5 51.4 L35.4 48.3 L30.0 55.0 L24.6 48.3 L16.5 51.4 L15.2 42.8 L6.6 41.5 L9.7 33.4 L3.0 28.0 L9.7 22.6 L6.6 14.5 L15.2 13.2 L16.5 4.6 L24.6 7.7Z" fill="#E5483A"/></g>
+    <circle cx="30" cy="28" r="16" fill="#FFF8EA"/><circle cx="30" cy="28" r="13" fill="none" stroke="#E5483A" stroke-width="1.2" stroke-dasharray="3 2.5"/>
+    <text x="30" y="33" text-anchor="middle" font-family="Huninn" font-size="13" fill="#B93427">新作</text>
+  </svg>
+  <div class="art" style="left:140px;top:262px;width:100px;padding:5px;transform:rotate(-3deg);z-index:3"><div class="crop-flat"><img src="../samples/flat.jpg" alt="剛貼上的畫"></div></div>
+  <div class="washi w-pink" style="left:162px;top:254px;width:54px;transform:rotate(-4deg)"></div>
+
+  <!-- ribbon banner -->
+  <svg class="abs paper" style="left:20px;top:476px;z-index:4" width="350" height="86" viewBox="0 0 350 86">
+    <path d="M6 22 h44 v48 h-44 l14 -24z" fill="#B93427"/>
+    <path d="M344 22 h-44 v48 h44 l-14 -24z" fill="#B93427"/>
+    <path d="M36 62 l14 8 v-8z M314 62 l-14 8 v-8z" fill="#7E2018"/>
+    <rect x="36" y="10" width="278" height="52" rx="4" fill="#E5483A"/>
+    <rect x="42" y="16" width="266" height="40" rx="2" fill="none" stroke="#FFE1D9" stroke-width="1.6" stroke-dasharray="5 4"/>
+  </svg>
+  <div class="abs hand" style="left:0;right:0;top:494px;text-align:center;font-size:30px;color:#fff;letter-spacing:3px;z-index:5;text-shadow:0 1px 0 rgba(120,20,10,.4)">已掛上冰箱！</div>
+  <p class="abs" style="left:0;right:0;top:578px;text-align:center;font-size:15.5px;line-height:1.7;color:var(--ink2);font-weight:600">「氣球派對」是小米的第 <span class="hand" style="color:var(--red);font-size:20px">12</span> 件作品<br>也存進了手機相簿</p>
+  <div class="btn felt" style="left:40px;top:670px;width:310px;height:58px;border-radius:18px;background-color:var(--red);color:#fff;font-size:20px;box-shadow:0 3px 0 var(--red-d),0 12px 14px -8px rgba(150,40,30,.6)"><span class="stitch" style="inset:5px;border-radius:14px"></span>再拍一張</div>
+  <div class="btn" style="left:40px;top:740px;width:310px;height:50px;color:var(--blue);font-size:17px">去冰箱看看 →</div>
+  <div class="homebar"></div>
+</div>
+<div class="cap">成功時刻 · 貼好了</div>
+</section>
+</main>
+</body>
+</html>

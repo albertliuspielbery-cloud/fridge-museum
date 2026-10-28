@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>冰冰角色設定</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;600;800&family=Huninn&display=swap" rel="stylesheet">
+<style>
+:root{--wall:#FCEBD2;--ink:#4A2F24;--ink2:#7A5A48;--teal:#227F6E;--tomato:#EE5D43;--card:#FFFBF4;--line:#EBD7BB}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#F3E4CC;font-family:"Chiron GoRound TC","Huninn",system-ui,sans-serif;color:var(--ink);padding:36px 16px 72px}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font-family:Huninn;font-weight:400;font-size:40px;letter-spacing:1px}
+h1 small{font-size:20px;color:var(--ink2);margin-left:10px}
+.lede{color:var(--ink2);font-size:15.5px;line-height:1.7;margin:8px 0 26px;max-width:860px}
+section{background:var(--card);border-radius:28px;padding:28px 28px 30px;margin-bottom:26px;box-shadow:0 10px 30px -18px rgba(90,50,20,.35)}
+h2{font-family:Huninn;font-weight:400;font-size:26px;margin-bottom:4px;display:flex;align-items:center;gap:10px}
+h2 .n{display:inline-flex;width:34px;height:34px;border-radius:50%;background:var(--teal);color:#fff;font-size:17px;align-items:center;justify-content:center}
+.sub{color:var(--ink2);font-size:14px;margin-bottom:20px}
+.grid{display:grid;gap:18px}
+.g-construct{grid-template-columns:1.25fr 1fr 1fr}
+.panel{background:#FFF;border:1.5px solid var(--line);border-radius:20px;padding:16px;position:relative}
+.panel h3{font-size:15px;font-weight:800;margin-bottom:8px}
+.panel p,.panel li{font-size:13.5px;line-height:1.65;color:var(--ink2)}
+.panel ul{padding-left:18px}
+.wallbg{background:#FCEBD2}
+.nightbg{background:#1E2340;border-color:#2C335A}
+.nightbg h3,.nightbg p{color:#E8E2F5}
+.sw{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.sw div{width:72px;font-size:11px;line-height:1.3;color:var(--ink2)}
+.sw i{display:block;height:40px;border-radius:10px;margin-bottom:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.nightbg .sw div{color:#C9C3DD}
+.g-expr{grid-template-columns:repeat(5,1fr)}
+.ex{background:#FFF;border:1.5px solid var(--line);border-radius:20px;padding:10px 10px 14px;text-align:center;position:relative}
+.ex svg.p{width:100%;height:auto;aspect-ratio:1/1;display:block}
+.ex .k{font-size:12px;font-weight:800;color:var(--teal);letter-spacing:.06em;margin-top:2px}
+.ex .t{font-size:13px;color:var(--ink2);line-height:1.5;margin-top:2px}
+.bubble{position:absolute;background:#fff;border:1.5px solid #EBD7BB;border-radius:14px;padding:5px 9px;font-size:12.5px;font-weight:600;line-height:1.35;white-space:nowrap;box-shadow:0 4px 8px -4px rgba(90,50,20,.35)}
+.crayon{filter:url(#bb-crayon)}
+.hand{font-family:Huninn}
+.g-icons{grid-template-columns:repeat(3,1fr)}
+.icon{width:220px;height:220px;border-radius:22.4%;overflow:hidden;box-shadow:0 14px 26px -14px rgba(0,0,0,.45);margin:0 auto}
+.icon svg{width:100%;height:100%;display:block}
+.prev{display:flex;gap:16px;justify-content:center;align-items:flex-end;margin-top:16px;padding:14px;border-radius:16px}
+.prev .ic{border-radius:22.4%;overflow:hidden;box-shadow:0 3px 6px -2px rgba(0,0,0,.35)}
+.prev .ic svg{width:100%;height:100%;display:block}
+.prev span{display:block;font-size:10.5px;text-align:center;margin-top:4px}
+.g-cast{grid-template-columns:1.1fr 1fr 1fr}
+.row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.lbl{font-size:11.5px;color:var(--ink2);text-align:center;margin-top:4px}
+.do b{color:var(--teal)} .dont b{color:#C9432D}
+@media (max-width:1000px){.g-construct,.g-cast,.g-icons{grid-template-columns:1fr}.g-expr{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="0" height="0" style="position:absolute" aria-hidden="true">
+<!--
+  冰冰 / Bibi — My Fridge Museum mascot sprite  (v1, pending owner approval)
+  Colours are driven by CSS custom properties so one set of symbols serves light + night (dark) mode:
+    --bb-front --bb-side --bb-split --bb-hl --bb-handle --bb-feet --bb-hand --bb-eye --bb-cheek --bb-bow --bb-bow2
+  Usage:  <svg width="120" height="120"><use href="#bb-wave"/></svg>
+  Night:  <use href="#bb-sleep" style="--bb-front:#3F8C86;--bb-side:#2B6764;..."/>
+-->
+<defs>
+  <filter id="bb-wobble" x="-10%" y="-10%" width="120%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="w"/>
+    <feDisplacementMap in="SourceGraphic" in2="w" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="bb-crayon" x="-10%" y="-10%" width="120%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="w"/>
+    <feDisplacementMap in="SourceGraphic" in2="w" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="d"/>
+    <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="1" seed="5" result="g"/>
+    <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  4 0 0 0 -0.7" result="ga"/>
+    <feComposite in="d" in2="ga" operator="in"/>
+  </filter>
+  <pattern id="bb-pat-stripe" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="10" fill="#FBD2C9"/><rect width="5" height="10" fill="#F27A6E"/></pattern>
+  <pattern id="bb-pat-dots" width="9" height="9" patternUnits="userSpaceOnUse"><rect width="9" height="9" fill="#F8C14A"/><circle cx="4.5" cy="4.5" r="2" fill="#FFF6DD"/></pattern>
+  <pattern id="bb-pat-check" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#CFE0FF"/><rect width="5" height="5" fill="#8FB1F2"/><rect x="5" y="5" width="5" height="5" fill="#8FB1F2"/></pattern>
+  <pattern id="bb-pat-mint" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="10" height="10" fill="#D6F2E2"/><rect width="4" height="10" fill="#7CCB9E"/></pattern>
+</defs>
+
+<!-- ===================== BODY (front)  112 x 172 ===================== -->
+<symbol id="bb-body" viewBox="0 0 112 172">
+  <rect x="18" y="148" width="26" height="22" rx="10" style="fill:var(--bb-feet,#3F8E7C)"/>
+  <rect x="62" y="148" width="26" height="22" rx="10" style="fill:var(--bb-feet,#3F8E7C)"/>
+  <rect x="0" y="0" width="112" height="160" rx="24" style="fill:var(--bb-side,#5DB4A0)"/>
+  <rect x="0" y="0" width="104" height="160" rx="22" style="fill:var(--bb-front,#8ED3C0)"/>
+  <rect x="0" y="57" width="104" height="3.5" style="fill:var(--bb-split,#6CC0AC)"/>
+  <path d="M10 24 q0-12 12-12 h3 v38 h-15z" style="fill:var(--bb-hl,#B9E7DA)"/>
+  <rect x="10" y="70" width="15" height="70" rx="5" opacity=".7" style="fill:var(--bb-hl,#B9E7DA)"/>
+  <rect x="88" y="16" width="7" height="30" rx="3.5" style="fill:var(--bb-handle,#5DB4A0)"/>
+  <rect x="88" y="72" width="7" height="46" rx="3.5" style="fill:var(--bb-handle,#5DB4A0)"/>
+  <!-- bow clip (signature accessory, always top-left) -->
+  <g transform="translate(14 4) rotate(-18)"><path d="M0 0 C-14 -12 -16 4 -12 8 C-8 12 -2 6 0 2 C2 6 8 12 12 8 C16 4 14 -12 0 0Z" style="fill:var(--bb-bow,#F59C94)"/><circle cx="0" cy="2" r="3.6" style="fill:var(--bb-bow2,#E9787A)"/></g>
+</symbol>
+
+<!-- ===================== 3/4 VIEW  140 x 180 ===================== -->
+<symbol id="bb-34" viewBox="0 0 140 180">
+  <rect x="16" y="156" width="24" height="22" rx="10" style="fill:var(--bb-feet,#3F8E7C)"/>
+  <rect x="60" y="156" width="24" height="22" rx="10" style="fill:var(--bb-feet,#3F8E7C)"/>
+  <path d="M110 160 L 92 168 L 108 168 L 126 158Z" opacity=".6" style="fill:var(--bb-feet,#3F8E7C)"/>
+  <!-- side panel -->
+  <path d="M80 10 L118 2 Q130 0 130 12 L130 148 Q130 158 120 160 L80 168Z" style="fill:var(--bb-side,#5DB4A0)"/>
+  <!-- top -->
+  <path d="M22 10 L60 2 L118 2 L80 10Z" style="fill:var(--bb-hl,#B9E7DA)"/>
+  <!-- front -->
+  <rect x="0" y="8" width="96" height="160" rx="20" style="fill:var(--bb-front,#8ED3C0)"/>
+  <rect x="0" y="64" width="96" height="3.5" style="fill:var(--bb-split,#6CC0AC)"/>
+  <path d="M96 64 L130 58 L130 61.5 L96 67.5Z" opacity=".8" style="fill:var(--bb-split,#6CC0AC)"/>
+  <path d="M8 30 q0-12 12-12 h3 v38 h-15z" style="fill:var(--bb-hl,#B9E7DA)"/>
+  <rect x="83" y="24" width="7" height="30" rx="3.5" style="fill:var(--bb-handle,#5DB4A0)"/>
+  <rect x="83" y="80" width="7" height="46" rx="3.5" style="fill:var(--bb-handle,#5DB4A0)"/>
+  <!-- face shifted toward the turn -->
+  <g transform="translate(6 26) scale(.56 .62)">
+    <ellipse cx="30" cy="24" rx="7.5" ry="10" style="fill:var(--bb-eye,#2F2522)"/><ellipse cx="86" cy="24" rx="7" ry="10" style="fill:var(--bb-eye,#2F2522)"/>
+    <circle cx="32.5" cy="19.5" r="2.8" fill="#fff"/><circle cx="88.5" cy="19.5" r="2.6" fill="#fff"/>
+    <ellipse cx="14" cy="40" rx="9" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="100" cy="40" rx="7" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/>
+    <path d="M46 36 Q58 54 70 36 Z" style="fill:var(--bb-eye,#2F2522)"/><path d="M51 44.5 Q58 41 65 44.5 Q62 49.5 58 49.5 Q54 49.5 51 44.5Z" fill="#F0705F"/>
+  </g>
+  <g transform="translate(12 10) rotate(-18)"><path d="M0 0 C-14 -12 -16 4 -12 8 C-8 12 -2 6 0 2 C2 6 8 12 12 8 C16 4 14 -12 0 0Z" style="fill:var(--bb-bow,#F59C94)"/><circle cx="0" cy="2" r="3.6" style="fill:var(--bb-bow2,#E9787A)"/></g>
+</symbol>
+
+<!-- ===================== FACES  120 x 60 (placed at x14 y16 w76 h38 on body) ===================== -->
+<symbol id="bb-face-smile" viewBox="0 0 120 60">
+  <ellipse cx="30" cy="24" rx="7.5" ry="10" style="fill:var(--bb-eye,#2F2522)"/><ellipse cx="90" cy="24" rx="7.5" ry="10" style="fill:var(--bb-eye,#2F2522)"/>
+  <circle cx="33" cy="19.5" r="2.8" fill="#fff"/><circle cx="93" cy="19.5" r="2.8" fill="#fff"/>
+  <ellipse cx="14" cy="40" rx="9" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="106" cy="40" rx="9" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/>
+  <path d="M48 36 Q60 54 72 36 Z" style="fill:var(--bb-eye,#2F2522)"/>
+  <path d="M53 44.5 Q60 41 67 44.5 Q64 49.5 60 49.5 Q56 49.5 53 44.5Z" fill="#F0705F"/>
+</symbol>
+<symbol id="bb-face-blink" viewBox="0 0 120 60">
+  <path d="M22 25 q8 6 16 0 M82 25 q8 6 16 0" stroke-width="4.5" fill="none" stroke-linecap="round" style="stroke:var(--bb-eye,#2F2522)"/>
+  <ellipse cx="14" cy="40" rx="9" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="106" cy="40" rx="9" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/>
+  <path d="M50 38 q10 10 20 0" stroke-width="4" fill="none" stroke-linecap="round" style="stroke:var(--bb-eye,#2F2522)"/>
+</symbol>
+<symbol id="bb-face-talk" viewBox="0 0 120 60">
+  <ellipse cx="30" cy="24" rx="7.5" ry="10" style="fill:var(--bb-eye,#2F2522)"/><ellipse cx="90" cy="24" rx="7.5" ry="10" style="fill:var(--bb-eye,#2F2522)"/>
+  <circle cx="33" cy="19.5" r="2.8" fill="#fff"/><circle cx="93" cy="19.5" r="2.8" fill="#fff"/>
+  <ellipse cx="14" cy="40" rx="9" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="106" cy="40" rx="9" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/>
+  <ellipse cx="60" cy="44" rx="9" ry="10" style="fill:var(--bb-eye,#2F2522)"/>
+  <ellipse cx="60" cy="49" rx="6" ry="4" fill="#F0705F"/>
+</symbol>
+<symbol id="bb-face-joy" viewBox="0 0 120 60">
+  <path d="M21 28 q9 -13 18 0 M81 28 q9 -13 18 0" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--bb-eye,#2F2522)"/>
+  <ellipse cx="14" cy="40" rx="10" ry="6" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="106" cy="40" rx="10" ry="6" style="fill:var(--bb-cheek,#F59C94)"/>
+  <path d="M43 34 Q60 64 77 34 Z" style="fill:var(--bb-eye,#2F2522)"/>
+  <path d="M50 46 Q60 40 70 46 Q66 53 60 53 Q54 53 50 46Z" fill="#F0705F"/>
+</symbol>
+<symbol id="bb-face-think" viewBox="0 0 120 60">
+  <ellipse cx="32" cy="22" rx="7" ry="9.5" style="fill:var(--bb-eye,#2F2522)"/><ellipse cx="92" cy="22" rx="7" ry="9.5" style="fill:var(--bb-eye,#2F2522)"/>
+  <circle cx="35.5" cy="16.5" r="2.8" fill="#fff"/><circle cx="95.5" cy="16.5" r="2.8" fill="#fff"/>
+  <path d="M84 6 q8-4 15 1" stroke-width="3" fill="none" stroke-linecap="round" style="stroke:var(--bb-eye,#2F2522)"/>
+  <ellipse cx="14" cy="40" rx="9" ry="5.5" opacity=".7" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="106" cy="40" rx="9" ry="5.5" opacity=".7" style="fill:var(--bb-cheek,#F59C94)"/>
+  <ellipse cx="68" cy="43" rx="4.5" ry="5" style="fill:var(--bb-eye,#2F2522)"/>
+</symbol>
+<symbol id="bb-face-oops" viewBox="0 0 120 60">
+  <ellipse cx="30" cy="26" rx="7" ry="9" style="fill:var(--bb-eye,#2F2522)"/><ellipse cx="90" cy="26" rx="7" ry="9" style="fill:var(--bb-eye,#2F2522)"/>
+  <circle cx="32.5" cy="22" r="2.6" fill="#fff"/><circle cx="92.5" cy="22" r="2.6" fill="#fff"/>
+  <path d="M20 12 L37 7 M100 12 L83 7" stroke-width="3" stroke-linecap="round" style="stroke:var(--bb-eye,#2F2522)"/>
+  <ellipse cx="14" cy="41" rx="9" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="106" cy="41" rx="9" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/>
+  <path d="M46 44 q3.5-4 7 0 t7 0 t7 0 t7 0" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--bb-eye,#2F2522)"/>
+  <path d="M112 2 q6 9 0 12 q-6-3 0-12z" fill="#7FC4F2"/>
+</symbol>
+<symbol id="bb-face-hope" viewBox="0 0 120 60">
+  <ellipse cx="30" cy="24" rx="9" ry="11.5" style="fill:var(--bb-eye,#2F2522)"/><ellipse cx="90" cy="24" rx="9" ry="11.5" style="fill:var(--bb-eye,#2F2522)"/>
+  <circle cx="33.5" cy="19" r="3.6" fill="#fff"/><circle cx="93.5" cy="19" r="3.6" fill="#fff"/>
+  <circle cx="27" cy="29" r="1.8" fill="#fff"/><circle cx="87" cy="29" r="1.8" fill="#fff"/>
+  <ellipse cx="13" cy="41" rx="9" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="107" cy="41" rx="9" ry="5.5" opacity=".85" style="fill:var(--bb-cheek,#F59C94)"/>
+  <path d="M53 41 q7 6 14 0" stroke-width="3.6" fill="none" stroke-linecap="round" style="stroke:var(--bb-eye,#2F2522)"/>
+</symbol>
+<symbol id="bb-face-sleep" viewBox="0 0 120 60">
+  <path d="M22 24 q8 7 16 0 M82 24 q8 7 16 0" stroke-width="4.5" fill="none" stroke-linecap="round" style="stroke:var(--bb-eye,#2F2522)"/>
+  <ellipse cx="14" cy="40" rx="9" ry="5.5" opacity=".8" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="106" cy="40" rx="9" ry="5.5" opacity=".8" style="fill:var(--bb-cheek,#F59C94)"/>
+  <ellipse cx="60" cy="43" rx="4" ry="4.6" style="fill:var(--bb-eye,#2F2522)"/>
+</symbol>
+<symbol id="bb-face-proud" viewBox="0 0 120 60">
+  <path d="M21 27 q9 -12 18 0 M81 27 q9 -12 18 0" stroke-width="5" fill="none" stroke-linecap="round" style="stroke:var(--bb-eye,#2F2522)"/>
+  <ellipse cx="14" cy="40" rx="10" ry="6" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="106" cy="40" rx="10" ry="6" style="fill:var(--bb-cheek,#F59C94)"/>
+  <path d="M47 35 Q60 54 73 35 Z" style="fill:var(--bb-eye,#2F2522)"/>
+  <path d="M53 43.5 Q60 40 67 43.5 Q64 48.5 60 48.5 Q56 48.5 53 43.5Z" fill="#F0705F"/>
+</symbol>
+
+<!-- small helpers -->
+<symbol id="bb-sparkle" viewBox="-10 -10 20 20"><path d="M0 -10 Q1.5 -1.5 10 0 Q1.5 1.5 0 10 Q-1.5 1.5 -10 0 Q-1.5 -1.5 0 -10Z" fill="#F8C14A"/></symbol>
+<symbol id="bb-doodle" viewBox="0 0 100 128">
+  <rect x="0" y="0" width="100" height="128" rx="2" fill="#fff"/>
+  <g filter="url(#bb-wobble)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="74" cy="26" r="12" fill="#F8C14A" stroke="#E0A21F" stroke-width="2"/>
+    <path d="M74 6 v-3 M90 12 l3-3 M94 26 h4 M58 12 l-3-3" stroke="#E0A21F" stroke-width="2.6"/>
+    <path d="M14 92 l24-24 l24 24 z" fill="#EE5D43" stroke="#B93427" stroke-width="2"/>
+    <rect x="20" y="92" width="36" height="26" fill="#7FA5F0" stroke="#3C6CD0" stroke-width="2"/>
+    <circle cx="76" cy="76" r="7" fill="none" stroke="#2F2522" stroke-width="2.4"/>
+    <path d="M76 83 v18 M76 101 l-7 12 M76 101 l7 12 M66 90 h20" stroke="#2F2522" stroke-width="2.4"/>
+    <path d="M6 120 C 30 116, 70 122, 94 118" stroke="#56B37A" stroke-width="4"/>
+  </g>
+</symbol>
+
+<!-- ===================== POSES  200 x 200 ===================== -->
+<symbol id="bb-idle" viewBox="0 0 200 200">
+  <ellipse cx="100" cy="190" rx="54" ry="6" fill="#000" opacity=".1"/>
+  <use href="#bb-body" x="44" y="14" width="112" height="172"/>
+  <use href="#bb-face-smile" x="58" y="30" width="76" height="38"/>
+</symbol>
+<symbol id="bb-blink" viewBox="0 0 200 200">
+  <ellipse cx="100" cy="190" rx="54" ry="6" fill="#000" opacity=".1"/>
+  <use href="#bb-body" x="44" y="14" width="112" height="172"/>
+  <use href="#bb-face-blink" x="58" y="30" width="76" height="38"/>
+</symbol>
+<symbol id="bb-wave" viewBox="0 0 200 200">
+  <ellipse cx="100" cy="190" rx="54" ry="6" fill="#000" opacity=".1"/>
+  <path d="M50 112 C 36 120, 30 136, 32 150" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <circle cx="32" cy="154" r="9" style="fill:var(--bb-hand,#A6DFCF)"/>
+  <path d="M150 112 C 170 104, 180 82, 178 60" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <circle cx="178" cy="55" r="9.5" style="fill:var(--bb-hand,#A6DFCF)"/>
+  <path d="M190 40 q7 9 4 20 M166 36 q-6 5 -6 12" stroke="#E5AA72" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <use href="#bb-body" x="44" y="14" width="112" height="172"/>
+  <use href="#bb-face-smile" x="58" y="30" width="76" height="38"/>
+</symbol>
+<symbol id="bb-talk" viewBox="0 0 200 200">
+  <ellipse cx="100" cy="190" rx="54" ry="6" fill="#000" opacity=".1"/>
+  <path d="M50 112 C 32 106, 22 92, 24 76" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <circle cx="24" cy="71" r="9.5" style="fill:var(--bb-hand,#A6DFCF)"/>
+  <path d="M150 112 C 164 120, 170 136, 168 150" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <circle cx="168" cy="154" r="9" style="fill:var(--bb-hand,#A6DFCF)"/>
+  <use href="#bb-body" x="44" y="14" width="112" height="172"/>
+  <use href="#bb-face-talk" x="58" y="30" width="76" height="38"/>
+</symbol>
+<symbol id="bb-cheer" viewBox="0 0 200 200">
+  <ellipse cx="100" cy="192" rx="42" ry="5" fill="#000" opacity=".08"/>
+  <path d="M50 102 C 28 92, 20 70, 22 48" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <circle cx="22" cy="43" r="9.5" style="fill:var(--bb-hand,#A6DFCF)"/>
+  <path d="M150 102 C 172 92, 180 70, 178 48" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <circle cx="178" cy="43" r="9.5" style="fill:var(--bb-hand,#A6DFCF)"/>
+  <use href="#bb-body" x="44" y="4" width="112" height="172"/>
+  <use href="#bb-face-joy" x="58" y="20" width="76" height="38"/>
+  <rect x="10" y="12" width="9" height="5" rx="1.5" fill="#EE5D43" transform="rotate(25 14 14)"/>
+  <rect x="182" y="14" width="9" height="5" rx="1.5" fill="#5B8DEF" transform="rotate(-30 186 16)"/>
+  <circle cx="40" cy="20" r="3.5" fill="#56B37A"/><circle cx="164" cy="26" r="3.5" fill="#F59C94"/>
+  <use href="#bb-sparkle" x="0" y="74" width="16" height="16"/><use href="#bb-sparkle" x="184" y="78" width="14" height="14"/>
+</symbol>
+<symbol id="bb-ticket-pose" viewBox="0 0 200 200">
+  <ellipse cx="100" cy="190" rx="54" ry="6" fill="#000" opacity=".1"/>
+  <path d="M50 112 C 36 124, 44 138, 58 140" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <path d="M150 112 C 164 124, 156 138, 142 140" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <use href="#bb-body" x="44" y="14" width="112" height="172"/>
+  <use href="#bb-face-smile" x="58" y="30" width="76" height="38"/>
+  <g transform="rotate(-5 100 140)"><use href="#bb-ticket" x="56" y="118" width="88" height="46"/></g>
+  <circle cx="58" cy="141" r="9" style="fill:var(--bb-hand,#A6DFCF)"/><circle cx="142" cy="138" r="9" style="fill:var(--bb-hand,#A6DFCF)"/>
+</symbol>
+<symbol id="bb-think" viewBox="0 0 200 200">
+  <ellipse cx="100" cy="190" rx="54" ry="6" fill="#000" opacity=".1"/>
+  <path d="M150 112 C 164 120, 170 136, 168 150" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <circle cx="168" cy="154" r="9" style="fill:var(--bb-hand,#A6DFCF)"/>
+  <use href="#bb-body" x="44" y="14" width="112" height="172"/>
+  <use href="#bb-face-think" x="58" y="30" width="76" height="38"/>
+  <path d="M50 112 C 28 108, 32 82, 58 74" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <circle cx="62" cy="73" r="9" style="fill:var(--bb-hand,#A6DFCF)"/>
+  <circle cx="166" cy="36" r="4" fill="#E5AA72"/><circle cx="178" cy="22" r="5.5" fill="#E5AA72"/>
+  <use href="#bb-sparkle" x="20" y="22" width="18" height="18"/><use href="#bb-sparkle" x="180" y="56" width="12" height="12"/>
+</symbol>
+<symbol id="bb-oops" viewBox="0 0 200 200">
+  <ellipse cx="100" cy="190" rx="54" ry="6" fill="#000" opacity=".1"/>
+  <g transform="rotate(-5 100 186)">
+    <path d="M50 112 C 38 122, 34 138, 38 150" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+    <circle cx="39" cy="154" r="9" style="fill:var(--bb-hand,#A6DFCF)"/>
+    <path d="M150 112 C 178 100, 178 46, 154 26" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+    <use href="#bb-body" x="44" y="14" width="112" height="172"/>
+    <use href="#bb-face-oops" x="58" y="30" width="76" height="38"/>
+    <circle cx="151" cy="24" r="9.5" style="fill:var(--bb-hand,#A6DFCF)"/>
+  </g>
+  <!-- crumpled photo -->
+  <g transform="translate(8 150) rotate(-12)"><path d="M0 0 L30 -3 L32 26 L2 28Z" fill="#fff"/><path d="M6 20 l8-8 l5 5 l4-4 l6 7" stroke="#B7C6CE" stroke-width="2" fill="none"/><path d="M14 -2 l-3 10 l6 6 l-4 12" stroke="#E5AA72" stroke-width="1.6" fill="none"/></g>
+</symbol>
+<symbol id="bb-empty" viewBox="0 0 200 200">
+  <ellipse cx="100" cy="190" rx="54" ry="6" fill="#000" opacity=".1"/>
+  <path d="M50 112 C 40 120, 44 128, 56 130" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <path d="M150 112 C 160 120, 156 128, 144 130" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <use href="#bb-body" x="44" y="14" width="112" height="172"/>
+  <use href="#bb-face-hope" x="58" y="30" width="76" height="38"/>
+  <rect x="62" y="90" width="76" height="70" rx="8" fill="#fff" fill-opacity=".55" stroke="#FFFDF8" stroke-width="3" stroke-dasharray="7 6"/>
+  <path d="M100 112 v26 M87 125 h26" stroke="#227F6E" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="58" cy="130" r="9" style="fill:var(--bb-hand,#A6DFCF)"/><circle cx="142" cy="130" r="9" style="fill:var(--bb-hand,#A6DFCF)"/>
+</symbol>
+<symbol id="bb-sleep" viewBox="0 0 200 200">
+  <ellipse cx="100" cy="190" rx="54" ry="6" fill="#000" opacity=".16"/>
+  <use href="#bb-body" x="44" y="14" width="112" height="172"/>
+  <use href="#bb-face-sleep" x="58" y="30" width="76" height="38"/>
+  <!-- nightcap: only in night mode -->
+  <path d="M60 22 Q 92 -20 150 4 Q 132 4 128 22 Z" fill="#6573D6"/>
+  <circle cx="98" cy="8" r="2" fill="#FFE7A3"/><circle cx="118" cy="4" r="1.6" fill="#FFE7A3"/><circle cx="80" cy="14" r="1.6" fill="#FFE7A3"/>
+  <rect x="56" y="16" width="76" height="10" rx="5" fill="#FFF3D6"/>
+  <circle cx="153" cy="8" r="7" fill="#FFF3D6"/>
+  <path d="M166 44 h10 l-10 12 h10 M180 22 h14 l-14 16 h14" stroke="#FFE7A3" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</symbol>
+<symbol id="bb-proud" viewBox="0 0 200 200">
+  <ellipse cx="112" cy="190" rx="50" ry="6" fill="#000" opacity=".1"/>
+  <g transform="translate(16 0)">
+    <path d="M150 112 C 168 116, 168 136, 152 140" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+    <circle cx="150" cy="141" r="9" style="fill:var(--bb-hand,#A6DFCF)"/>
+    <use href="#bb-body" x="44" y="14" width="112" height="172"/>
+    <use href="#bb-face-proud" x="58" y="30" width="76" height="38"/>
+  </g>
+  <!-- framed artwork -->
+  <g transform="rotate(-6 40 110)">
+    <rect x="2" y="60" width="74" height="92" rx="4" fill="#F8C14A"/>
+    <rect x="2" y="60" width="74" height="92" rx="4" fill="none" stroke="#E0A21F" stroke-width="2.4"/>
+    <use href="#bb-doodle" x="10" y="68" width="58" height="76"/>
+  </g>
+  <path d="M66 116 C 58 124, 62 140, 72 146" stroke-width="11" fill="none" stroke-linecap="round" style="stroke:var(--bb-side,#5DB4A0)"/>
+  <circle cx="74" cy="146" r="9" style="fill:var(--bb-hand,#A6DFCF)"/>
+  <use href="#bb-sparkle" x="0" y="38" width="16" height="16"/><use href="#bb-sparkle" x="70" y="40" width="12" height="12"/>
+</symbol>
+
+<!-- ===================== MINI  52 x 64 (for ≤ 44px: no highlight, no bow) ===================== -->
+<symbol id="bb-mini" viewBox="0 0 52 64">
+  <rect x="9" y="54" width="11" height="9" rx="4" style="fill:var(--bb-feet,#3F8E7C)"/><rect x="29" y="54" width="11" height="9" rx="4" style="fill:var(--bb-feet,#3F8E7C)"/>
+  <rect x="2" y="2" width="48" height="56" rx="13" style="fill:var(--bb-side,#5DB4A0)"/>
+  <rect x="2" y="2" width="45" height="56" rx="12" style="fill:var(--bb-front,#8ED3C0)"/>
+  <rect x="2" y="27" width="45" height="2.4" style="fill:var(--bb-split,#6CC0AC)"/>
+  <rect x="40" y="8" width="3.4" height="14" rx="1.7" style="fill:var(--bb-handle,#5DB4A0)"/>
+  <ellipse cx="15" cy="13" rx="3.6" ry="4.6" style="fill:var(--bb-eye,#2F2522)"/><ellipse cx="31" cy="13" rx="3.6" ry="4.6" style="fill:var(--bb-eye,#2F2522)"/>
+  <circle cx="16.4" cy="11" r="1.3" fill="#fff"/><circle cx="32.4" cy="11" r="1.3" fill="#fff"/>
+  <ellipse cx="9" cy="20" rx="3.6" ry="2.3" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="37" cy="20" rx="3.6" ry="2.3" style="fill:var(--bb-cheek,#F59C94)"/>
+  <path d="M19.5 18.5 Q23 24 26.5 18.5Z" style="fill:var(--bb-eye,#2F2522)"/>
+</symbol>
+<!-- head-only glyph for toolbar / tab icon, 32 x 24 -->
+<symbol id="bb-head" viewBox="0 0 32 24">
+  <rect x="1" y="1" width="30" height="22" rx="7" style="fill:var(--bb-front,#8ED3C0)"/>
+  <ellipse cx="10.5" cy="10" rx="2.6" ry="3.4" style="fill:var(--bb-eye,#2F2522)"/><ellipse cx="21.5" cy="10" rx="2.6" ry="3.4" style="fill:var(--bb-eye,#2F2522)"/>
+  <circle cx="11.4" cy="8.6" r="1" fill="#fff"/><circle cx="22.4" cy="8.6" r="1" fill="#fff"/>
+  <path d="M13.5 14.5 Q16 18.5 18.5 14.5Z" style="fill:var(--bb-eye,#2F2522)"/>
+  <ellipse cx="6" cy="15" rx="2.6" ry="1.6" style="fill:var(--bb-cheek,#F59C94)"/><ellipse cx="26" cy="15" rx="2.6" ry="1.6" style="fill:var(--bb-cheek,#F59C94)"/>
+</symbol>
+
+<!-- ===================== PROPS ===================== -->
+<symbol id="bb-ticket" viewBox="0 0 120 64">
+  <path d="M4 4 h112 v20 a8 8 0 0 0 0 16 v20 h-112 v-20 a8 8 0 0 0 0-16z" fill="#FFF8EA"/>
+  <path d="M4 4 h112 v20 a8 8 0 0 0 0 16 v20 h-112 v-20 a8 8 0 0 0 0-16z" fill="none" stroke="#F0D9B8" stroke-width="2"/>
+  <path d="M86 8 v48" stroke="#EE5D43" stroke-width="2" stroke-dasharray="4 4"/>
+  <path d="M44 16 l4.5 9.5 l10.5 1.2 l-7.8 7 l2.2 10.3 l-9.4-5.3 l-9.4 5.3 l2.2-10.3 l-7.8-7 l10.5-1.2z" fill="#EE5D43"/>
+  <circle cx="101" cy="32" r="7" fill="#F8C14A"/>
+</symbol>
+<symbol id="bb-ticket-blank" viewBox="0 0 120 64">
+  <path d="M4 4 h112 v20 a8 8 0 0 0 0 16 v20 h-112 v-20 a8 8 0 0 0 0-16z" fill="#FFF8EA"/>
+  <path d="M4 4 h112 v20 a8 8 0 0 0 0 16 v20 h-112 v-20 a8 8 0 0 0 0-16z" fill="none" stroke="#F0D9B8" stroke-width="2"/>
+  <path d="M86 8 v48" stroke="#EE5D43" stroke-width="2" stroke-dasharray="4 4"/>
+  <circle cx="101" cy="32" r="7" fill="#F8C14A"/>
+</symbol>
+<symbol id="bb-frame" viewBox="0 0 80 100">
+  <rect x="0" y="0" width="80" height="100" rx="4" fill="#F8C14A"/><rect x="0" y="0" width="80" height="100" rx="4" fill="none" stroke="#E0A21F" stroke-width="2.4"/>
+  <use href="#bb-doodle" x="9" y="9" width="62" height="82"/>
+</symbol>
+
+<!-- ===================== CAT ===================== -->
+<symbol id="cat-sit" viewBox="0 0 80 84">
+  <path d="M58 76 C 76 74, 80 58, 70 50" stroke="#E08F45" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M18 80 C 12 62, 16 40, 40 38 C 64 40, 68 62, 62 80 Z" fill="#F2A65E"/>
+  <path d="M40 46 C 31 50, 29 66, 33 80 L47 80 C 51 66, 49 50, 40 46Z" fill="#FFF1DF"/>
+  <path d="M22 52 q6 2 8 8 M20 62 q6 1 8 6 M58 52 q-6 2 -8 8 M60 62 q-6 1 -8 6" stroke="#DB8840" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M14 22 L18 2 L32 14 Z" fill="#F2A65E"/><path d="M66 22 L62 2 L48 14 Z" fill="#F2A65E"/>
+  <path d="M18 18 L20 8 L27 14 Z" fill="#F7B9A8"/><path d="M62 18 L60 8 L53 14 Z" fill="#F7B9A8"/>
+  <ellipse cx="40" cy="26" rx="27" ry="21" fill="#F2A65E"/>
+  <path d="M33 8 q7-3 14 0 M35 13 q5-2 10 0" stroke="#DB8840" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  <ellipse cx="40" cy="34" rx="12" ry="8" fill="#FFF1DF"/>
+  <path d="M26 25 q4-4 8 0 M46 25 q4-4 8 0" stroke="#2F2522" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <path d="M38 30 h4 l-2 2.4z" fill="#E97A86"/>
+  <path d="M40 32.5 q-2 3-5 2 M40 32.5 q2 3 5 2" stroke="#2F2522" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M22 32 l-10-1 M22 35 l-9 2 M58 32 l10-1 M58 35 l9 2" stroke="#B9774A" stroke-width="1.1" stroke-linecap="round"/>
+  <ellipse cx="29" cy="80" rx="7" ry="4" fill="#FFF1DF"/><ellipse cx="51" cy="80" rx="7" ry="4" fill="#FFF1DF"/>
+</symbol>
+<symbol id="cat-loaf" viewBox="0 0 110 64">
+  <ellipse cx="62" cy="44" rx="40" ry="18" fill="#F2A65E"/>
+  <path d="M60 28 q4 8 0 16 M76 28 q4 8 0 16 M90 32 q3 6 0 12" stroke="#DB8840" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M100 48 C 108 60, 80 64, 52 60" stroke="#E08F45" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M12 26 L14 6 L28 18Z" fill="#F2A65E"/><path d="M48 24 L46 4 L33 16Z" fill="#F2A65E"/>
+  <path d="M16 21 L17 11 L24 17Z" fill="#F7B9A8"/><path d="M44 20 L43 10 L37 16Z" fill="#F7B9A8"/>
+  <ellipse cx="30" cy="34" rx="22" ry="18" fill="#F2A65E"/>
+  <ellipse cx="30" cy="41" rx="10" ry="6.5" fill="#FFF1DF"/>
+  <path d="M19 33 q4 3 8 0 M33 33 q4 3 8 0" stroke="#2F2522" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <path d="M28.5 38 h3 l-1.5 2z" fill="#E97A86"/>
+  <ellipse cx="22" cy="58" rx="8" ry="4" fill="#FFF1DF"/><ellipse cx="38" cy="59" rx="8" ry="4" fill="#FFF1DF"/>
+</symbol>
+<symbol id="cat-peek" viewBox="0 0 90 56">
+  <path d="M18 22 L20 0 L36 12Z" fill="#F2A65E"/><path d="M72 22 L70 0 L54 12Z" fill="#F2A65E"/>
+  <path d="M22 17 L23 6 L31 12Z" fill="#F7B9A8"/><path d="M68 17 L67 6 L59 12Z" fill="#F7B9A8"/>
+  <path d="M15 56 C 15 30, 28 12, 45 12 C 62 12, 75 30, 75 56Z" fill="#F2A65E"/>
+  <path d="M38 14 q7-3 14 0 M40 19 q5-2 10 0" stroke="#DB8840" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <circle cx="34" cy="34" r="5.5" fill="#2F2522"/><circle cx="56" cy="34" r="5.5" fill="#2F2522"/>
+  <circle cx="35.8" cy="32" r="2" fill="#fff"/><circle cx="57.8" cy="32" r="2" fill="#fff"/>
+  <ellipse cx="45" cy="44" rx="9" ry="6" fill="#FFF1DF"/>
+  <path d="M43 41 h4 l-2 2.4z" fill="#E97A86"/>
+  <ellipse cx="26" cy="54" rx="9" ry="5" fill="#FFF1DF"/><ellipse cx="64" cy="54" rx="9" ry="5" fill="#FFF1DF"/>
+</symbol>
+
+<!-- crayon cup (kitchen counter prop) -->
+<symbol id="prop-crayons" viewBox="0 0 44 70">
+  <rect x="9" y="6" width="7" height="34" rx="1" fill="#EE5D43"/><path d="M9 6 l3.5-6 l3.5 6z" fill="#C9432D"/>
+  <g transform="rotate(8 21 30)"><rect x="18" y="14" width="7" height="30" rx="1" fill="#F8C14A"/><path d="M18 14 l3.5-6 l3.5 6z" fill="#E0A21F"/></g>
+  <g transform="rotate(-6 28 30)"><rect x="25" y="2" width="7" height="40" rx="1" fill="#5B8DEF"/><path d="M25 2 l3.5-6 l3.5 6z" fill="#3C6CD0"/></g>
+  <g transform="rotate(-14 18 30)"><rect x="15" y="20" width="7" height="22" rx="1" fill="#56B37A"/><path d="M15 20 l3.5-6 l3.5 6z" fill="#3E9B5B"/></g>
+  <path d="M4 34 h36 l-3 34 h-30z" fill="#7FA5F0"/><path d="M5 42 h34 M6 52 h32" stroke="#A9C3F6" stroke-width="3"/>
+  <rect x="2" y="31" width="40" height="6" rx="3" fill="#6A92E6"/>
+</symbol>
+
+<!-- ===================== FACE MAGNETS ===================== -->
+<symbol id="mag-tomato" viewBox="0 0 40 40">
+  <ellipse cx="20" cy="36" rx="12" ry="2.5" fill="#000" opacity=".12"/>
+  <circle cx="20" cy="22" r="14" fill="#EE5D43"/><path d="M10 16 a12 12 0 0 1 8-7" stroke="#FF9A84" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M20 10 l-6-3 l4 5 l-5 1 l7 1 l7-1 l-5-1 l4-5z" fill="#3E9B5B"/>
+  <circle cx="15.5" cy="22" r="1.7" fill="#2F2522"/><circle cx="24.5" cy="22" r="1.7" fill="#2F2522"/>
+  <path d="M17 26 q3 3 6 0" stroke="#2F2522" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+</symbol>
+<symbol id="mag-cloud" viewBox="0 0 48 36">
+  <ellipse cx="24" cy="33" rx="15" ry="2.5" fill="#000" opacity=".12"/>
+  <path d="M10 28 a8 8 0 0 1 1-16 a10 10 0 0 1 19-3 a8 8 0 0 1 9 8 a6 6 0 0 1-1 11z" fill="#fff" stroke="#C9E3F3" stroke-width="2"/>
+  <circle cx="19" cy="19" r="1.6" fill="#2F2522"/><circle cx="28" cy="19" r="1.6" fill="#2F2522"/>
+  <path d="M21 23 q2.5 2.5 5 0" stroke="#2F2522" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <ellipse cx="15" cy="22.5" rx="2.6" ry="1.6" fill="#F59C94"/><ellipse cx="32" cy="22.5" rx="2.6" ry="1.6" fill="#F59C94"/>
+</symbol>
+<symbol id="mag-lemon" viewBox="0 0 40 40">
+  <ellipse cx="20" cy="36" rx="12" ry="2.5" fill="#000" opacity=".12"/>
+  <ellipse cx="20" cy="21" rx="15" ry="12" fill="#F8C14A" transform="rotate(-20 20 21)"/>
+  <ellipse cx="14" cy="16" rx="4.5" ry="2.2" fill="#FFE29A" transform="rotate(-30 14 16)"/>
+  <path d="M31 10 q5-3 6-8 q-6 1-7 6z" fill="#3E9B5B"/>
+  <circle cx="16" cy="21.5" r="1.6" fill="#2F2522"/><circle cx="24" cy="19.5" r="1.6" fill="#2F2522"/>
+  <path d="M17.5 25.5 q3.5 2 6-1" stroke="#2F2522" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</symbol>
+<symbol id="mag-berry" viewBox="0 0 40 40">
+  <ellipse cx="20" cy="37" rx="11" ry="2.4" fill="#000" opacity=".12"/>
+  <path d="M20 35 C 6 28, 4 14, 12 11 C 16 9.5, 18 11, 20 12 C 22 11, 24 9.5, 28 11 C 36 14, 34 28, 20 35Z" fill="#E8475B"/>
+  <path d="M12 9 l5 3 l3-6 l3 6 l5-3 l-2 5 h-12z" fill="#3E9B5B"/>
+  <g fill="#FFD9A0"><circle cx="12" cy="20" r=".9"/><circle cx="28" cy="20" r=".9"/><circle cx="15" cy="27" r=".9"/><circle cx="25" cy="27" r=".9"/><circle cx="20" cy="31" r=".9"/></g>
+  <circle cx="16" cy="20" r="1.6" fill="#2F2522"/><circle cx="24" cy="20" r="1.6" fill="#2F2522"/>
+  <path d="M18 24 q2 2 4 0" stroke="#2F2522" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+</symbol>
+
+<!-- ===================== WASHI TAPE  120 x 26 ===================== -->
+<symbol id="tape-stripe" viewBox="0 0 120 26"><path d="M0 0 L4 4 L0 8 L4 13 L0 18 L4 22 L0 26 H120 L116 22 L120 18 L116 13 L120 8 L116 4 L120 0Z" fill="url(#bb-pat-stripe)" opacity=".9"/></symbol>
+<symbol id="tape-dots" viewBox="0 0 120 26"><path d="M0 0 L4 4 L0 8 L4 13 L0 18 L4 22 L0 26 H120 L116 22 L120 18 L116 13 L120 8 L116 4 L120 0Z" fill="url(#bb-pat-dots)" opacity=".9"/></symbol>
+<symbol id="tape-check" viewBox="0 0 120 26"><path d="M0 0 L4 4 L0 8 L4 13 L0 18 L4 22 L0 26 H120 L116 22 L120 18 L116 13 L120 8 L116 4 L120 0Z" fill="url(#bb-pat-check)" opacity=".9"/></symbol>
+<symbol id="tape-mint" viewBox="0 0 120 26"><path d="M0 0 L4 4 L0 8 L4 13 L0 18 L4 22 L0 26 H120 L116 22 L120 18 L116 13 L120 8 L116 4 L120 0Z" fill="url(#bb-pat-mint)" opacity=".9"/></symbol>
+
+<!-- ===================== APP ICONS  1024 ===================== -->
+<symbol id="icon-face" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#8ED3C0"/>
+  <rect x="930" y="0" width="94" height="1024" fill="#5DB4A0"/>
+  <rect x="0" y="708" width="930" height="26" fill="#6CC0AC"/>
+  <path d="M96 160 q0-60 60-60 h22 v520 h-82z" fill="#B9E7DA"/>
+  <rect x="96" y="790" width="82" height="234" rx="30" fill="#B9E7DA" opacity=".7"/>
+  <rect x="812" y="200" width="54" height="380" rx="27" fill="#5DB4A0"/>
+  <rect x="812" y="800" width="54" height="260" rx="27" fill="#5DB4A0"/>
+  <g transform="translate(140 300) scale(5.6)">
+    <ellipse cx="30" cy="24" rx="7.5" ry="10" fill="#2F2522"/><ellipse cx="90" cy="24" rx="7.5" ry="10" fill="#2F2522"/>
+    <circle cx="33" cy="19.5" r="2.8" fill="#fff"/><circle cx="93" cy="19.5" r="2.8" fill="#fff"/>
+    <ellipse cx="14" cy="40" rx="9" ry="5.5" fill="#F59C94"/><ellipse cx="106" cy="40" rx="9" ry="5.5" fill="#F59C94"/>
+    <path d="M48 36 Q60 54 72 36 Z" fill="#2F2522"/>
+    <path d="M53 44.5 Q60 41 67 44.5 Q64 49.5 60 49.5 Q56 49.5 53 44.5Z" fill="#F0705F"/>
+  </g>
+  <g transform="translate(300 170) rotate(-16) scale(6)"><path d="M0 0 C-14 -12 -16 4 -12 8 C-8 12 -2 6 0 2 C2 6 8 12 12 8 C16 4 14 -12 0 0Z" fill="#F59C94"/><circle cx="0" cy="2" r="3.6" fill="#E9787A"/></g>
+</symbol>
+<symbol id="icon-door" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#8ED3C0"/>
+  <path d="M80 140 q0-50 50-50 h20 v840 h-70z" fill="#B9E7DA" opacity=".9"/>
+  <rect x="860" y="120" width="56" height="440" rx="28" fill="#5DB4A0"/>
+  <g transform="rotate(-5 470 560)">
+    <rect x="210" y="236" width="540" height="660" rx="10" fill="#000" opacity=".12" transform="translate(10 22)"/>
+    <use href="#bb-doodle" x="210" y="236" width="540" height="691"/>
+  </g>
+  <use href="#mag-tomato" x="370" y="120" width="220" height="220"/>
+</symbol>
+<symbol id="icon-full" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#FCEBD2"/>
+  <g fill="#FFF6E6" transform="translate(512 470)">
+    <path d="M0 0 L-90 -700 L90 -700Z"/><path d="M0 0 L-90 -700 L90 -700Z" transform="rotate(40)"/><path d="M0 0 L-90 -700 L90 -700Z" transform="rotate(80)"/><path d="M0 0 L-90 -700 L90 -700Z" transform="rotate(120)"/><path d="M0 0 L-90 -700 L90 -700Z" transform="rotate(160)"/><path d="M0 0 L-90 -700 L90 -700Z" transform="rotate(200)"/><path d="M0 0 L-90 -700 L90 -700Z" transform="rotate(240)"/><path d="M0 0 L-90 -700 L90 -700Z" transform="rotate(280)"/><path d="M0 0 L-90 -700 L90 -700Z" transform="rotate(320)"/>
+  </g>
+  <rect x="0" y="862" width="1024" height="162" fill="#F1D3AC"/>
+  <use href="#bb-body" x="262" y="150" width="500" height="768"/>
+  <use href="#bb-face-smile" x="325" y="222" width="340" height="170"/>
+  <g transform="rotate(-4 512 640)"><rect x="410" y="490" width="190" height="240" rx="4" fill="#000" opacity=".12" transform="translate(6 12)"/><use href="#bb-doodle" x="410" y="490" width="190" height="243"/></g>
+  <use href="#mag-tomato" x="465" y="450" width="80" height="80"/>
+</symbol>
+</svg>
+
+<div class="wrap">
+<h1>冰冰 <small>Bibi · 冰箱美術館吉祥物 · 角色設定 v1（待主人核可）</small></h1>
+<p class="lede">冰冰是一台會說話的小冰箱，也是美術館的館長。個性：溫柔、愛誇獎、有點迷糊，從不催促。所有畫面共用同一組 SVG symbol（<code>bingbing-sprite.svg</code>），顏色用 CSS 變數切換白天／夜晚。英文名建議 <b>Bibi</b>（發音接近「冰冰」、孩子好唸、各語言都不奇怪）；備選 <b>Chilly</b>。</p>
+
+<!-- 1 -->
+<section id="s-construct">
+<h2><span class="n">1</span>結構與比例</h2>
+<div class="sub">正面／四分之三側面／色票／可以與不可以</div>
+<div class="grid g-construct">
+  <div class="panel wallbg">
+    <h3>正面 · 比例規則</h3>
+    <svg viewBox="0 0 320 300" width="100%">
+      <g transform="translate(20 10) scale(1.4)"><use href="#bb-idle" width="200" height="200"/></g>
+      <g stroke="#C9432D" stroke-width="1.2" stroke-dasharray="4 4" fill="none">
+        <path d="M81.6 29.6 V 270"/><path d="M238.4 29.6 V 270"/>
+        <path d="M60 29.6 H 250"/><path d="M60 110.5 H 250"/><path d="M60 253.6 H 250"/>
+        <path d="M127.8 60 V 92 M181 60 V 92"/>
+      </g>
+      <g font-family="Chiron GoRound TC" font-size="10.5" fill="#C9432D" font-weight="600">
+        <text x="252" y="33">頂</text><text x="252" y="114">門線 36%</text><text x="252" y="257">底</text>
+        <text x="98" y="20">寬 : 高 = 2 : 3</text>
+        <text x="112" y="104" font-size="9.5">眼距 ≈ 身寬 1/3</text>
+      </g>
+      
+    </svg>
+    <p>身體是圓角長方形（圓角 = 寬的 21%），右側固定一條深色側邊做立體感。臉永遠在冷凍庫門上、略偏左（讓出把手）。把手永遠在右側上下兩支；粉紅髮夾永遠在左上角。</p>
+  </div>
+  <div class="panel wallbg">
+    <h3>四分之三側面 · 眨眼</h3>
+    <div class="row" style="justify-content:center">
+      <svg viewBox="0 0 140 180" width="150"><use href="#bb-34" width="140" height="180"/></svg>
+      <svg viewBox="0 0 200 200" width="120"><use href="#bb-blink" width="200" height="200"/></svg>
+    </div>
+    <p style="margin-top:8px">轉身時臉往轉向那側擠、側邊變寬；門線與把手跟著立體面走。待機時每 4–6 秒眨一次眼（換成 <code>bb-face-blink</code> 120ms）。</p>
+    <h3 style="margin-top:12px">迷你版（≤ 44px）</h3>
+    <div class="row">
+      <div><svg width="52" height="64"><use href="#bb-mini" width="52" height="64"/></svg><div class="lbl">52</div></div>
+      <div><svg width="36" height="44"><use href="#bb-mini" width="36" height="44"/></svg><div class="lbl">36</div></div>
+      <div><svg width="24" height="30"><use href="#bb-mini" width="24" height="30"/></svg><div class="lbl">24</div></div>
+      <div><svg width="32" height="24"><use href="#bb-head" width="32" height="24"/></svg><div class="lbl">頭像 32</div></div>
+      <div><svg width="20" height="15"><use href="#bb-head" width="20" height="15"/></svg><div class="lbl">20</div></div>
+    </div>
+    <p>迷你版拿掉亮面與髮夾，眼睛加大，保留把手與門線。</p>
+  </div>
+  <div class="panel">
+    <h3>色票 · 白天</h3>
+    <div class="sw">
+      <div><i style="background:#8ED3C0"></i>門面 #8ED3C0</div><div><i style="background:#5DB4A0"></i>側邊/手臂 #5DB4A0</div><div><i style="background:#B9E7DA"></i>亮面 #B9E7DA</div><div><i style="background:#3F8E7C"></i>腳 #3F8E7C</div>
+      <div><i style="background:#2F2522"></i>眼 #2F2522</div><div><i style="background:#F59C94"></i>腮紅/髮夾 #F59C94</div><div><i style="background:#F0705F"></i>舌頭 #F0705F</div><div><i style="background:#FCEBD2"></i>牆 #FCEBD2</div>
+    </div>
+    <div class="panel nightbg" style="margin-top:12px;padding:12px">
+      <h3>夜晚廚房（深色模式）</h3>
+      <div class="row" style="align-items:center">
+        <svg viewBox="0 0 200 200" width="96" style="--bb-front:#3F8C86;--bb-side:#2B6764;--bb-split:#357A75;--bb-hl:#5BA6A0;--bb-handle:#2B6764;--bb-feet:#1F4F4C;--bb-hand:#5BA6A0;--bb-eye:#14131C;--bb-cheek:#D9868C;--bb-bow:#C9787E;--bb-bow2:#A85A62"><use href="#bb-idle" width="200" height="200"/></svg>
+        <div class="sw" style="flex:1">
+          <div><i style="background:#3F8C86"></i>門面 #3F8C86</div><div><i style="background:#2B6764"></i>側邊 #2B6764</div><div><i style="background:#1E2340;box-shadow:inset 0 0 0 1.5px #59608A"></i>夜牆 #1E2340</div><div><i style="background:#FFE7A3"></i>月光 #FFE7A3</div>
+        </div>
+      </div>
+      <p>夜晚不是反白，而是「關了燈的廚房」：冰箱降一階明度，眼睛與白色高光保持，對比仍 ≥ 4.5:1。</p>
+    </div>
+  </div>
+</div>
+<div class="grid" style="grid-template-columns:1fr 1fr;margin-top:18px">
+  <div class="panel do"><h3><b>可以</b></h3><ul>
+    <li>短短的麵條手臂（同側邊色）＋圓手掌；只在需要動作時出現，平時收起來</li>
+    <li>兩隻小短腳；可以小跳（整體上移 6–10px）、左右歪 ±5°</li>
+    <li>拿小道具：畫框、門票、空白相框、紙膠帶、蠟筆</li>
+    <li>夜晚戴睡帽；節日可換髮夾顏色（形狀不變）</li>
+    <li>平面色塊＋淡紙紋；陰影只用地上一顆橢圓</li>
+  </ul></div>
+  <div class="panel dont"><h3><b>不可以</b></h3><ul>
+    <li>打開冰箱門露出食物（冰箱裡「只放作品」是品牌設定）</li>
+    <li>牙齒、生氣眉、哭泣淚流；最難過也只到「不好意思」</li>
+    <li>描黑邊、漸層、3D 寫實光澤；改變身形比例或把手位置</li>
+    <li>臉跑到下層門；長腿、手指、衣服</li>
+    <li>用冰冰擋住孩子的作品——作品永遠在角色前面或旁邊</li>
+  </ul></div>
+</div>
+</section>
+
+<!-- 2 -->
+<section id="s-expr">
+<h2><span class="n">2</span>表情與動作 · 對應 App 時刻</h2>
+<div class="sub">10 個姿勢都是同一個身體 symbol＋臉 symbol＋手臂路徑組成，保證一致</div>
+<div class="grid g-expr">
+  <div class="ex wallbg"><svg class="p" viewBox="0 0 200 200"><use href="#bb-idle" width="200" height="200"/></svg><div class="k">IDLE 待機</div><div class="t">微笑＋定時眨眼</div></div>
+  <div class="ex wallbg"><svg class="p" viewBox="0 0 200 200"><use href="#bb-wave" width="200" height="200"/></svg><div class="k">HELLO 首頁</div><div class="t">揮手打招呼</div></div>
+  <div class="ex wallbg"><div class="bubble" style="left:50%;transform:translateX(-50%);top:6px">今天還能再收 <b style="color:#C9432D">3</b> 張喔！</div><svg class="p" viewBox="0 0 200 200"><use href="#bb-talk" width="200" height="200"/></svg><div class="k">QUOTA 額度</div><div class="t">說話＋對話框</div></div>
+  <div class="ex wallbg"><svg class="p" viewBox="0 0 200 200"><use href="#bb-cheer" width="200" height="200"/></svg><div class="k">SUCCESS 成功</div><div class="t hand crayon" style="color:#E4573D;font-size:17px">已掛上冰箱！</div></div>
+  <div class="ex wallbg"><div class="bubble" style="left:50%;transform:translateX(-50%);top:6px">想多收幾張嗎？慢慢來～</div><svg class="p" viewBox="0 0 200 200"><use href="#bb-ticket-pose" width="200" height="200"/></svg><div class="k">PAYWALL 門票</div><div class="t">雙手遞門票，不催促</div></div>
+  <div class="ex wallbg"><svg class="p" viewBox="0 0 200 200"><use href="#bb-think" width="200" height="200"/></svg><div class="k">PROCESSING 處理中</div><div class="t">AI 去背中…</div></div>
+  <div class="ex wallbg"><svg class="p" viewBox="0 0 200 200"><use href="#bb-oops" width="200" height="200"/></svg><div class="k">ERROR 出錯</div><div class="t">這張照片打不開，<br>換一張試試？</div></div>
+  <div class="ex wallbg"><svg class="p" viewBox="0 0 200 200"><use href="#bb-empty" width="200" height="200"/></svg><div class="k">EMPTY 空冰箱</div><div class="t">冰箱還空空的…<br>拍第一張吧！</div></div>
+  <div class="ex nightbg" style="border-color:#2C335A"><svg class="p" viewBox="0 0 200 200" style="--bb-front:#3F8C86;--bb-side:#2B6764;--bb-split:#357A75;--bb-hl:#5BA6A0;--bb-handle:#2B6764;--bb-feet:#1F4F4C;--bb-hand:#5BA6A0;--bb-eye:#14131C;--bb-cheek:#D9868C;--bb-bow:#C9787E;--bb-bow2:#A85A62"><use href="#bb-sleep" width="200" height="200"/></svg><div class="k" style="color:#9FE0D2">NIGHT 深色模式</div><div class="t" style="color:#C9C3DD">晚安，作品都收好了</div></div>
+  <div class="ex wallbg"><svg class="p" viewBox="0 0 200 200"><use href="#bb-proud" width="200" height="200"/></svg><div class="k">PROUD 成就</div><div class="t">第 12 件作品！</div></div>
+</div>
+</section>
+
+<!-- 3 -->
+<section id="s-icons">
+<h2><span class="n">3</span>App 圖示提案</h2>
+<div class="sub">1024×1024 原稿，下方為主畫面 60pt／40pt 實際大小預覽（白天與夜晚桌布）；不放文字</div>
+<div class="grid g-icons">
+  <div class="panel" style="text-align:center"><div class="icon"><svg viewBox="0 0 1024 1024"><use href="#icon-face" width="1024" height="1024"/></svg></div><h3 style="margin-top:12px">① 冰冰大臉</h3><p>辨識度最高，縮到 40pt 仍看得出眼睛與笑臉。品牌化最強。</p>
+    <div class="prev" style="background:linear-gradient(135deg,#F7D9B6,#E9B7A0)"><div><div class="ic" style="width:60px;height:60px"><svg viewBox="0 0 1024 1024"><use href="#icon-face" width="1024" height="1024"/></svg></div><span>60pt</span></div><div><div class="ic" style="width:40px;height:40px"><svg viewBox="0 0 1024 1024"><use href="#icon-face" width="1024" height="1024"/></svg></div><span>40pt</span></div></div>
+    <div class="prev" style="background:linear-gradient(135deg,#1E2340,#3A2F5C);margin-top:8px"><div class="ic" style="width:60px;height:60px"><svg viewBox="0 0 1024 1024"><use href="#icon-face" width="1024" height="1024"/></svg></div><div class="ic" style="width:40px;height:40px"><svg viewBox="0 0 1024 1024"><use href="#icon-face" width="1024" height="1024"/></svg></div></div></div>
+  <div class="panel" style="text-align:center"><div class="icon"><svg viewBox="0 0 1024 1024"><use href="#icon-door" width="1024" height="1024"/></svg></div><h3 style="margin-top:12px">② 門上的畫＋番茄磁鐵</h3><p>直接說明功能「把畫貼上冰箱」；小尺寸時畫的細節會糊。</p>
+    <div class="prev" style="background:linear-gradient(135deg,#F7D9B6,#E9B7A0)"><div><div class="ic" style="width:60px;height:60px"><svg viewBox="0 0 1024 1024"><use href="#icon-door" width="1024" height="1024"/></svg></div><span>60pt</span></div><div><div class="ic" style="width:40px;height:40px"><svg viewBox="0 0 1024 1024"><use href="#icon-door" width="1024" height="1024"/></svg></div><span>40pt</span></div></div>
+    <div class="prev" style="background:linear-gradient(135deg,#1E2340,#3A2F5C);margin-top:8px"><div class="ic" style="width:60px;height:60px"><svg viewBox="0 0 1024 1024"><use href="#icon-door" width="1024" height="1024"/></svg></div><div class="ic" style="width:40px;height:40px"><svg viewBox="0 0 1024 1024"><use href="#icon-door" width="1024" height="1024"/></svg></div></div></div>
+  <div class="panel" style="text-align:center"><div class="icon"><svg viewBox="0 0 1024 1024"><use href="#icon-full" width="1024" height="1024"/></svg></div><h3 style="margin-top:12px">③ 冰冰全身＋作品</h3><p>角色＋功能都有，最像繪本封面；60pt 以下臉偏小。</p>
+    <div class="prev" style="background:linear-gradient(135deg,#F7D9B6,#E9B7A0)"><div><div class="ic" style="width:60px;height:60px"><svg viewBox="0 0 1024 1024"><use href="#icon-full" width="1024" height="1024"/></svg></div><span>60pt</span></div><div><div class="ic" style="width:40px;height:40px"><svg viewBox="0 0 1024 1024"><use href="#icon-full" width="1024" height="1024"/></svg></div><span>40pt</span></div></div>
+    <div class="prev" style="background:linear-gradient(135deg,#1E2340,#3A2F5C);margin-top:8px"><div class="ic" style="width:60px;height:60px"><svg viewBox="0 0 1024 1024"><use href="#icon-full" width="1024" height="1024"/></svg></div><div class="ic" style="width:40px;height:40px"><svg viewBox="0 0 1024 1024"><use href="#icon-full" width="1024" height="1024"/></svg></div></div></div>
+</div>
+</section>
+
+<!-- 4 -->
+<section id="s-cast">
+<h2><span class="n">4</span>配角與素材</h2>
+<div class="sub">小橘貓「橘子」、表情磁鐵、紙膠帶、蠟筆手寫字、說明牌、門票額度</div>
+<div class="grid g-cast">
+  <div class="panel wallbg"><h3>小橘貓 · 橘子</h3>
+    <div class="row" style="justify-content:space-around">
+      <div><svg width="96" height="100" viewBox="0 0 80 84"><use href="#cat-sit" width="80" height="84"/></svg><div class="lbl">坐著（流理台）</div></div>
+      <div><svg width="130" height="76" viewBox="0 0 110 64"><use href="#cat-loaf" width="110" height="64"/></svg><div class="lbl">趴睡（空狀態/夜晚）</div></div>
+      <div><svg width="96" height="60" viewBox="0 0 90 56"><use href="#cat-peek" width="90" height="56"/></svg><div class="lbl">探頭（相機列邊緣）</div></div>
+    </div>
+    <p style="margin-top:8px">貓只當背景彩蛋，不說話、不擋按鈕。</p>
+  </div>
+  <div class="panel wallbg"><h3>表情磁鐵</h3>
+    <div class="row" style="justify-content:space-around">
+      <div><svg width="56" height="56"><use href="#mag-tomato" width="56" height="56"/></svg><div class="lbl">番茄</div></div>
+      <div><svg width="64" height="48"><use href="#mag-cloud" width="64" height="48"/></svg><div class="lbl">雲朵</div></div>
+      <div><svg width="56" height="56"><use href="#mag-lemon" width="56" height="56"/></svg><div class="lbl">檸檬</div></div>
+      <div><svg width="56" height="56"><use href="#mag-berry" width="56" height="56"/></svg><div class="lbl">草莓</div></div>
+    </div>
+    <h3 style="margin-top:14px">紙膠帶</h3>
+    <div class="row" style="justify-content:space-around">
+      <svg width="100" height="22"><use href="#tape-stripe" width="100" height="22"/></svg>
+      <svg width="100" height="22"><use href="#tape-dots" width="100" height="22"/></svg>
+      <svg width="100" height="22"><use href="#tape-check" width="100" height="22"/></svg>
+      <svg width="100" height="22"><use href="#tape-mint" width="100" height="22"/></svg>
+    </div>
+  </div>
+  <div class="panel wallbg"><h3>蠟筆手寫字（借自 A）</h3>
+    <div class="hand crayon" style="font-size:40px;letter-spacing:2px;line-height:1.2;text-align:center"><span style="color:#E4573D">已</span><span style="color:#E9A21C">掛</span><span style="color:#3FA56F">上</span><span style="color:#3E6FD6">冰</span><span style="color:#8C5BC6">箱</span><span style="color:#E4573D">！</span></div>
+    <div class="row" style="justify-content:center;gap:22px;margin-top:12px;align-items:center">
+      <div style="position:relative;background:#FFF8EA;padding:10px 16px 10px;transform:rotate(-2deg);box-shadow:0 6px 10px -6px rgba(90,50,20,.5)">
+        <svg width="70" height="18" style="position:absolute;left:30px;top:-9px"><use href="#tape-dots" width="70" height="18"/></svg>
+        <div class="hand crayon" style="font-size:20px">氣球派對</div><div style="font-size:12px;color:#7A5A48">小米 · 5 歲 · 2026.10</div>
+      </div>
+      <div style="position:relative;width:110px;height:58px;transform:rotate(4deg)"><svg width="110" height="58" viewBox="0 0 120 64" style="position:absolute;filter:drop-shadow(0 4px 4px rgba(90,50,20,.25))"><use href="#bb-ticket-blank" width="120" height="64"/></svg>
+        <div class="hand" style="position:absolute;left:0;top:7px;width:80px;text-align:center;font-size:11px;line-height:1.05;color:#7A5A48">今天門票<br><span style="font-size:24px;color:#C9432D">3</span> 張</div></div>
+    </div>
+    <p style="margin-top:10px">蠟筆字只用在「說明牌」和「慶祝標題」，內文一律用圓體確保可讀。門票＝每日免費額度（借自 C）。</p>
+  </div>
+</div>
+</section>
+</div>
+</body>
+</html>
