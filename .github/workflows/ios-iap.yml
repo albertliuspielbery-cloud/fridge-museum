@@ -1,0 +1,34 @@
+# 冰箱美術館：在 App Store Connect 建好／補齊 App 內購買項目「完整版」（tw.starlight.fridgemuseum.full）
+# 只能手動執行；只建商品和設定，不會送審，也不會改 App 本身的銷售地區。可以重複執行。
+# 需要 GitHub Secrets：ASC_KEY_ID、ASC_ISSUER_ID、ASC_KEY_P8（跟 iOS App 上傳用的同一組）
+# 審查用截圖：把購買畫面的截圖存成 ci/iap_review.png 推上來，下次執行就會上傳
+name: App 內購買項目
+on:
+  workflow_dispatch:
+    inputs:
+      force_price:
+        description: '強制把價格改回 NT$190（會取代 App Store Connect 上現有的價格排程，包含早鳥價）'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: ios-iap
+  cancel-in-progress: false
+jobs:
+  iap:
+    name: 建立／更新「完整版」
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: 建立商品、名稱、價格、地區、家人共享、審查截圖
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APP_BUNDLE_ID: ${{ vars.APP_BUNDLE_ID || 'tw.starlight.fridgemuseum' }}
+          FORCE_PRICE: ${{ inputs.force_price && '1' || '' }}
+        run: |
+          python3 -m pip install -q pyjwt cryptography
+          python3 ci/ci_iap.py ci/iap_review.png

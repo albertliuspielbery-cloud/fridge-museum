@@ -1,0 +1,474 @@
+{
+  "sourceLanguage" : "zh-Hant",
+  "strings" : {
+    "paywall.bibi" : {
+      "comment" : "Bibi's speech bubble on the paywall.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "慢慢來～想多收幾張的時候，再來找我就好"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No rush! Come find me whenever you want to hang up more."
+          }
+        }
+      }
+    },
+    "paywall.close" : {
+      "comment" : "Close button accessibility label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關閉"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        }
+      }
+    },
+    "paywall.failed" : {
+      "comment" : "NOT YET REVIEWED.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "購買沒有完成，請稍後再試。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The purchase didn’t go through. Please try again later."
+          }
+        }
+      }
+    },
+    "paywall.family" : {
+      "comment" : "Family Sharing line (present tense: the IAP has Family Sharing on).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全家共享：支援 Apple「家人共享」，家人的手機也能一起用。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Works with Family Sharing, so family members can use it on their own devices."
+          }
+        }
+      }
+    },
+    "paywall.later.craft" : {
+      "comment" : "Secondary button (craft).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "先不要"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Now"
+          }
+        }
+      }
+    },
+    "paywall.later.flat" : {
+      "comment" : "Secondary button (flat).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明天再收"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maybe Tomorrow"
+          }
+        }
+      }
+    },
+    "paywall.noPurchase" : {
+      "comment" : "NOT YET REVIEWED. Restore found nothing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這個 Apple 帳號沒有完整版的購買紀錄。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Full Version purchase was found for this Apple Account."
+          }
+        }
+      }
+    },
+    "paywall.oneTime" : {
+      "comment" : "Under the price on the ticket.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一次買斷，不是訂閱，不會每月扣款"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One-time purchase — not a subscription. No recurring charges."
+          }
+        }
+      }
+    },
+    "paywall.pending" : {
+      "comment" : "NOT YET REVIEWED. Ask to Buy / pending purchase.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待同意（例如家長核准），完成後會自動解鎖。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for approval. The Full Version unlocks automatically once it’s approved."
+          }
+        }
+      }
+    },
+    "paywall.perk1" : {
+      "comment" : "Perk 1",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "畫作、勞作不限張數，想收多少就收多少"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlimited drawings and crafts — keep as many as you like"
+          }
+        }
+      }
+    },
+    "paywall.perk2" : {
+      "comment" : "Perk 2",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "勞作 AI 去背無限次使用"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlimited AI cutouts for crafts"
+          }
+        }
+      }
+    },
+    "paywall.perk3" : {
+      "comment" : "Perk 3",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "之後的更新都免費"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All future updates included"
+          }
+        }
+      }
+    },
+    "paywall.priceLoading" : {
+      "comment" : "NOT YET REVIEWED. Shown while StoreKit loads.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在取得價格…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Getting the price…"
+          }
+        }
+      }
+    },
+    "paywall.priceUnavailable" : {
+      "comment" : "NOT YET REVIEWED.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暫時連不上 App Store，請稍後再試。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can’t reach the App Store right now. Please try again later."
+          }
+        }
+      }
+    },
+    "paywall.productName" : {
+      "comment" : "In-app purchase display name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完整版"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full Version"
+          }
+        }
+      }
+    },
+    "paywall.restore" : {
+      "comment" : "Restore button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢復購買"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore Purchases"
+          }
+        }
+      }
+    },
+    "paywall.restored" : {
+      "comment" : "NOT YET REVIEWED. Toast after a successful restore.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已恢復完整版"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full Version restored"
+          }
+        }
+      }
+    },
+    "paywall.retry" : {
+      "comment" : "NOT YET REVIEWED.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再試一次"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Again"
+          }
+        }
+      }
+    },
+    "paywall.subtitle.craft %lld" : {
+      "comment" : "Paywall subtitle (craft). %lld = free trial crafts.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "免費試用的 %lld 件勞作已經用完。解鎖完整版就能繼續收勞作，平面畫作每天仍有免費額度。"
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Your free trial covered 1 craft. Unlock the Full Version for unlimited crafts. You still get free drawings every day."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Your free trial covered %lld crafts. Unlock the Full Version for unlimited crafts. You still get free drawings every day."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "paywall.subtitle.flat %lld" : {
+      "comment" : "Paywall subtitle (flat). %lld = free drawings per day.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這張作品還在。解鎖完整版就能馬上存下或收進來；也可以明天再收，每天都有 %lld 張免費。"
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "This artwork is still here. Unlock the Full Version to save or hang it up now, or come back tomorrow for 1 more free drawing."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "This artwork is still here. Unlock the Full Version to save or hang it up now, or come back tomorrow for %lld more free drawings."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "paywall.ticketKicker" : {
+      "comment" : "Ticket stub kicker above the product name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "入場券"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ADMIT ONE"
+          }
+        }
+      }
+    },
+    "paywall.title.craft" : {
+      "comment" : "Paywall title (craft).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "勞作免費試用用完了"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’ve used your free craft trial"
+          }
+        }
+      }
+    },
+    "paywall.title.flat %lld" : {
+      "comment" : "Paywall title (flat). %lld = free drawings per day.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天的 %lld 張免費畫作收滿了"
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "That’s today’s free drawing"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "That’s all %lld free drawings for today"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "paywall.unlock %@" : {
+      "comment" : "Primary button. %@ = StoreKit localized price.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "解鎖完整版 %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock Full Version · %@"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
