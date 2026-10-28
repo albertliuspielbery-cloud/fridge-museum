@@ -391,7 +391,9 @@ final class AppModel {
             artwork.pixelWidth = out.pixelWidth
             artwork.pixelHeight = out.pixelHeight
             artwork.renderVersion += 1
-            artwork.processingState = .done
+            // Edited while this render ran: the result is already out of date, so keep it owed (.pending) in case
+            // the app is closed before the queued re-render runs.
+            artwork.processingState = artwork.recipe == recipe ? .done : .pending
         } catch {
             guard Self.isAlive(artwork) else { return }
             artwork.processingState = .failed
