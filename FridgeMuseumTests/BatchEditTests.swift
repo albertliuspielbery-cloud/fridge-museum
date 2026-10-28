@@ -57,7 +57,8 @@ struct BatchEditTests {
         let march = day(2026, 3, 10)
 
         #expect(app.setCapturedAt(march, for: list, context: context) == 2)
-        #expect(list.allSatisfy { $0.capturedAt == march })
+        let allMoved = list.allSatisfy { $0.capturedAt == march }
+        #expect(allMoved)
         #expect(list[0].schoolTerm == SchoolTerm.of(march))
         #expect(list[0].schoolTerm != before)
     }
@@ -70,7 +71,8 @@ struct BatchEditTests {
         try context.save()
 
         #expect(app.setFavorite(true, for: list, context: context) == 3)
-        #expect(list.allSatisfy(\.isFavorite))
+        let allFavorite = list.allSatisfy { $0.isFavorite }
+        #expect(allFavorite)
         #expect(app.setFavorite(false, for: Array(list.prefix(2)), context: context) == 2)
         #expect(!list[0].isFavorite && !list[1].isFavorite && list[2].isFavorite)
     }
@@ -88,7 +90,8 @@ struct BatchEditTests {
         #expect(!AppModel.isAlive(list[0]) && !AppModel.isAlive(list[1]))
         #expect(app.sessionArtworkIDs == [keepID])
         let left = try context.fetch(FetchDescriptor<Artwork>())
-        #expect(left.map(\.id) == [keepID])
+        let leftIDs = left.map { $0.id }
+        #expect(leftIDs == [keepID])
         // Already gone: nothing to delete.
         #expect(app.deleteAll(Array(list.prefix(2)), context: context) == 0)
     }
