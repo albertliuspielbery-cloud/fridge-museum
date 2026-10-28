@@ -10,6 +10,11 @@ final class TestClock {
 }
 
 @MainActor
+final class TestFlag {
+    var value = false
+}
+
+@MainActor
 struct QuotaTrackerTests {
     let taipei: Calendar = {
         var c = Calendar(identifier: .gregorian)
@@ -128,19 +133,19 @@ struct QuotaTrackerTests {
 
     @Test func unlockedBypassesQuota() {
         let clock = TestClock(taipeiTime(2026, 10, 28, 9))
-        var unlocked = false
-        let q = makeTracker(clock: clock, defaults: freshDefaults(), unlocked: { unlocked })
+        let flag = TestFlag()
+        let q = makeTracker(clock: clock, defaults: freshDefaults(), unlocked: { flag.value })
         for _ in 0..<3 { q.recordKeep(kind: .flat, artworkID: UUID()) }
         for _ in 0..<3 { q.recordKeep(kind: .craft, artworkID: UUID()) }
         #expect(!q.canKeep(kind: .flat, artworkID: UUID()))
-        unlocked = true
+        flag.value = true
         #expect(q.isTracking == false)
         #expect(q.canKeep(kind: .flat, artworkID: UUID()))
         #expect(q.canKeep(kind: .craft, artworkID: UUID()))
         // Keeps while unlocked don't use up counters.
         let keptWhileUnlocked = UUID()
         q.recordKeep(kind: .flat, artworkID: keptWhileUnlocked)
-        unlocked = false   // refund / revocation re-locks
+        flag.value = false   // refund / revocation re-locks
         #expect(q.remainingFlatToday == 0)
         #expect(q.canKeep(kind: .flat, artworkID: keptWhileUnlocked))
         #expect(!q.canKeep(kind: .flat, artworkID: UUID()))
