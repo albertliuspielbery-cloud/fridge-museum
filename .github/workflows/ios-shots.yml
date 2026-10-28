@@ -61,6 +61,16 @@ jobs:
             -resultBundlePath build/Shots.xcresult CODE_SIGNING_ALLOWED=NO \
             > build/shots.log 2>&1
           status=$?
+          if [ "$status" -ne 0 ] && grep -q "TEST EXECUTE FAILED\|Timed out while evaluating UI query" build/shots.log; then
+            echo "重跑一次（已拍好的畫面會跳過）"
+            rm -rf build/Shots.xcresult
+            xcodebuild test-without-building -project FridgeMuseum.xcodeproj -scheme FridgeMuseumShots -configuration Debug \
+              -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath build/DerivedData \
+              -resultBundlePath build/Shots.xcresult CODE_SIGNING_ALLOWED=NO \
+              > build/shots-retry.log 2>&1
+            status=$?
+            cat build/shots-retry.log >> build/shots.log
+          fi
           set -e
           ci/summarize_log.sh build/shots.log "$status" 截圖
       - name: 從結果包補收截圖

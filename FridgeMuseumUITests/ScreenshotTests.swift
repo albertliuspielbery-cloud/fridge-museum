@@ -20,17 +20,19 @@ final class ScreenshotTests: XCTestCase {
         return items.isEmpty ? value : items
     }
 
+    // One test per language × appearance, so a stuck simulator query only costs that set, not all 56 shots.
+    @MainActor func testZhLight() { run(lang: "zh", look: "light") }
+    @MainActor func testZhDark() { run(lang: "zh", look: "dark") }
+    @MainActor func testEnLight() { run(lang: "en", look: "light") }
+    @MainActor func testEnDark() { run(lang: "en", look: "dark") }
+
     @MainActor
-    func testScreens() throws {
-        let scenarios = list("SHOTS_ONLY", default: Self.allScenarios)
-        let langs = list("SHOTS_LANGS", default: ["zh", "en"])
-        let looks = list("SHOTS_LOOKS", default: ["light", "dark"])
-        for lang in langs {
-            for look in looks {
-                for scenario in scenarios {
-                    shoot(scenario, lang: lang, look: look)
-                }
-            }
+    private func run(lang: String, look: String) {
+        guard list("SHOTS_LANGS", default: ["zh", "en"]).contains(lang),
+              list("SHOTS_LOOKS", default: ["light", "dark"]).contains(look) else { return }
+        let done = Set((try? FileManager.default.contentsOfDirectory(atPath: ProcessInfo.processInfo.environment["SHOTS_DIR"] ?? "")) ?? [])
+        for scenario in list("SHOTS_ONLY", default: Self.allScenarios) where !done.contains("\(lang)-\(look)-\(scenario).png") {
+            shoot(scenario, lang: lang, look: look)
         }
     }
 
