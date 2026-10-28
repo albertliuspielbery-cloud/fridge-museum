@@ -51,6 +51,9 @@ struct EditView: View {
     @State private var isSaving = false
     @State private var kindSelection: ArtworkKind
     @State private var activeCorner: Int?
+    /// After 向左轉 / 向右轉 / 拉直 the crop tool shows the turned result; tapping 裁切 again returns to the corners.
+    @State private var cropShowsResult = false
+    @State private var pickingParts = false
 
     init(artwork: Artwork) {
         _artwork = Bindable(artwork)
@@ -96,6 +99,7 @@ struct EditView: View {
         .onChange(of: kindSelection) { _, newKind in
             if newKind == .craft, tool == .crop { tool = nil }
             compare = false
+            pickingParts = false
             Task { await model.setKind(newKind) }
         }
         .task {
@@ -159,7 +163,7 @@ struct EditView: View {
         return GeometryReader { geo in
             let inner = CGSize(width: max(1, geo.size.width - 40), height: max(1, geo.size.height - 72))
             ZStack {
-                if tool == .crop && model.recipe.kind == .flat {
+                if tool == .crop && model.recipe.kind == .flat && !cropShowsResult {
                     cropStage(size: inner)
                 } else {
                     resultStage(size: inner)
@@ -188,8 +192,40 @@ struct EditView: View {
                     .padding(12)
             }
         }
+        .overlay(alignment: .bottomLeading) {
+            if model.canPickParts, tool == nil, !compare {
+                Button {
+                    withAnimation(.spring(duration: 0.3)) { pickingParts.toggle() }
+                } label: {
+                    Label(pickingParts ? "完成選取" as LocalizedStringKey : "點選要留的部分",
+                          systemImage: pickingParts ? "checkmark" : "hand.tap")
+                        .font(.fm(15, bold: true))
+                        .foregroundStyle(pickingParts ? Color.white : Palette.tealInk)
+                        .padding(.horizontal, 14)
+                        .frame(height: 38)
+                        .background(Capsule().fill(pickingParts ? Palette.teal : Palette.surface))
+                        .overlay(Capsule().strokeBorder(Palette.teal, lineWidth: 2))
+                }
+                .buttonStyle(.plain)
+                .padding(12)
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if pickingParts, tool == nil {
+                Button { model.keepAllParts() } label: {
+                    Text("全部保留")
+                        .font(.fm(15, bold: true))
+                        .foregroundStyle(Palette.ink)
+                        .padding(.horizontal, 14)
+                        .frame(height: 38)
+                        .background(Capsule().fill(Palette.surface))
+                }
+                .buttonStyle(.plain)
+                .padding(12)
+            }
+        }
         .overlay(alignment: .topTrailing) {
-            if tool != .crop, tool != .brush, model.before != nil {
+            if tool != .brush, !(tool == .crop && !cropShowsResult), !pickingParts, model.before != nil {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) { compare.toggle() }
                 } label: {
@@ -236,6 +272,27 @@ struct EditView: View {
                     .frame(width: rect.width)
                     .offset(x: rect.minX, y: rect.maxY - 52)
                     .allowsHitTesting(false)
+                }
+                if pickingParts {
+                    ForEach(model.parts) { part in
+                        let r = CGRect(x: rect.minX + part.bounds.minX * rect.width, y: rect.minY + part.bounds.minY * rect.height,
+                                       width: part.bounds.width * rect.width, height: part.bounds.height * rect.height)
+                            .intersection(rect)
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(part.isRemoved ? Palette.red : Palette.mark,
+                                          style: StrokeStyle(lineWidth: 3, dash: part.isRemoved ? [7, 6] : []))
+                            .background(RoundedRectangle(cornerRadius: 10).fill(part.isRemoved ? Palette.red.opacity(0.12) : Color.clear))
+                            .overlay(alignment: .topLeading) {
+                                Image(systemName: part.isRemoved ? "minus.circle.fill" : "checkmark.circle.fill")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundStyle(part.isRemoved ? Palette.red : Palette.teal)
+                                    .background(Circle().fill(.white).padding(2))
+                                    .offset(x: -8, y: -8)
+                            }
+                            .frame(width: max(24, r.width), height: max(24, r.height))
+                            .offset(x: r.minX, y: r.minY)
+                            .allowsHitTesting(false)
+                    }
                 }
                 if !liveStroke.isEmpty {
                     Path { p in p.addLines(liveStroke) }
@@ -290,26 +347,29 @@ struct EditView: View {
         return brushMode == .restore ? Palette.green.opacity(0.5) : Palette.red.opacity(0.5)
     }
 
-    /// Brush radius in view points for the live stroke preview.
+    /// Brush radius in view points for the live stroke preview (radius = fraction of the output's long edge).
     private func liveRadius(rect: CGRect) -> CGFloat {
-        let r = brushSize * 0.006
-        if model.recipe.kind == .flat { return CGFloat(r) * max(rect.width, rect.height) }
-        guard let map = model.outputToSource, map.width > 0, map.height > 0 else { return CGFloat(r) * max(rect.width, rect.height) }
-        let srcLong = max(rect.width / CGFloat(map.width), rect.height / CGFloat(map.height))
-        return CGFloat(r) * srcLong
+        CGFloat(brushSize * 0.006) * max(rect.width, rect.height)
     }
 
     private func stageGesture(rect: CGRect) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
+                if pickingParts { return }
                 if tool == .brush {
                     liveStroke.append(value.location)
                 } else if compare, rect.width > 0 {
                     split = ((value.location.x - rect.minX) / rect.width).clamped(0, 1)
                 }
             }
-            .onEnded { _ in
+            .onEnded { value in
                 if tool == .brush { commitStroke(rect: rect) }
+                if pickingParts, rect.width > 0, rect.height > 0 {
+                    let p = CGPoint(x: (value.location.x - rect.minX) / rect.width, y: (value.location.y - rect.minY) / rect.height)
+                    if model.togglePart(atOutputPoint: p) == false {
+                        app.show(String(localized: "至少要留下一個部分喔"), style: .problem)
+                    }
+                }
             }
     }
 
@@ -317,15 +377,14 @@ struct EditView: View {
         let points = liveStroke
         liveStroke = []
         guard !points.isEmpty, rect.width > 0, rect.height > 0 else { return }
-        let norm = points.map {
-            NormPoint(x: Double(($0.x - rect.minX) / rect.width), y: Double(($0.y - rect.minY) / rect.height))
+        guard let mapping = model.result?.mapping else { return }
+        // Touches are output-normalized; strokes live unturned (flat: corrected sheet, craft: original photo).
+        let norm = points.map { v -> NormPoint in
+            let s = mapping.toStrokeSpace(CGPoint(x: (v.x - rect.minX) / rect.width, y: (v.y - rect.minY) / rect.height))
+            return NormPoint(x: Double(s.x), y: Double(s.y))
         }
-        let radius = brushSize * 0.006
-        if model.recipe.kind == .flat {
-            model.addStroke(BrushStroke(mode: .paintWhite, radius: radius, points: norm))
-        } else if let map = model.outputToSource {
-            model.addStroke(BrushStroke(mode: brushMode, radius: radius, points: norm.map { map.toParent($0) }))
-        }
+        let radius = mapping.strokeRadius(fromOutputRadius: brushSize * 0.006)
+        model.addStroke(BrushStroke(mode: model.recipe.kind == .flat ? .paintWhite : brushMode, radius: radius, points: norm))
     }
 
     @ViewBuilder
@@ -408,18 +467,25 @@ struct EditView: View {
         let flat = model.recipe.kind == .flat
         var t: String
         switch tool {
-        case .crop: t = String(localized: "拖曳四個白點對準紙張四角，放開後會自動重新處理。")
+        case .crop:
+            t = cropShowsResult ? String(localized: "已轉向。再按一次「裁切」可回到四角。")
+                : String(localized: "拖曳四個白點對準紙張四角，放開後會自動重新處理。")
         case .brush:
             if flat { t = String(localized: "在髒點上塗抹，會塗成白色。只建議用在空白紙面。") }
             else if brushMode == .restore { t = String(localized: "塗抹被誤刪的作品部分，把它補回來。") }
             else { t = String(localized: "塗抹要去掉的背景部分。") }
         default:
             if model.output == nil { t = String(localized: "冰冰正在整理這張作品，請稍等一下。") }
+            else if pickingParts { t = String(localized: "點一下要留下或拿掉的部分，至少要留一個。") }
+            else if let note = model.notes.first { t = note.localizedText }
+            else if model.recipe.kind == .flat, model.result?.paperMode == .paintCovered, !compare {
+                t = String(localized: "顏料幾乎蓋滿紙，只輕調光線")
+            }
             else if compare { t = String(localized: "左右拖曳白線，比較前後") }
             else if artwork.isKept && !artwork.isSample { t = String(localized: "改好了就存到手機或分享。修改會自動保存。") }
             else { t = String(localized: "看起來可以了，就存到手機或收進這次。") }
         }
-        if flat, tool != .crop, model.recipe.removeSpecks, model.specksRemoved > 0, model.output != nil {
+        if flat, tool != .crop, !pickingParts, model.recipe.removeSpecks, model.specksRemoved > 0, model.output != nil {
             t += AppLanguage.isChinese ? " · " : " "
             t += String(localized: "已自動清掉 \(model.specksRemoved) 個小黑點")
         }
@@ -434,7 +500,13 @@ struct EditView: View {
                         showLabel = true
                         return
                     }
+                    if t == .crop, tool == .crop, cropShowsResult {
+                        cropShowsResult = false          // 再按一次「裁切」回到四角
+                        return
+                    }
                     tool = (tool == t) ? nil : t
+                    cropShowsResult = false
+                    pickingParts = false
                     if tool == .crop { compare = false; Task { await model.loadSource() } }
                     if tool == .brush { compare = false }
                 } label: {
@@ -515,7 +587,7 @@ struct EditView: View {
     private func panel(for tool: EditTool) -> some View {
         PanelCard(title: tool.panelTitle, onDone: { self.tool = nil }) {
             switch tool {
-            case .crop: CropPanel(model: model)
+            case .crop: CropPanel(model: model, onTurn: { cropShowsResult = true }, onCorners: { cropShowsResult = false })
             case .adjust: AdjustPanel(model: model)
             case .brush: BrushPanel(model: model, brushMode: $brushMode, brushSize: $brushSize)
             case .label: EmptyView()
@@ -641,5 +713,12 @@ struct Loupe: View {
         .overlay(Circle().strokeBorder(.white, lineWidth: 4))
         .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
         .accessibilityHidden(true)
+    }
+}
+
+extension ProcessingNote {
+    /// Hint-line copy for a processing note (catalog keys `processing.note.*`).
+    var localizedText: String {
+        String(localized: String.LocalizationValue(localizationKey))
     }
 }

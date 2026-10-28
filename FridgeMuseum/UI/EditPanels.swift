@@ -1,26 +1,65 @@
 import SwiftData
 import SwiftUI
 
+/// 裁切四角 (Crop & Rotate): auto-detect / whole photo / rotate left / rotate right, and a straighten slider.
 struct CropPanel: View {
-    let model: EditModel
+    @Bindable var model: EditModel
+    var onTurn: () -> Void = {}
+    var onCorners: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Button {
+            HStack(spacing: 0) {
+                knob("viewfinder", String(localized: "重新自動找四角")) {
+                    onCorners()
                     Task { await model.redetectCorners() }
-                } label: {
-                    Label("重新自動找四角", systemImage: "viewfinder")
                 }
-                .buttonStyle(SoftPillStyle())
-                Button {
+                Spacer(minLength: 0)
+                knob("arrow.up.left.and.arrow.down.right", String(localized: "用整張照片")) {
+                    onCorners()
                     model.useWholePhoto()
-                } label: {
-                    Label("用整張照片", systemImage: "arrow.up.left.and.arrow.down.right")
                 }
-                .buttonStyle(SoftPillStyle())
+                Spacer(minLength: 0)
+                knob("rotate.left", String(localized: "向左轉")) {
+                    model.rotate(clockwise: false)
+                    onTurn()
+                }
+                Spacer(minLength: 0)
+                knob("rotate.right", String(localized: "向右轉")) {
+                    model.rotate(clockwise: true)
+                    onTurn()
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text("拉直").font(.fm(16.5, bold: true)).foregroundStyle(Palette.ink)
+                    Spacer()
+                    ValueBadge(text: "\(Int(model.recipe.straightenDegrees.rounded()))°")
+                }
+                Slider(value: Binding(get: { model.recipe.straightenDegrees },
+                                      set: { model.straighten($0.rounded()); onTurn() }),
+                       in: -15...15, step: 1)
+                    .tint(Palette.track)
+                    .accessibilityLabel(Text("拉直"))
+                    .accessibilityValue(Text(verbatim: "\(Int(model.recipe.straightenDegrees))°"))
             }
         }
+    }
+
+    private func knob(_ icon: String, _ label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                RoundKnob(systemImage: icon, size: 48)
+                Text(verbatim: label)
+                    .font(.fm(11.5, bold: true))
+                    .foregroundStyle(Palette.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(width: 74)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(verbatim: label))
     }
 }
 

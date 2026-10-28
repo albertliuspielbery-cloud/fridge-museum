@@ -11,9 +11,10 @@ final class StoreBridge {
     let quota: QuotaTracker
 
     init() {
-        let purchases = PurchaseStore()
+        let purchases = PurchaseStore()   // starts the Transaction.updates listener at launch
         self.purchases = purchases
-        self.quota = QuotaTracker(purchases: purchases)
+        // Screenshot demos never touch the real counters.
+        self.quota = QuotaTracker(purchaseStore: purchases, defaults: DemoMode.isActive ? UserDefaults(suiteName: "demo-quota") : .standard)
     }
 
     var isUnlocked: Bool { purchases.isFullUnlocked }
@@ -23,22 +24,27 @@ final class StoreBridge {
         await purchases.load()
     }
 
-    func canKeep(kind: ArtworkKind, artworkID: UUID) -> Bool {
+    func canKeep(kind: ArtworkKind, artworkID: UUID, isSample: Bool = false) -> Bool {
         if DemoMode.forcePaywall { return false }
-        return quota.canKeep(kind: kind, artworkID: artworkID)
+        return quota.canKeep(kind: kind, artworkID: artworkID, isSample: isSample)
     }
 
-    func recordKeep(kind: ArtworkKind, artworkID: UUID) {
-        quota.recordKeep(kind: kind, artworkID: artworkID)
+    func recordKeep(kind: ArtworkKind, artworkID: UUID, isSample: Bool = false) {
+        quota.recordKeep(kind: kind, artworkID: artworkID, isSample: isSample)
     }
 
     func remaining(_ kind: ArtworkKind) -> Int {
-        kind == .flat ? quota.remainingFlatToday : quota.remainingCraftTrial
+        quota.remaining(for: kind)
+    }
+
+    func refresh() {
+        quota.refresh()
     }
 
     /// What Bibi says on the freezer door (今天還能再收 3 張畫作喔！).
     func bubbleText(for kind: ArtworkKind) -> String {
         if isUnlocked { return String(localized: "完整版：想收幾張都可以喔！") }
+        if !quota.isTracking { return String(localized: "按下快門，把作品掛上冰箱吧！") }
         let n = remaining(kind)
         switch kind {
         case .flat:

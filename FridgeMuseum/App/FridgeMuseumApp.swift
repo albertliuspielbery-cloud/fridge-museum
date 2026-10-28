@@ -15,6 +15,8 @@ struct FridgeMuseumApp: App {
         WindowGroup {
             RootView()
                 .environment(appModel)
+                .environment(appModel.store.purchases)   // PaywallView reads PurchaseStore from the environment
+                .environment(appModel.store.quota)
                 .font(.fm(17))
                 .tint(Palette.teal)
                 .preferredColorScheme(DemoMode.colorScheme)

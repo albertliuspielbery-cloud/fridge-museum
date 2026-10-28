@@ -172,7 +172,7 @@ final class AppModel {
     /// Quota check shared by keep + save. Already-kept artworks and samples pass freely (idempotent per artwork).
     private func admit(_ artwork: Artwork, action: PaywallRequest.Action) -> Bool {
         if artwork.isSample || artwork.isKept { return true }
-        if store.canKeep(kind: artwork.kind, artworkID: artwork.id) { return true }
+        if store.canKeep(kind: artwork.kind, artworkID: artwork.id, isSample: artwork.isSample) { return true }
         paywall = PaywallRequest(kind: artwork.kind, artworkID: artwork.id, action: action)
         return false
     }

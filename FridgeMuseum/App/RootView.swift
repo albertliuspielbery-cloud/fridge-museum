@@ -12,6 +12,7 @@ struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var path = NavigationPath()
     @State private var showSettings = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         @Bindable var app = app
@@ -60,6 +61,9 @@ struct RootView: View {
         }
         .onChange(of: app.popToRoot) {
             path = NavigationPath()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { app.store.refresh() }
         }
         .task {
             await app.store.load()
@@ -141,14 +145,10 @@ struct PaywallSheet: View {
     let request: PaywallRequest
     @Environment(AppModel.self) private var app
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        PaywallView(kind: request.kind, purchases: app.store.purchases) { unlocked in
-            dismiss()
-            if unlocked {
-                app.resumeAfterUnlock(request, context: modelContext)
-            }
+        PaywallView(kind: request.kind) {
+            app.resumeAfterUnlock(request, context: modelContext)
         }
         .overlay(alignment: .topLeading) { if DemoMode.scene("paywall") { ReadyMarker() } }
         .presentationDetents([.large])

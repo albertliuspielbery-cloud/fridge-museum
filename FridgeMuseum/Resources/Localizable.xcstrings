@@ -260,6 +260,108 @@
         }
       }
     },
+    "processing.note.autoDroppedEdgeParts" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other things at the edge were removed. Use “Tap What to Keep” to bring them back."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已自動去掉邊緣的其他東西，點一下可以加回來"
+          }
+        }
+      }
+    },
+    "processing.note.cutoutFallback" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t separate the craft from the table, so the original photo is kept."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒能分開作品和桌面，先保留原照片"
+          }
+        }
+      }
+    },
+    "processing.note.dotsKeptAsPattern" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lots of little dots look like part of the design, so they were left alone."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小點很多像是圖案，沒有清掉"
+          }
+        }
+      }
+    },
+    "processing.note.notWhitePaper" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This isn’t white paper, so its original color is kept."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不是白紙，保留紙本來的顏色"
+          }
+        }
+      }
+    },
+    "processing.note.paperNotFound" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t find the paper’s edges, so the whole photo is used. Fix it in “Crop.”"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒找到紙邊，先用整張照片，可用「裁切四角」調整"
+          }
+        }
+      }
+    },
+    "processing.note.touchesEdge" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The craft touches the edge of the photo and may be cut off."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "作品碰到照片邊緣，可能被切到"
+          }
+        }
+      }
+    },
     "一次買斷，不是訂閱。支援「家人共享」。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -576,6 +678,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "All Artworks"
+          }
+        }
+      }
+    },
+    "全部保留" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep All"
           }
         }
       }
@@ -968,6 +1081,28 @@
         }
       }
     },
+    "向右轉" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rotate Right"
+          }
+        }
+      }
+    },
+    "向左轉" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rotate Left"
+          }
+        }
+      }
+    },
     "回到廚房拍下第一張作品，按「收進這次」就會掛到這裡。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1151,6 +1286,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Done"
+          }
+        }
+      }
+    },
+    "完成選取" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done Picking"
           }
         }
       }
@@ -1366,6 +1512,17 @@
         }
       }
     },
+    "已轉向。再按一次「裁切」可回到四角。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rotated. Tap “Crop” again to get the corners back."
+          }
+        }
+      }
+    },
     "平面畫作" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1520,6 +1677,17 @@
         }
       }
     },
+    "拉直" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Straighten"
+          }
+        }
+      }
+    },
     "拍一張作品" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1582,6 +1750,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Drag the four white dots to the paper’s corners. It updates when you let go."
+          }
+        }
+      }
+    },
+    "按下快門，把作品掛上冰箱吧！" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap the shutter and hang your art on the fridge!"
           }
         }
       }
@@ -2323,6 +2502,17 @@
         }
       }
     },
+    "至少要留下一個部分喔" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep at least one part."
+          }
+        }
+      }
+    },
     "舊的在前" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2728,6 +2918,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Camera access is needed to photograph artwork"
+          }
+        }
+      }
+    },
+    "顏料幾乎蓋滿紙，只輕調光線" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paint covers most of the paper, so only the lighting was adjusted."
+          }
+        }
+      }
+    },
+    "點一下要留下或拿掉的部分，至少要留一個。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap a part to keep or remove it. At least one has to stay."
+          }
+        }
+      }
+    },
+    "點選要留的部分" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap What to Keep"
           }
         }
       }

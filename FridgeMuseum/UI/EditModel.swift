@@ -17,6 +17,8 @@ final class EditModel {
     var before: UIImage?
     var source: UIImage?
     var outputToSource: NormRect?
+    /// Last preview: output↔original mapping (strokes, taps), craft parts, processing notes.
+    var result: PreviewResult?
     var specksRemoved = 0
     var isRendering = false
     var failed = false
@@ -56,6 +58,7 @@ final class EditModel {
                 self.output = UIImage(cgImage: result.output.cgImage)
                 self.before = result.before.map { UIImage(cgImage: $0.cgImage) }
                 self.outputToSource = result.outputToSource
+                self.result = result
                 self.specksRemoved = result.specksRemoved
                 self.failed = false
             } catch {
@@ -119,6 +122,37 @@ final class EditModel {
     func clearStrokes() {
         let kind = recipe.kind
         recipe.strokes.removeAll { kind == .flat ? $0.mode == .paintWhite : $0.mode != .paintWhite }
+        render()
+    }
+
+    var parts: [CutoutPart] { recipe.kind == .craft ? (result?.parts ?? []) : [] }
+    var canPickParts: Bool { recipe.kind == .craft && (result?.canPickParts ?? false) }
+    var notes: [ProcessingNote] { result?.notes ?? [] }
+
+    /// Turning (both kinds). Strokes and part seeds are stored unturned, so nothing is invalidated.
+    func rotate(clockwise: Bool) {
+        if clockwise { recipe.rotateClockwise() } else { recipe.rotateCounterClockwise() }
+        render()
+    }
+
+    func straighten(_ degrees: Double) {
+        recipe.straightenDegrees = degrees.clamped(-15, 15)
+        render(debounceMilliseconds: 90)
+    }
+
+    /// Tap-to-keep: toggles the craft part under an output-normalized point. Returns false when the tap would
+    /// remove the last kept part (nothing changes then).
+    @discardableResult
+    func togglePart(atOutputPoint p: CGPoint) -> Bool? {
+        guard let result, let id = result.partID(atOutputPoint: p) else { return nil }
+        guard let r = PartPicking.toggle(partID: id, in: result, recipe: recipe) else { return false }
+        recipe = r
+        render()
+        return true
+    }
+
+    func keepAllParts() {
+        recipe = PartPicking.keepAll(recipe)
         render()
     }
 

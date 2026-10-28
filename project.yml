@@ -37,6 +37,8 @@ targets:
         excludes:
           - "Info.plist"
           - "Resources/PrivacyInfo.xcprivacy"
+          - "StoreKit/FridgeMuseum.storekit"
+          - "**/API.md"
       - path: FridgeMuseum/Resources/PrivacyInfo.xcprivacy
         buildPhase: resources
     info:
@@ -122,6 +124,9 @@ schemes:
       targets:
         FridgeMuseum: all
         FridgeMuseumUITests: [test]
+    run:
+      config: Debug
+      storeKitConfiguration: FridgeMuseum/StoreKit/FridgeMuseum.storekit
     test:
       config: Debug
       targets:
@@ -133,6 +138,8 @@ schemes:
         FridgeMuseumTests: [test]
     run:
       config: Debug
+      # Local StoreKit testing (StoreKit/API.md). The .storekit file is excluded from the app bundle above.
+      storeKitConfiguration: FridgeMuseum/StoreKit/FridgeMuseum.storekit
     test:
       config: Debug
       targets:

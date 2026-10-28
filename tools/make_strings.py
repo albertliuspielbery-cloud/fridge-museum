@@ -58,6 +58,7 @@ EN = {
     "勞作免費試用剩 %lld 次": {"one": "1 free trial craft left", "other": "%lld free trial crafts left"},
     "勞作免費試用已用完": "Free craft trial used up",
     "完整版：想收幾張都可以喔！": "Full Version: hang up as many as you like!",
+    "按下快門，把作品掛上冰箱吧！": "Tap the shutter and hang your art on the fridge!",
 
     # Toasts
     "已掛上冰箱！": "Hung on the fridge!",
@@ -146,6 +147,28 @@ EN = {
     "筆刷大小": "Brush Size",
     "復原一筆": "Undo Stroke",
     "清除所有筆刷": "Clear All Strokes",
+
+    "向左轉": "Rotate Left",
+    "向右轉": "Rotate Right",
+    "拉直": "Straighten",
+    "已轉向。再按一次「裁切」可回到四角。": "Rotated. Tap “Crop” again to get the corners back.",
+    "點選要留的部分": "Tap What to Keep",
+    "完成選取": "Done Picking",
+    "全部保留": "Keep All",
+    "至少要留下一個部分喔": "Keep at least one part.",
+    "點一下要留下或拿掉的部分，至少要留一個。": "Tap a part to keep or remove it. At least one has to stay.",
+    "顏料幾乎蓋滿紙，只輕調光線": "Paint covers most of the paper, so only the lighting was adjusted.",
+    # Processing notes (ProcessingNote.localizationKey; copy from the reviewed web table)
+    "processing.note.paperNotFound": ("沒找到紙邊，先用整張照片，可用「裁切四角」調整",
+                                      "Couldn’t find the paper’s edges, so the whole photo is used. Fix it in “Crop.”"),
+    "processing.note.notWhitePaper": ("不是白紙，保留紙本來的顏色", "This isn’t white paper, so its original color is kept."),
+    "processing.note.dotsKeptAsPattern": ("小點很多像是圖案，沒有清掉",
+                                          "Lots of little dots look like part of the design, so they were left alone."),
+    "processing.note.touchesEdge": ("作品碰到照片邊緣，可能被切到", "The craft touches the edge of the photo and may be cut off."),
+    "processing.note.autoDroppedEdgeParts": ("已自動去掉邊緣的其他東西，點一下可以加回來",
+                                             "Other things at the edge were removed. Use “Tap What to Keep” to bring them back."),
+    "processing.note.cutoutFallback": ("沒能分開作品和桌面，先保留原照片",
+                                       "Couldn’t separate the craft from the table, so the original photo is kept."),
 
     # Museum label sheet (reviewed: infoSub, kidName, kidBirth, artTitle, artMedium, artDate, captionSwitch …)
     "這是掛在冰箱上的作品說明牌。名字和生日只會記在這支手機上，下次不用再填。":
