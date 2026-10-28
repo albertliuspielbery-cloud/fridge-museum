@@ -25,29 +25,27 @@ struct PaywallView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 18) {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text(title)
+                        .font(.fmDisplay(25, relativeTo: .title2))
+                        .foregroundStyle(Palette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
                     bibi
-                    VStack(spacing: 8) {
-                        Text(title)
-                            .font(.title2.weight(.bold))
-                            .multilineTextAlignment(.center)
-                            .accessibilityAddTraits(.isHeader)
-                        Text(subtitle)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    Text(subtitle)
+                        .font(.fm(16))
+                        .foregroundStyle(Palette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                     perks
                     ticket
                     Label {
                         Text(PaywallText.familySharing)
                             .fixedSize(horizontal: false, vertical: true)
                     } icon: {
-                        Image(systemName: "person.2.fill")
+                        Image(systemName: "house").foregroundStyle(Palette.teal)
                     }
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(.fm(14.5))
+                    .foregroundStyle(Palette.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     if let message {
                         Text(message)
@@ -62,13 +60,22 @@ struct PaywallView: View {
                 .padding(.top, 4)
                 .padding(.bottom, 12)
             }
+            .scrollIndicators(.hidden)
+            .background(Palette.surface)
             .safeAreaInset(edge: .bottom) { buttons }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel(PaywallText.close)
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Palette.muted)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(Palette.surface2))
+                    }
+                    .accessibilityLabel(PaywallText.close)
                 }
             }
+            .toolbarBackground(Palette.surface, for: .navigationBar)
         }
         .task {
             if store.product == nil { await store.load() }
@@ -85,7 +92,7 @@ struct PaywallView: View {
     // MARK: Pieces
 
     private var bibi: some View {
-        VStack(spacing: 6) {
+        HStack(alignment: .center, spacing: 10) {
             Group {
                 if UIImage(named: "bibi-ticket") != nil {
                     Image("bibi-ticket").resizable().scaledToFit()
@@ -96,55 +103,64 @@ struct PaywallView: View {
                         .foregroundStyle(.tint)
                 }
             }
-            .frame(width: 128, height: 128)
+            .frame(width: 120, height: 120)
             .accessibilityHidden(true)
             Text(PaywallText.bibiSays)
-                .font(.subheadline)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .font(.fm(15.5, bold: true))
+                .foregroundStyle(Palette.bubbleInk)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.leading, 24).padding(.trailing, 14).padding(.vertical, 12)
+                .background(SpeechBubble().fill(Palette.card))
+                .overlay(SpeechBubble().stroke(Palette.cardLine, lineWidth: 2))
         }
     }
 
     private var perks: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ForEach([PaywallText.perk1, PaywallText.perk2, PaywallText.perk3], id: \.self) { perk in
-                Label {
-                    Text(perk).fixedSize(horizontal: false, vertical: true)
-                } icon: {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.tint)
+        let dots = [Palette.blue, Palette.red, Palette.teal]
+        let items = [PaywallText.perk1, PaywallText.perk2, PaywallText.perk3]
+        return VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(items.enumerated()), id: \.offset) { i, perk in
+                HStack(alignment: .firstTextBaseline, spacing: 14) {
+                    Circle().fill(dots[i]).frame(width: 18, height: 18)
+                        .shadow(color: Palette.shadow, radius: 1, y: 1)
+                        .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 5 }
+                    Text(perk).font(.fm(16)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
-        .font(.subheadline)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var ticket: some View {
-        VStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(PaywallText.ticketKicker)
-                .font(.caption.weight(.heavy))
+                .font(.fm(13, bold: true))
                 .tracking(2)
-                .foregroundStyle(.tint)
-            Text(PaywallText.productName)
-                .font(.headline)
-            priceText
-                .font(.title.weight(.bold))
-                .monospacedDigit()
+                .foregroundStyle(Palette.cardMuted)
+            HStack(alignment: .firstTextBaseline) {
+                Text(PaywallText.productName)
+                    .font(.fmDisplay(22, relativeTo: .title3))
+                    .foregroundStyle(Palette.cardInk)
+                Spacer(minLength: 8)
+                priceText
+                    .font(.fm(26, bold: true, relativeTo: .title))
+                    .foregroundStyle(Palette.cardInk)
+                    .monospacedDigit()
+            }
+            Line()
+                .stroke(Palette.red, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                .frame(height: 1)
             Text(PaywallText.oneTime)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+                .font(.fm(14))
+                .foregroundStyle(Palette.cardMuted)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(16)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
-        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6, 5]))
-                .foregroundStyle(.tint)
-        )
+        .background(TicketShape().fill(Palette.card))
+        .overlay(TicketShape().stroke(Palette.cardLine, lineWidth: 2))
+        .environment(\.colorScheme, .light)
         .accessibilityElement(children: .combine)
     }
 
@@ -177,30 +193,26 @@ struct PaywallView: View {
                         Text(PaywallText.productName)
                     }
                 }
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: 30)
             }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.capsule)
-            .controlSize(.large)
+            .buttonStyle(PrimaryCapsuleStyle())
             .disabled(store.displayPrice == nil || store.isPurchasing)
 
             Button { dismiss() } label: {
                 Text(isCraft ? PaywallText.laterCraft : PaywallText.laterFlat)
-                    .frame(maxWidth: .infinity, minHeight: 30)
             }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
-            .controlSize(.large)
+            .buttonStyle(LaterCapsuleStyle())
 
-            Button(PaywallText.restore, action: restore)
-                .font(.footnote.weight(.semibold))
-                .disabled(store.isPurchasing)
+            Button(action: restore) {
+                Text(PaywallText.restore).underline()
+            }
+            .font(.fm(15, bold: true))
+            .foregroundStyle(Palette.muted)
+            .disabled(store.isPurchasing)
         }
         .padding(.horizontal, 22)
         .padding(.top, 10)
         .padding(.bottom, 6)
-        .background(.bar)
+        .background(Palette.surface.ignoresSafeArea(edges: .bottom))
     }
 
     // MARK: Copy
@@ -258,6 +270,39 @@ struct PaywallView: View {
         didFinish = true
         onUnlocked()
         dismiss()
+    }
+}
+
+/// Admission-ticket outline: rounded card with a half-circle notch on each side.
+private struct TicketShape: Shape {
+    func path(in r: CGRect) -> Path {
+        let card = Path(roundedRect: r, cornerRadius: 16, style: .continuous)
+        let notch: CGFloat = 9
+        var holes = Path()
+        holes.addEllipse(in: CGRect(x: r.minX - notch, y: r.midY - notch, width: notch * 2, height: notch * 2))
+        holes.addEllipse(in: CGRect(x: r.maxX - notch, y: r.midY - notch, width: notch * 2, height: notch * 2))
+        return card.subtracting(holes)
+    }
+}
+
+private struct Line: Shape {
+    func path(in r: CGRect) -> Path {
+        Path { p in
+            p.move(to: CGPoint(x: r.minX, y: r.midY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.midY))
+        }
+    }
+}
+
+/// 明天再收 / 先不要: a soft cream capsule.
+private struct LaterCapsuleStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.fm(18, bold: true, relativeTo: .headline))
+            .foregroundStyle(Palette.ink)
+            .frame(maxWidth: .infinity, minHeight: 54)
+            .background(Capsule().fill(Palette.surface2))
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
     }
 }
 
