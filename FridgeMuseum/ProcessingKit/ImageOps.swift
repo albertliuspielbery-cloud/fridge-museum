@@ -270,8 +270,10 @@ enum ImageOps {
     /// Prototype colour feature: brightness plus two chroma axes scaled up in the dark.
     @inline(__always)
     static func feature(_ r: Float, _ g: Float, _ b: Float) -> SIMD3<Float> {
-        let L = (r + g + b) / 3, s = 90 / (L + 25)
-        return SIMD3(L * 0.35, (r - g) * s, ((r + g) / 2 - b) * s)
+        let L: Float = (r + g + b) / 3
+        let s: Float = 90 / (L + 25)
+        let yb: Float = ((r + g) / 2 - b) * s
+        return SIMD3(L * 0.35, (r - g) * s, yb)
     }
 
     static func features(_ img: RGBA8Image) -> [SIMD3<Float>] {

@@ -99,12 +99,13 @@ enum CraftMaskEstimator {
         if rd.count > 50 {
             let lo = max(8, ImageOps.quantile(rd, 0.99) * 1.8) * gainS
             func hueOff(_ i: Int) -> Bool {
-                let a = F[i].y, b = F[i].z, pc = (a * a + b * b).squareRoot()
+                let a: Float = F[i].y, b: Float = F[i].z
+                let pc: Float = (a * a + b * b).squareRoot()
                 for c in cs {
                     let cc = (c.y * c.y + c.z * c.z).squareRoot()
                     if cc < 6 {
                         if pc - cc < 12 { return false }
-                    } else if pc < 8 || (a * c.y + b * c.z) / (pc * cc) > 0.82 {
+                    } else if pc < 8 || (a * c.y + b * c.z) / (pc * cc) > Float(0.82) {
                         return false
                     }
                 }

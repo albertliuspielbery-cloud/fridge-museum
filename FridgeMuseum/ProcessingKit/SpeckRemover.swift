@@ -24,7 +24,7 @@ enum SpeckRemover {
         img.pixels.withUnsafeBufferPointer { d in
             for i in 0..<n {
                 let r = Int(d[i * 4]), g = Int(d[i * 4 + 1]), b = Int(d[i * 4 + 2])
-                let lum = 0.299 * Double(r) + 0.587 * Double(g) + 0.114 * Double(b)
+                let lum: Double = 0.299 * Double(r) + 0.587 * Double(g) + 0.114 * Double(b)
                 ink[i] = (lum < 205 || max(r, g, b) - min(r, g, b) > 38) ? 1 : 0
             }
         }

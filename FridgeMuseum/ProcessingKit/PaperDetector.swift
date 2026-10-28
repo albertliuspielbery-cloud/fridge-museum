@@ -57,7 +57,9 @@ enum PaperDetector {
             for i in 0..<n {
                 let r = Double(d[i * 4]), g = Double(d[i * 4 + 1]), b = Double(d[i * 4 + 2])
                 // brightness minus saturation: paper in shadow still scores above a coloured table
-                let v = Int(((0.299 * r + 0.587 * g + 0.114 * b) - 1.5 * (max(r, g, b) - min(r, g, b))).clamped(0, 255))
+                let lum: Double = 0.299 * r + 0.587 * g + 0.114 * b
+                let sat: Double = max(r, g, b) - min(r, g, b)
+                let v = Int((lum - 1.5 * sat).clamped(0, 255))
                 L[i] = UInt8(v)
                 hist[v] += 1
             }
@@ -195,7 +197,9 @@ enum PaperDetector {
 
     static func polyArea(_ q: [P]) -> Double {
         guard q.count == 4 else { return 0 }
-        return abs((q[2].x - q[0].x) * (q[3].y - q[1].y) - (q[3].x - q[1].x) * (q[2].y - q[0].y)) / 2
+        let a: Double = (q[2].x - q[0].x) * (q[3].y - q[1].y)
+        let b: Double = (q[3].x - q[1].x) * (q[2].y - q[0].y)
+        return abs(a - b) / 2
     }
 
     @inline(__always) static func dist(_ a: P, _ b: P) -> Double { ((a - b) * (a - b)).sum().squareRoot() }
@@ -228,7 +232,9 @@ enum PaperDetector {
     }
 
     @inline(__always) static func triArea(_ a: P, _ b: P, _ c: P) -> Double {
-        abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) / 2
+        let u: Double = (b.x - a.x) * (c.y - a.y)
+        let v: Double = (b.y - a.y) * (c.x - a.x)
+        return abs(u - v) / 2
     }
 
     /// Largest-area quadrilateral whose corners are hull points (hull first thinned to ≤ 40 points).
@@ -290,7 +296,8 @@ enum PaperDetector {
         let r = b - a, s = d - c
         let den = r.x * s.y - r.y * s.x
         guard abs(den) >= 1e-9 else { return nil }
-        let t = ((c.x - a.x) * s.y - (c.y - a.y) * s.x) / den
+        let tn: Double = (c.x - a.x) * s.y - (c.y - a.y) * s.x
+        let t = tn / den
         return a + r * t
     }
 
@@ -316,8 +323,10 @@ enum PaperDetector {
                 let o = p + nrm * 1.5, ii = p - nrm * 1.5
                 t += 0.035
                 if o.x < 0.5 || o.y < 0.5 || o.x > Double(w) - 1.5 || o.y > Double(h) - 1.5 { continue }
-                let v = abs(at(pl.R, o.x, o.y) - at(pl.R, ii.x, ii.y)) + abs(at(pl.G, o.x, o.y) - at(pl.G, ii.x, ii.y))
-                    + abs(at(pl.B, o.x, o.y) - at(pl.B, ii.x, ii.y))
+                let dr: Double = abs(at(pl.R, o.x, o.y) - at(pl.R, ii.x, ii.y))
+                let dg: Double = abs(at(pl.G, o.x, o.y) - at(pl.G, ii.x, ii.y))
+                let db: Double = abs(at(pl.B, o.x, o.y) - at(pl.B, ii.x, ii.y))
+                let v = dr + dg + db
                 s += v
                 cnt += 1
                 if robust { vs.append(v) }

@@ -38,7 +38,7 @@ enum IlluminationEstimator {
                 for x in 0..<W {
                     let si = sy + x / k, i = (y * W + x) * 4
                     let r = Float(d[i]), g = Float(d[i + 1]), b = Float(d[i + 2])
-                    let l = 0.299 * r + 0.587 * g + 0.114 * b
+                    let l: Float = 0.299 * r + 0.587 * g + 0.114 * b
                     R[si] += r; G[si] += g; B[si] += b; Q[si] += l * l; C[si] += 1
                 }
             }
@@ -46,8 +46,9 @@ enum IlluminationEstimator {
         for i in 0..<n {
             let c = max(C[i], 1)
             R[i] /= c * 255; G[i] /= c * 255; B[i] /= c * 255
-            let L = 0.299 * R[i] + 0.587 * G[i] + 0.114 * B[i]
-            Q[i] = max(0, Q[i] / (c * 65025) - L * L).squareRoot()
+            let L: Float = 0.299 * R[i] + 0.587 * G[i] + 0.114 * B[i]
+            let variance: Float = Q[i] / (c * 65025) - L * L
+            Q[i] = max(0, variance).squareRoot()
         }
         return (R, G, B, Q, sw, sh, k)
     }
@@ -70,12 +71,15 @@ enum IlluminationEstimator {
         let n = sw * sh
         let R = inR.map { $0.clamped(0, 1) }, G = inG.map { $0.clamped(0, 1) }, B = inB.map { $0.clamped(0, 1) }
         var L = [Float](repeating: 0, count: n)
-        for i in 0..<n { L[i] = 0.299 * R[i] + 0.587 * G[i] + 0.114 * B[i] }
+        for i in 0..<n {
+            let lr: Float = 0.299 * R[i]
+            L[i] = lr + 0.587 * G[i] + 0.114 * B[i]
+        }
         let thr = ImageOps.quantile(L, 0.7)
         var pr = [Float](), pg = [Float](), pb = [Float]()
         for i in 0..<n where L[i] >= thr { pr.append(R[i]); pg.append(G[i]); pb.append(B[i]) }
         let P = SIMD3<Float>(ImageOps.median(pr), ImageOps.median(pg), ImageOps.median(pb))
-        let PL = 0.299 * P.x + 0.587 * P.y + 0.114 * P.z
+        let PL: Float = 0.299 * P.x + 0.587 * P.y + 0.114 * P.z
         let Ps = P.x + P.y + P.z + 1e-4
 
         // Paper-like cells: near the local max brightness, paper-coloured, and darker cells only when smooth
@@ -93,8 +97,14 @@ enum IlluminationEstimator {
                 }
                 let i = y * sw + x
                 let s = R[i] + G[i] + B[i] + 1e-4
-                let cd = abs(R[i] / s - P.x / Ps) + abs(G[i] / s - P.y / Ps) + abs(B[i] / s - P.z / Ps)
-                let paper = L[i] >= 0.85 * mx && L[i] > 0.28 * PL && L[i] < 1.5 * PL && cd < 0.07 && (L[i] > 0.6 * PL || Q[i] < 0.025)
+                let cr: Float = abs(R[i] / s - P.x / Ps)
+                let cgr: Float = abs(G[i] / s - P.y / Ps)
+                let cb: Float = abs(B[i] / s - P.z / Ps)
+                let cd = cr + cgr + cb
+                let li = L[i]
+                let bright = li >= 0.85 * mx && li > 0.28 * PL && li < 1.5 * PL
+                let smoothOrLit = li > 0.6 * PL || Q[i] < 0.025
+                let paper = bright && cd < 0.07 && smoothOrLit
                 M[i] = paper ? 1 : 0
             }
         }
@@ -124,18 +134,24 @@ enum IlluminationEstimator {
             let cr = wc > 0 ? coarse.r[i] / cm : P.x
             let cg = wc > 0 ? coarse.g[i] / cm : P.y
             let cb = wc > 0 ? coarse.b[i] / cm : P.z
-            let c2r = cr * wc + P.x * (1 - wc), c2g = cg * wc + P.y * (1 - wc), c2b = cb * wc + P.z * (1 - wc)
+            let c2r: Float = cr * wc + P.x * (1 - wc)
+            let c2g: Float = cg * wc + P.y * (1 - wc)
+            let c2b: Float = cb * wc + P.z * (1 - wc)
             var fr: Float = 0, fg: Float = 0, fb: Float = 0, wf: Float = 0
             if let fine {
                 wf = smoothStep(Float(0.02), 0.08, fine.m[i])
                 let fm = max(fine.m[i], 1e-6)
                 if wf > 0 { fr = fine.r[i] / fm; fg = fine.g[i] / fm; fb = fine.b[i] / fm }
             }
-            var br = (fr * wf + c2r * (1 - wf)).clamped(lo * P.x, 1)
-            var bg = (fg * wf + c2g * (1 - wf)).clamped(lo * P.y, 1)
-            var bb = (fb * wf + c2b * (1 - wf)).clamped(lo * P.z, 1)
+            let mr: Float = fr * wf + c2r * (1 - wf)
+            let mg: Float = fg * wf + c2g * (1 - wf)
+            let mb: Float = fb * wf + c2b * (1 - wf)
+            var br = mr.clamped(lo * P.x, 1)
+            var bg = mg.clamped(lo * P.y, 1)
+            var bb = mb.clamped(lo * P.z, 1)
             if mode == .colored {
-                let lum = max(0.299 * br + 0.587 * bg + 0.114 * bb, 1e-4)
+                let lum0: Float = 0.299 * br + 0.587 * bg + 0.114 * bb
+                let lum = max(lum0, 1e-4)
                 let g = (PL / lum).clamped(0.7, 1.6)
                 br = 1 / g; bg = 1 / g; bb = 1 / g
             }

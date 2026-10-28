@@ -590,7 +590,8 @@ actor ImageProcessor {
         var hist = [Double](repeating: 0, count: 256)
         var tot = 0.0
         for i in 0..<(probe.width * probe.height) {
-            let l = 0.299 * Double(probe.pixels[i * 4]) + 0.587 * Double(probe.pixels[i * 4 + 1]) + 0.114 * Double(probe.pixels[i * 4 + 2])
+            let pr = Double(probe.pixels[i * 4]), pg = Double(probe.pixels[i * 4 + 1]), pb = Double(probe.pixels[i * 4 + 2])
+            let l: Double = 0.299 * pr + 0.587 * pg + 0.114 * pb
             hist[min(255, Int(l))] += 1
             tot += 1
         }

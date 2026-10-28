@@ -71,7 +71,7 @@ enum EdgeFill {
         let P = SIMD3<Float>(ImageOps.median(pm.map { R[$0] }), ImageOps.median(pm.map { G[$0] }), ImageOps.median(pm.map { B[$0] }))
         // compare colours with brightness partly factored out (light falls off)
         func nrmC(_ c: SIMD3<Float>) -> SIMD4<Float> {
-            let l = (c.x + c.y + c.z) / 3 + 1
+            let l: Float = (c.x + c.y + c.z) / 3 + 1
             return SIMD4(c.x / l * 60, c.y / l * 60, c.z / l * 60, l * 0.5)
         }
         func dd(_ a: SIMD4<Float>, _ b: SIMD4<Float>) -> Float { ((a - b) * (a - b)).sum().squareRoot() }
@@ -127,7 +127,8 @@ enum EdgeFill {
         let g = ImageOps.morph(m, sw, sh, 1, dilate: true)
         let Pl = (P.x + P.y + P.z) / 3
         for i in 0..<n where g[i] != 0 && m[i] == 0 {
-            let l = (R[i] + G[i] + B[i]) / 3, ch = max(R[i], G[i], B[i]) - min(R[i], G[i], B[i])
+            let l: Float = (R[i] + G[i] + B[i]) / 3
+            let ch: Float = max(R[i], G[i], B[i]) - min(R[i], G[i], B[i])
             if l > 0.55 * Pl && ch < 60 { m[i] = 1 }
         }
         let a = m.map { Float($0) }

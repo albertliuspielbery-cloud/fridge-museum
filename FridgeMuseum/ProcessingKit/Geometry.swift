@@ -205,7 +205,9 @@ enum PaperAspect {
         func dot(_ a: SIMD3<Double>, _ b: SIMD3<Double>) -> Double { (a * b).sum() }
         // prototype naming: m1 = TL, m2 = TR, m3 = BL, m4 = BR
         let m1 = v3(q[0]), m2 = v3(q[1]), m4 = v3(q[2]), m3 = v3(q[3])
-        let sides = (q[0].distance(to: q[1]) + q[3].distance(to: q[2])) / (q[0].distance(to: q[3]) + q[1].distance(to: q[2]))
+        let horiz: Double = q[0].distance(to: q[1]) + q[3].distance(to: q[2])
+        let vert: Double = q[0].distance(to: q[3]) + q[1].distance(to: q[2])
+        let sides = horiz / vert
         let k2 = dot(cross(m1, m4), m3) / dot(cross(m2, m4), m3)
         let k3 = dot(cross(m1, m4), m2) / dot(cross(m3, m4), m2)
         var r = Double.nan
@@ -218,8 +220,10 @@ enum PaperAspect {
                 return min(dd, 180 - dd)
             }
             let conv = min(angle(q[0], q[1], q[3], q[2]), angle(q[0], q[3], q[1], q[2]))
-            let num = (n2.x * n3.x - (n2.x * n3.z + n2.z * n3.x) * u0 + n2.z * n3.z * u0 * u0)
-                + (n2.y * n3.y - (n2.y * n3.z + n2.z * n3.y) * v0 + n2.z * n3.z * v0 * v0)
+            let zz: Double = n2.z * n3.z
+            let numX: Double = n2.x * n3.x - (n2.x * n3.z + n2.z * n3.x) * u0 + zz * u0 * u0
+            let numY: Double = n2.y * n3.y - (n2.y * n3.z + n2.z * n3.y) * v0 + zz * v0 * v0
+            let num = numX + numY
             var f2 = -num / (n2.z * n3.z)
             let trusted = conv > 3 && f2.isFinite && f2 > (0.55 * L) * (0.55 * L) && f2 < (1.6 * L) * (1.6 * L)
             if !trusted {
@@ -227,8 +231,9 @@ enum PaperAspect {
                 f2 = f * f
             }
             func nn(_ n: SIMD3<Double>) -> Double {
-                let a = n.x - u0 * n.z, b = n.y - v0 * n.z
-                return a * a / f2 + b * b / f2 + n.z * n.z
+                let a: Double = n.x - u0 * n.z, b: Double = n.y - v0 * n.z
+                let s: Double = a * a / f2 + b * b / f2
+                return s + n.z * n.z
             }
             r = (nn(n2) / nn(n3)).squareRoot()
         }
@@ -313,7 +318,8 @@ enum Turning {
     /// Pixel size of a W×H image turned by `degrees` (bounding box, rounded like the prototype).
     static func turnedSize(width w: Double, height h: Double, degrees: Double) -> (width: Int, height: Int) {
         let (co, si) = cosSin(degrees)
-        let W = (w * abs(co) + h * abs(si)).rounded(), H = (w * abs(si) + h * abs(co)).rounded()
+        let W: Double = (w * abs(co) + h * abs(si)).rounded()
+        let H: Double = (w * abs(si) + h * abs(co)).rounded()
         return (max(1, Int(W)), max(1, Int(H)))
     }
 
