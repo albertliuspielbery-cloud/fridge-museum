@@ -308,7 +308,7 @@ struct LabelSheet: View {
             Button { showNewChild = true } label: { Label("新增小朋友…", systemImage: "plus") }
         } label: {
             HStack(spacing: 8) {
-                if let c = artwork.child { AvatarDot(hex: c.avatarColorHex, name: c.displayName, size: 24) }
+                if let c = artwork.child { ChildAvatar(child: c, size: 24) }
                 Text(verbatim: artwork.child?.displayName ?? String(localized: "選擇"))
                     .foregroundStyle(artwork.child == nil ? Palette.faint : Palette.ink)
                 Spacer(minLength: 0)

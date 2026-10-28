@@ -329,6 +329,22 @@ EN = {
     "這台手機無法離線辨識語音，已保留錄音": "This phone can’t transcribe speech offline. The recording is kept.",
 }
 
+# ---- Child avatars (feat/avatars) — kept as a separate block so parallel branches merge cleanly ----
+EN_AVATARS = {
+    "頭像": "Avatar",
+    "從照片選": "Choose from Photos",
+    "用他的作品": "Use Their Artwork",
+    "用顏色": "Use a Color",
+    "頭像只存在這支手機裡。": "The avatar stays on this phone.",
+    "選一件作品": "Choose an Artwork",
+    "作品": "Artwork",
+    "調整頭像": "Adjust Avatar",
+    "使用": "Use",
+    "縮放": "Zoom",
+    "拖曳移動，兩指縮放": "Drag to move, pinch to zoom",
+}
+EN.update(EN_AVATARS)
+
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),
     "CFBundleName": ("冰箱美術館", "My Fridge Museum"),

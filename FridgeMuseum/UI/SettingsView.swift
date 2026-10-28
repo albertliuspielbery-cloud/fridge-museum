@@ -83,7 +83,7 @@ struct SettingsView: View {
                     ForEach(children) { c in
                         Button { editingChild = c } label: {
                             HStack(spacing: 12) {
-                                AvatarDot(hex: c.avatarColorHex, name: c.displayName, size: 34)
+                                ChildAvatar(child: c, size: 34)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(verbatim: c.displayName).font(.fm(16, bold: true)).foregroundStyle(Palette.ink)
                                     if let b = c.birthday, let age = AgeCalculator.age(birthday: b, at: Date()) {

@@ -149,7 +149,7 @@ struct MuseumView: View {
                 ForEach(children) { c in
                     shelfItem(selected: childFilter == .child(c.id), title: c.displayName,
                               count: artworks.filter { $0.child?.id == c.id }.count) {
-                        AvatarDot(hex: c.avatarColorHex, name: c.displayName, size: 58)
+                        ChildAvatar(child: c, size: 58)
                     } action: {
                         childFilter = .child(c.id)
                     }

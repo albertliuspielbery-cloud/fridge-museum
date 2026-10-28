@@ -15,6 +15,8 @@ final class Child {
     var name: String = ""
     var birthday: Date?
     var avatarColorHex: String = "#2F5BFF"
+    /// Optional photo avatar: a small square JPEG (≤ 512 px, made by `AvatarImage.make`). nil = the colour circle.
+    @Attribute(.externalStorage) var avatarImageData: Data?
     var createdAt: Date = Date()
 
     // Nullify: removing a child profile keeps the artworks (they become 未分類).
