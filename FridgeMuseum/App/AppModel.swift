@@ -219,7 +219,7 @@ final class AppModel {
         for artwork in (try? context.fetch(descriptor)) ?? [] where processTasks[artwork.id] == nil && needsRender(artwork) {
             startProcessing(artwork, context: context)
         }
-        backfillFingerprints(context: context)
+        Task { [weak self] in await self?.backfillFingerprints(context: context) }
     }
 
     /// Opens one of the bundled sample photos (看範例) in the editor. Samples never count toward the quota.
@@ -510,31 +510,32 @@ final class AppModel {
 
     @ObservationIgnored private var isBackfillingFingerprints = false
 
-    /// Artworks kept before fingerprints existed get one from their stored thumbnail (decoded at ≤ 128 px, off the
-    /// main actor), one at a time in the background. Runs once per launch.
-    func backfillFingerprints(context: ModelContext) {
+    /// Artworks rendered before fingerprints existed get one from their stored thumbnail (decoded at ≤ 128 px, off
+    /// the main actor), one at a time. Run at launch (processUnfinished). Pending captures are included: one rendered
+    /// by an older build and kept later would otherwise wait for the next launch.
+    /// `.utility`, not `.background`: background-priority jobs only run when the cooperative pool has nothing else
+    /// queued, so during renders (or a busy test run) they could be starved for many seconds.
+    func backfillFingerprints(context: ModelContext) async {
         guard !isBackfillingFingerprints else { return }
-        let kept = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.isKept && !$0.isSample }))) ?? []
-        let missing = kept.filter { ArtFingerprint(data: $0.fingerprintData) == nil }
+        let all = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { !$0.isSample }))) ?? []
+        let missing = all.filter { ArtFingerprint(data: $0.fingerprintData) == nil }
         guard !missing.isEmpty else { return }
         isBackfillingFingerprints = true
-        Task { [weak self] in
-            var changed = 0
-            for artwork in missing {
-                guard Self.isAlive(artwork), let thumbnail = artwork.thumbnailData else { continue }
-                let version = artwork.renderVersion
-                let fingerprint = await Task.detached(priority: .background) {
-                    ArtFingerprint.make(fromImageData: thumbnail)?.encoded
-                }.value
-                // Skip it if it was deleted or re-rendered meanwhile (the render stored a fresh fingerprint).
-                guard let fingerprint, Self.isAlive(artwork), artwork.renderVersion == version else { continue }
-                artwork.fingerprintData = fingerprint
-                changed += 1
-                if changed % 25 == 0 { try? context.save() }
-            }
-            if changed > 0 { try? context.save() }
-            self?.isBackfillingFingerprints = false
+        defer { isBackfillingFingerprints = false }
+        var changed = 0
+        for artwork in missing {
+            guard Self.isAlive(artwork), let thumbnail = artwork.thumbnailData else { continue }
+            let version = artwork.renderVersion
+            let fingerprint = await Task.detached(priority: .utility) {
+                ArtFingerprint.make(fromImageData: thumbnail)?.encoded
+            }.value
+            // Skip it if it was deleted or re-rendered meanwhile (the render stored a fresh fingerprint).
+            guard let fingerprint, Self.isAlive(artwork), artwork.renderVersion == version else { continue }
+            artwork.fingerprintData = fingerprint
+            changed += 1
+            if changed % 25 == 0 { try? context.save() }
         }
+        if changed > 0 { try? context.save() }
     }
 
     /// 不要了 / 全部不要: deletes every pending (captured, never kept) artwork. Returns how many were deleted.

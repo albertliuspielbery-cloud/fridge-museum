@@ -341,23 +341,27 @@ struct DuplicateLookupTests {
         #expect(app.likelyDuplicate(of: capture, kind: .flat, childID: nil, excluding: kept.id, context: context) == nil)
     }
 
-    @Test func backfillFingerprintsKeptArtworksFromTheirThumbnails() async throws {
+    @Test func backfillFingerprintsArtworksFromTheirThumbnails() async throws {
         let container = ArchiveStore.makeContainer(inMemory: true)
         let context = ModelContext(container)
         let app = AppModel()
         let image = try #require(Sketch.cgImage(Sketch.house()))
         let old = makeArtwork(fingerprint: nil, in: context)
         old.thumbnailData = ImageEncoding.jpegData(image, quality: 0.8)
+        let pendingOld = makeArtwork(kept: false, fingerprint: nil, in: context)
+        pendingOld.thumbnailData = old.thumbnailData
         let noThumbnail = makeArtwork(fingerprint: nil, in: context)
         try context.save()
+        // The stored thumbnail survives the save and decodes (so a failure below is the backfill itself).
+        let thumbnail = try #require(old.thumbnailData)
+        #expect(ArtFingerprint.make(fromImageData: thumbnail) != nil)
 
-        app.backfillFingerprints(context: context)
-        for _ in 0..<200 where old.fingerprintData == nil {
-            try await Task.sleep(for: .milliseconds(20))
-        }
+        await app.backfillFingerprints(context: context)
+
         let stored = try #require(ArtFingerprint(data: old.fingerprintData))
         let direct = try #require(ArtFingerprint.make(Sketch.house()))
         #expect(stored.isLikelyDuplicate(of: direct))
+        #expect(ArtFingerprint(data: pendingOld.fingerprintData) != nil)
         #expect(noThumbnail.fingerprintData == nil)
     }
 }
