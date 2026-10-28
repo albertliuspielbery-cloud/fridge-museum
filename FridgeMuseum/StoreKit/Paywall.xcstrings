@@ -50,7 +50,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The purchase didn’t go through. Please try again later."
+            "value" : "The purchase didn’t go through. Try again later."
           }
         }
       }
@@ -122,7 +122,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No Full Version purchase was found for this Apple Account."
+            "value" : "No Full Version purchase found for this Apple Account."
           }
         }
       }
@@ -158,7 +158,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Waiting for approval. The Full Version unlocks automatically once it’s approved."
+            "value" : "Waiting for approval. It unlocks automatically once approved."
           }
         }
       }
@@ -230,7 +230,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Getting the price…"
+            "value" : "Loading price…"
           }
         }
       }
@@ -248,7 +248,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Can’t reach the App Store right now. Please try again later."
+            "value" : "Can’t reach the App Store right now. Try again later."
           }
         }
       }
