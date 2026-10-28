@@ -214,9 +214,10 @@ actor ImageProcessor {
         let result: PaperDetection
         if let vq = visionQuad {
             let refined = PaperDetector.refine(vq, in: small)
-            // Vision's outline has almost no edge under it while the detector found a clean sheet: trust the detector.
-            if refined.contrast >= 0, refined.contrast < 8, !det.isGuess, det.score > 0.6 {
-                result = PaperDetection(quad: det.quad, isGuess: false, method: .detector)
+            // Vision's outline has (almost) no edge under it – e.g. a featureless table, or a quad lying on the frame
+            // edge: defer to the ported detector (which keeps the whole photo and reports .paperNotFound when unsure).
+            if refined.contrast < 5 || (refined.contrast < 8 && !det.isGuess && det.score > 0.6) {
+                result = det.isGuess ? none : PaperDetection(quad: det.quad, isGuess: false, method: .detector)
             } else {
                 result = PaperDetection(quad: refined.quad, isGuess: false, method: .vision)
             }
