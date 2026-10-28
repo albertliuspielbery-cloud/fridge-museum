@@ -10,10 +10,10 @@
 
 | 項目 | 狀態 |
 |---|---|
-| iOS App | **1.0** 已上傳 TestFlight（run 40660153242，main @ fbd56ee）。擁有者還沒在實機測過 |
-| App 內購買 | `tw.starlight.fridgemuseum.full`「完整版 / Full Version」已建立：NT$190、家人共享開、地區 TW/HK/US/CA/GB/AU/SG。狀態 MISSING_METADATA → 已把審查截圖放到 `ci/iap_review.png`，要再跑一次「App 內購買項目」流程 |
+| iOS App | **1.0.1** 已上傳 TestFlight（2026-10-28，run 40706765651，main @ 802da3e）。1.0 擁有者已實機測過，回饋已在 1.0.1 修正；1.0.1 還沒實機測 |
+| App 內購買 | `tw.starlight.fridgemuseum.full`「完整版 / Full Version」已建立：NT$190、家人共享開、地區 TW/HK/US/CA/GB/AU/SG。審查截圖已上傳（10/28 第 2 次執行成功），但流程結束時讀到的狀態仍是 MISSING_METADATA，要到 ASC 確認是否已變 Ready to Submit |
 | 網頁測試版 | **0.9.0** 上線中：https://claude.ai/artifact/MQTbRzJLuHZUzNpgRvADPf （只有擁有者看得到）。原始碼在 `web/` |
-| repo | `albertliuspielbery-cloud/fridge-museum`（**公開**）。main = App 1.0 |
+| repo | `albertliuspielbery-cloud/fridge-museum`（**公開**）。main = App 1.0.1。開發分支用 `fix/**`（push 也會跑模擬器測試） |
 | 隱私／支援頁 | GitHub Pages：`docs/privacy.html`、`docs/support.html` → https://albertliuspielbery-cloud.github.io/fridge-museum/privacy.html 、…/support.html |
 
 ---
@@ -73,12 +73,12 @@
 
 - Secrets：`ASC_KEY_ID`、`ASC_ISSUER_ID`、`ASC_KEY_P8`、`APPLE_TEAM_ID`（Albert 設的，Admin 權限金鑰）。
 - 沒有 Mac：CI 是唯一的編譯器。雲端環境的 proxy 擋掉 Actions log 和 artifact 下載，看錯誤用 annotations（`ci/annotate_log.py`），看畫面用 `git fetch origin ci-shots`。
-- push 到 main 會自動跑模擬器編譯＋單元測試（100 個測試）。
+- push 到 main 會自動跑模擬器編譯＋單元測試（108 個測試）。
 
 ### TestFlight 還要做的
-1. 再跑一次「App 內購買項目」，讓商品從 MISSING_METADATA 變成 Ready to Submit（沙盒才拿得到價格）。之後最好換成實機付費頁截圖（存成 `ci/iap_review.png` 重跑）。
+1. ~~再跑一次「App 內購買項目」~~（10/28 已跑）。到 ASC 確認商品是否已是 Ready to Submit（沙盒才拿得到價格）。之後最好換成實機付費頁截圖（存成 `ci/iap_review.png` 重跑）。
 2. App Store Connect →「價格與供應狀況」：App 本身的地區只勾 TW/HK/US/CA/GB/AU/SG。
-3. TestFlight 內部測試群組加 Albert。
+3. ~~TestFlight 內部測試群組加 Albert~~（已完成，1.0 已安裝）。
 4. 第一次送審時，在版本頁把「完整版」加進去；英文名稱 My Fridge Museum、截圖、說明、關鍵字還沒做（可比照星光的 ios-metadata.yml）。
 
 ### 實機要測的（審查員列的）
@@ -106,10 +106,16 @@
 
 ---
 
+### 1.0.1 陰影去除（`ProcessingKit/ShadowEstimator.swift`）
+- 只在找到紙或手動設角（quad != .full）時啟用；沒偵測到陰影時輸出和 1.0 完全相同。
+- 只處理從紙邊伸進來（3 格內）或接在已確認陰影旁（4 格內）的陰影：避免把畫裡平塗的灰色（大象、烏雲）當成陰影變白。取捨：完全在紙中間的陰影不處理；塗到紙邊的大片灰色仍有小機率被調亮。
+- 彩色紙增益上限 2.5×。測試照片（Albert 的實拍）只在本機，沒進 repo；其中一張是有版權角色的著色本，**永遠不要放進 repo 或範例**。
+
 ## 6. 待辦與未決
 
-- [ ] Albert：iPhone 安裝 TestFlight 1.0，回報問題（截圖或原始照片）。
-- [ ] 重跑 App 內購買項目（補審查截圖）；設定 App 銷售地區。
+- [x] Albert：iPhone 安裝 TestFlight 1.0，回報問題 → 1.0.1 修正：放棄儲存（不要這張／全部不要）、陰影去除、降低發熱、設定齒輪移到右上角。
+- [ ] Albert：實機測 1.0.1（陰影、放棄儲存、發熱）。
+- [ ] 確認內購商品狀態；設定 App 銷售地區（價格與供應狀況）。
 - [ ] App Store 上架資料：中英文名稱、副標「寶貝的畫，一張都不用丟」、說明、關鍵字、截圖、隱私問卷（不收集資料）。
 - [ ] 上架後：早鳥價 NT$150 一個月、兌換碼（比照星光）。
 - [ ] 之後的方向：語音小故事強化、年度作品書印刷（主要營收）、去年今日提醒、LINE 分享給祖父母、iCloud 同步（CloudKit 目前關）。
