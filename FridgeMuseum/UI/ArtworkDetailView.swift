@@ -13,6 +13,11 @@ struct ArtworkDetailView: View {
     @State private var confirmDelete = false
     @State private var isSaving = false
     @State private var showLabel = false
+    /// Delete only after the screen is gone, so no view reads a deleted model.
+    @State private var deleteOnDisappear = false
+    /// The print, decoded once per render version (downsampled off the main actor), not on every body pass.
+    @State private var display: UIImage?
+    @State private var labelModel: EditModel?
 
     var body: some View {
         ScrollView {
@@ -88,17 +93,32 @@ struct ArtworkDetailView: View {
         }
         .confirmationDialog(Text("刪除這件作品？"), isPresented: $confirmDelete, titleVisibility: .visible) {
             Button(role: .destructive) {
-                let a = artwork
+                deleteOnDisappear = true
                 dismiss()
-                app.delete(a, context: modelContext)
             } label: {
                 Text("刪除")
             }
         } message: {
             Text("只會刪除 App 裡的資料，已存到照片的不受影響。")
         }
+        .task(id: artwork.renderVersion) {
+            guard let data = artwork.renderedImageData ?? artwork.thumbnailData else { return }
+            let decoded = await Task.detached(priority: .userInitiated) {
+                ImageMetadata.uprightThumbnail(of: data, maxPixelSize: 1600).map { RenderedImage(cgImage: $0) }
+            }.value
+            if let decoded { display = UIImage(cgImage: decoded.cgImage) }
+        }
+        .onChange(of: showLabel) { _, show in
+            if show, labelModel == nil { labelModel = EditModel(artwork: artwork) }
+        }
+        .onDisappear {
+            if deleteOnDisappear {
+                deleteOnDisappear = false
+                app.delete(artwork, context: modelContext)
+            }
+        }
         .sheet(isPresented: $showLabel) {
-            LabelSheet(artwork: artwork, model: EditModel(artwork: artwork))
+            if let labelModel { LabelSheet(artwork: artwork, model: labelModel) }
         }
         .overlay(alignment: .topLeading) {
             if DemoMode.scene("detail"), artwork.thumbnailData != nil { ReadyMarker() }
@@ -108,8 +128,8 @@ struct ArtworkDetailView: View {
     private var printPanel: some View {
         HungPrint(id: artwork.id, tilt: 1.2, tape: .stripe, padding: 10) {
             Group {
-                if let data = artwork.renderedImageData ?? artwork.thumbnailData, let img = UIImage(data: data) {
-                    Image(uiImage: img).resizable().scaledToFit()
+                if let display {
+                    Image(uiImage: display).resizable().scaledToFit()
                 } else {
                     ArtworkImage(artwork: artwork)
                 }
@@ -130,11 +150,13 @@ struct ArtworkDetailView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("編輯"))
-            ShareLink(item: shareItem, preview: SharePreview(artwork.placardTitle, image: Image("bibi-proud"))) {
-                RoundKnob(systemImage: "square.and.arrow.up", size: 54)
+            if let shareItem {
+                ShareLink(item: shareItem, preview: SharePreview(artwork.placardTitle, image: shareImage)) {
+                    RoundKnob(systemImage: "square.and.arrow.up", size: 54)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("分享"))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("分享"))
             Button {
                 isSaving = true
                 Task {
@@ -156,9 +178,12 @@ struct ArtworkDetailView: View {
         .background(Palette.wall.opacity(0.94).ignoresSafeArea(edges: .bottom))
     }
 
-    private var shareItem: ShareableArtwork {
-        ShareableArtwork(id: artwork.id, originalData: artwork.originalImageData ?? Data(), recipe: artwork.recipe,
-                         captionTitle: app.captionTitle(artwork), captionDetail: app.captionDetail(artwork),
-                         captionBackground: app.captionBackground(artwork.recipe))
+    private var shareItem: ShareableArtwork? {
+        ShareableArtwork(artwork: artwork, recipe: artwork.recipe, app: app)
+    }
+
+    private var shareImage: Image {
+        if let display { return Image(uiImage: display) }
+        return Image("bibi-proud")
     }
 }

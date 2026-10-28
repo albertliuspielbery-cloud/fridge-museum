@@ -188,13 +188,13 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "勞作 AI 去背無限次使用"
+            "value" : "勞作不限件數"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unlimited AI cutouts for crafts"
+            "value" : "Unlimited crafts"
           }
         }
       }
@@ -267,6 +267,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Full Version"
+          }
+        }
+      }
+    },
+    "paywall.purchaseUnavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purchase Unavailable"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暫時無法購買"
           }
         }
       }

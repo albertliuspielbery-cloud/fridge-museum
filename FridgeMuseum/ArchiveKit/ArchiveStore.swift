@@ -2,6 +2,10 @@ import Foundation
 import SwiftData
 
 enum ArchiveStore {
+    /// true when the on-disk store couldn't be opened and this session runs on a temporary in-memory store
+    /// (RootView shows a warning banner: nothing kept now survives a relaunch).
+    @MainActor static private(set) var isTemporary = false
+
     /// On-device store. CloudKit is explicitly off (`.none`): the app makes no network calls.
     /// (The models stay CloudKit-compatible — optional/defaulted attributes, no unique constraints — for a future sync option.)
     @MainActor
@@ -11,7 +15,8 @@ enum ArchiveStore {
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            // Last resort so the app still opens; data will not persist in this session.
+            // Last resort so the app still opens; data will not persist in this session (banner in RootView).
+            isTemporary = !inMemory
             let memory = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
             do {
                 return try ModelContainer(for: schema, configurations: [memory])

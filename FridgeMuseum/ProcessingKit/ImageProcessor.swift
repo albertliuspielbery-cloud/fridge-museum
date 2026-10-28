@@ -73,6 +73,9 @@ actor ImageProcessor {
 
     static let previewMaxEdge = 1600
     static let exportMaxEdge = 2400
+    /// Save to Photos / Share: drawings render at up to 4096 px (or the original size if smaller); crafts at 3072
+    /// (Vision masks + several full-size buffers). Never cached — the 2400 px working copy stays the cached one.
+    static func finalExportMaxEdge(for kind: ArtworkKind) -> Int { kind == .flat ? 4096 : 3072 }
     /// Long edge of the decoded working copy (prototype MAX_SRC). Inputs of 12–48 MP are subsampled on decode.
     static let sourceMaxEdge = 2400
     static let thumbnailMaxEdge = 480
@@ -161,8 +164,10 @@ actor ImageProcessor {
         try render(id: id, data: originalData, recipe: recipe, maxEdge: maxEdge, includeBefore: includeBefore)
     }
 
-    func export(id: UUID, originalData: Data, recipe: ProcessingRecipe) throws -> ExportResult {
-        let r = try render(id: id, data: originalData, recipe: recipe, maxEdge: Self.exportMaxEdge, includeBefore: false)
+    func export(id: UUID, originalData: Data, recipe: ProcessingRecipe,
+                maxEdge: Int = ImageProcessor.exportMaxEdge) throws -> ExportResult {
+        let r = try render(id: id, data: originalData, recipe: recipe, maxEdge: maxEdge, includeBefore: false)
+        defer { if maxEdge > Self.sourceMaxEdge { dropHighResCaches(id: id) } }
         guard let jpeg = ImageEncoding.jpegData(r.output.cgImage, quality: 0.92) else { throw ProcessingError.encodeFailed }
         let thumbCI = scaleToFit(CIImage(cgImage: r.output.cgImage), maxEdge: Self.thumbnailMaxEdge)
         guard let thumbCG = context.createCGImage(thumbCI, from: thumbCI.extent, format: .RGBA8, colorSpace: srgb),
@@ -254,7 +259,7 @@ actor ImageProcessor {
     //                      → brush → turn
 
     private func renderFlat(id: UUID, data: Data, recipe: ProcessingRecipe, maxEdge: Int, includeBefore: Bool) throws -> PreviewResult {
-        let src = try source(id: id, data: data, maxEdge: min(Self.sourceMaxEdge, Int(Double(maxEdge) * 1.25)))
+        let src = try source(id: id, data: data, maxEdge: min(max(Self.sourceMaxEdge, maxEdge), Int(Double(maxEdge) * 1.25)))
         let quad = (recipe.corners ?? detectPaperSync(id: id, data: data).quad).clampedToUnit()
         let focalPx = focalPixels(id: id, data: data, width: Double(src.extent.width), height: Double(src.extent.height))
         let warped = perspectiveCorrect(src, quad: quad, maxEdge: maxEdge, focalPixels: focalPx)
@@ -434,7 +439,7 @@ actor ImageProcessor {
     //                       → parts (tap-to-keep, auto drop) → brush → turn + crop with margin → background + shadow
 
     private func renderCraft(id: UUID, data: Data, recipe: ProcessingRecipe, maxEdge: Int, includeBefore: Bool) throws -> PreviewResult {
-        let src = try source(id: id, data: data, maxEdge: min(Self.sourceMaxEdge, maxEdge))
+        let src = try source(id: id, data: data, maxEdge: min(max(Self.sourceMaxEdge, maxEdge), maxEdge))
         let W = Int(src.extent.width), H = Int(src.extent.height)
         let base = craftBase(id: id, src: src, width: W, height: H, sensitivity: recipe.sensitivity, maxEdge: maxEdge)
         let strokes = recipe.activeStrokes
@@ -759,7 +764,25 @@ actor ImageProcessor {
         return s
     }
 
+    /// Frees the big buffers a final (> working size) export left in the per-artwork caches.
+    private func dropHighResCaches(id: UUID) {
+        let prefix = id.uuidString
+        for key in maskCache.keys where key.hasPrefix(prefix) {
+            if let edge = Int(key.split(separator: "|").last ?? ""), edge > Self.sourceMaxEdge { maskCache[key] = nil }
+        }
+        for key in partsCache.keys where key.hasPrefix(prefix) {
+            if let edge = Int(key.split(separator: "|").last ?? ""), edge > Self.sourceMaxEdge { partsCache[key] = nil }
+        }
+    }
+
     private func source(id: UUID, data: Data, maxEdge: Int) throws -> CIImage {
+        if maxEdge > Self.sourceMaxEdge {
+            // Final export above the working size: decode straight from the original, uncached.
+            if let cg = ImageMetadata.uprightThumbnail(of: data, maxPixelSize: maxEdge) {
+                return scaleToFit(CIImage(cgImage: cg), maxEdge: maxEdge)
+            }
+            return try decodedSource(id: id, data: data)
+        }
         let key = "\(id.uuidString)|src|\(maxEdge)"
         if let s = sourceCache[key] { return s }
         let s = scaleToFit(try decodedSource(id: id, data: data), maxEdge: maxEdge)

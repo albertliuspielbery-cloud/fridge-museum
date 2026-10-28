@@ -43,6 +43,9 @@ App 識別碼預設是 `tw.starlight.fridgemuseum`。要換的話，在同一頁
 3. Apple 處理 5～30 分鐘後，到 <https://appstoreconnect.apple.com/apps> →「冰箱美術館」→「TestFlight」，
    把版本加進內部測試群組，再用 iPhone 的 TestFlight App 安裝。
 
+**注意：不要同時按「冰箱美術館」和「星光小冒險」的上傳。** 兩個 App 共用同一組 Apple Distribution 憑證，
+簽名腳本會在憑證太多時清掉舊的；兩邊同時跑可能互相刪掉對方正在用的憑證而失敗。請等一邊完成（兩個步驟都打勾）再按另一邊。
+
 平常工程師推程式到 `main` 時，只會自動做「模擬器編譯＋單元測試」，不會上傳。上傳一定是你自己按。
 
 **出現紅色 ✗ 時**：點進那次執行，頁面上方會直接列出錯誤訊息（例如「缺少 GitHub Secrets」「權限不夠」）。

@@ -197,7 +197,11 @@ extension Placard {
 struct CrayonText: View {
     var text: String
     var size: CGFloat = 34
-    static let crayons: [Color] = [Palette.red, Palette.orange, Palette.green, Palette.blue, Palette.purple, Palette.pink]
+    /// Deeper crayons than the UI accents so every letter keeps ≥ 3:1 against the cream (light) / navy (dark) toast.
+    static let crayons: [Color] = [
+        Color(0xC63A22, 0xFF8A70), Color(0xB45A0C, 0xFFB45E), Color(0x23845A, 0x5EDCA6),
+        Color(0x2F5CC4, 0x9DB6FF), Color(0x7646B5, 0xC6A8F7), Color(0xB83A70, 0xFFA6C8),
+    ]
 
     var body: some View {
         let chars = Array(text)
@@ -208,14 +212,16 @@ struct CrayonText: View {
             t = t + Text(verbatim: String(ch)).foregroundColor(isSpace ? .clear : Self.crayons[colorIndex % Self.crayons.count])
             if !isSpace { colorIndex += 1 }
         }
-        return t
-            .font(.fmDisplay(size, relativeTo: .largeTitle))
-            .tracking(1.5)
-            .mask {
+        let styled = t.font(.fmDisplay(size, relativeTo: .largeTitle)).tracking(1.5)
+        // Solid letters at 85 % with the crayon grain on top: textured, but the flecks never drop the contrast.
+        return ZStack {
+            styled.opacity(0.85)
+            styled.mask {
                 Rectangle().fill(ImagePaint(image: Image("crayon-grain"), scale: 0.5))
             }
-            .shadow(color: Palette.shadow.opacity(0.4), radius: 0.5, y: 0.5)
-            .accessibilityLabel(Text(verbatim: text))
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: text))
     }
 }
 
@@ -271,6 +277,8 @@ struct PrimaryCapsuleStyle: ButtonStyle {
     var tint: Color = Palette.primary
     var deep: Color = Palette.primaryDeep
     var ink: Color = Palette.primaryInk
+    /// false for buttons that already restyle their disabled state (keeps text contrast readable).
+    var dimsWhenDisabled = true
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
@@ -288,7 +296,7 @@ struct PrimaryCapsuleStyle: ButtonStyle {
                 }
             }
             .offset(y: configuration.isPressed ? 2 : 0)
-            .opacity(isEnabled ? 1 : 0.5)
+            .opacity(isEnabled || !dimsWhenDisabled ? 1 : 0.5)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

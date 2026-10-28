@@ -243,6 +243,23 @@
         }
       }
     },
+    "copyright.fallback" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "© Starlight Studio"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "© 星光工作室"
+          }
+        }
+      }
+    },
     "mediumCraft" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -502,6 +519,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Museum Label"
+          }
+        }
+      }
+    },
+    "作品資料庫打不開，這次收的作品不會被保存。請先存到照片，再重新開啟 App。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t open the artwork library, so nothing you hang up this time will be kept. Save to Photos first, then reopen the app."
+          }
+        }
+      }
+    },
+    "作品還在 App 裡。到「設定 › 冰箱美術館 › 照片」選「僅限加入照片」或「完整取用」，就能存到照片。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your artwork is still in the app. In Settings › My Fridge Museum › Photos, choose Add Photos Only or Full Access to save it."
           }
         }
       }
@@ -1015,6 +1054,17 @@
         }
       }
     },
+    "只存到照片" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Just Save to Photos"
+          }
+        }
+      }
+    },
     "只會刪除 App 裡的資料，已存到照片的不受影響。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1198,6 +1248,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add Birthday (Shows Age on Each Artwork)"
+          }
+        }
+      }
+    },
+    "好" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
           }
         }
       }
@@ -1541,6 +1602,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Age"
+          }
+        }
+      }
+    },
+    "建立相簿" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create Albums"
           }
         }
       }
@@ -2040,6 +2112,17 @@
         }
       }
     },
+    "沒有照片權限" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Access to Photos"
+          }
+        }
+      }
+    },
     "沒有照片權限，請到「設定 › 冰箱美術館」開啟" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2124,6 +2207,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Clear Filters"
+          }
+        }
+      }
+    },
+    "為每位小朋友建立相簿？" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create an Album for Each Child?"
           }
         }
       }
@@ -2597,6 +2691,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restore Artwork"
+          }
+        }
+      }
+    },
+    "要建立「冰箱美術館 – 小明」這樣的相簿，iPhone 會詢問是否允許取用所有照片。App 只會新增作品，不會讀取或上傳你的照片。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To make albums like “My Fridge Museum – Mia,” iPhone will ask for full Photos access. The app only adds artworks — it never reads or uploads your photos."
           }
         }
       }

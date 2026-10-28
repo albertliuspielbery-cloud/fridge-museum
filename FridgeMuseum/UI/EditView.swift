@@ -54,6 +54,8 @@ struct EditView: View {
     /// After 向左轉 / 向右轉 / 拉直 the crop tool shows the turned result; tapping 裁切 again returns to the corners.
     @State private var cropShowsResult = false
     @State private var pickingParts = false
+    /// 重拍: the capture is thrown away only after the editor is gone, so nothing renders a deleted model.
+    @State private var discardOnDisappear = false
 
     init(artwork: Artwork) {
         _artwork = Bindable(artwork)
@@ -112,6 +114,12 @@ struct EditView: View {
         .onDisappear {
             // Capture everything now: environment values must not be read after the view is gone.
             let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
+            if discardOnDisappear {
+                app.delete(artwork, context: context)
+                app.cameraRequest += 1
+                Task { await model.evictCaches() }
+                return
+            }
             Task {
                 await Self.commit(model: model, artwork: artwork, app: app, context: context)
                 await model.evictCaches()
@@ -134,10 +142,8 @@ struct EditView: View {
     private var trailingButton: some View {
         if !artwork.isKept && !artwork.isSample {
             Button {
-                let a = artwork
+                discardOnDisappear = true
                 dismiss()
-                app.delete(a, context: modelContext)
-                app.cameraRequest += 1
             } label: {
                 Label("重拍", systemImage: "camera")
                     .labelStyle(.titleAndIcon)
@@ -532,11 +538,13 @@ struct EditView: View {
     private var actionBar: some View {
         HStack(spacing: 12) {
             if artwork.isKept && !artwork.isSample {
-                ShareLink(item: shareItem, preview: SharePreview(artwork.placardTitle, image: shareImage)) {
-                    Label("分享", systemImage: "square.and.arrow.up")
+                if let shareItem {
+                    ShareLink(item: shareItem, preview: SharePreview(artwork.placardTitle, image: shareImage)) {
+                        Label("分享", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(SecondaryCapsuleStyle())
+                    .frame(maxWidth: 150)
                 }
-                .buttonStyle(SecondaryCapsuleStyle())
-                .frame(maxWidth: 150)
             } else {
                 Button(action: keep) {
                     Label("收進這次", systemImage: "plus")
@@ -563,10 +571,8 @@ struct EditView: View {
         return Image("bibi-idle")
     }
 
-    private var shareItem: ShareableArtwork {
-        ShareableArtwork(id: artwork.id, originalData: model.originalData, recipe: model.recipe,
-                         captionTitle: app.captionTitle(artwork), captionDetail: app.captionDetail(artwork),
-                         captionBackground: app.captionBackground(model.recipe))
+    private var shareItem: ShareableArtwork? {
+        ShareableArtwork(artwork: artwork, recipe: model.recipe, app: app)
     }
 
     private func keep() {
@@ -625,7 +631,7 @@ struct EditView: View {
 
     /// Writes the recipe back and re-renders the full-size output if anything changed.
     static func commit(model: EditModel, artwork: Artwork, app: AppModel, context: ModelContext) async {
-        guard model.isDirty else { return }
+        guard model.isDirty, AppModel.isAlive(artwork) else { return }
         artwork.recipe = model.recipe
         artwork.kind = model.recipe.kind
         model.markSaved()

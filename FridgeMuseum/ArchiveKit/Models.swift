@@ -117,8 +117,6 @@ final class Artwork {
         return schoolTerm.gradeLabel(birthday: b)
     }
 
-    var displayTitle: String { title.isEmpty ? "我的作品" : title }
-
     /// Shown in the museum (kept, not a sample).
     var isInMuseum: Bool { isKept && !isSample }
 }

@@ -109,5 +109,4 @@ extension Artwork {
         return s
     }
 
-    var localizedDisplayTitle: String { title.isEmpty ? String(localized: "我的作品") : title }
 }

@@ -24,10 +24,15 @@ enum DemoMode {
         }
     }
 
+    /// Demo launches exist only in Debug builds (the screenshot scheme); Release / TestFlight never reads these flags.
     private static func value(after flag: String) -> String? {
+        #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
         return args[i + 1]
+        #else
+        return nil
+        #endif
     }
 
     struct MuseumPreset {
@@ -120,10 +125,12 @@ enum DemoMode {
 
     private static func sampleData(_ kind: ArtworkKind) -> Data {
         let name = kind == .flat ? "sample-flat" : "sample-craft"
+        #if DEBUG
         if let dir = ProcessInfo.processInfo.environment["FM_SEED_DIR"],
            let d = try? Data(contentsOf: URL(fileURLWithPath: dir).appendingPathComponent("\(name).jpg")) {
             return d
         }
+        #endif
         if let url = Bundle.main.url(forResource: name, withExtension: "jpg"), let d = try? Data(contentsOf: url) { return d }
         return Data()
     }

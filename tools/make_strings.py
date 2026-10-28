@@ -77,6 +77,18 @@ EN = {
     "氣球派對": "Balloon Party",
     "國旗勞作": "Flag Craft",
 
+    "作品資料庫打不開，這次收的作品不會被保存。請先存到照片，再重新開啟 App。":
+        "Couldn’t open the artwork library, so nothing you hang up this time will be kept. Save to Photos first, then reopen the app.",
+    "為每位小朋友建立相簿？": "Create an Album for Each Child?",
+    "建立相簿": "Create Albums",
+    "只存到照片": "Just Save to Photos",
+    "要建立「冰箱美術館 – 小明」這樣的相簿，iPhone 會詢問是否允許取用所有照片。App 只會新增作品，不會讀取或上傳你的照片。":
+        "To make albums like “My Fridge Museum – Mia,” iPhone will ask for full Photos access. The app only adds artworks — it never reads or uploads your photos.",
+    "沒有照片權限": "No Access to Photos",
+    "好": "OK",
+    "作品還在 App 裡。到「設定 › 冰箱美術館 › 照片」選「僅限加入照片」或「完整取用」，就能存到照片。":
+        "Your artwork is still in the app. In Settings › My Fridge Museum › Photos, choose Add Photos Only or Full Access to save it.",
+    "copyright.fallback": ("© 星光工作室", "© Starlight Studio"),
     # Camera
     "關閉": "Close",
     "找到紙張了，按下快門": "Found the paper. Tap the shutter.",
@@ -311,6 +323,7 @@ EN = {
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),
     "CFBundleName": ("冰箱美術館", "My Fridge Museum"),
+    "NSHumanReadableCopyright": ("© 星光工作室 Starlight Studio", "© Starlight Studio"),
     "NSCameraUsageDescription": ("用相機拍下孩子的畫作和勞作。照片只會存在這支手機裡。",
                                  "Take photos of your kid’s drawings and crafts. Photos stay on this phone."),
     "NSPhotoLibraryAddUsageDescription": ("把整理好的作品存到「照片」。", "Save finished artworks to Photos."),

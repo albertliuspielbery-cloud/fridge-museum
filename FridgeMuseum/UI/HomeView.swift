@@ -40,7 +40,8 @@ struct HomeView: View {
                 .padding(.horizontal, Metrics.gutter)
             }
             .padding(.top, 8)
-            .padding(.bottom, 30)
+            // The cat and crayon cup stand ~34 pt above the counter: keep that much clear below the content.
+            .padding(.bottom, 44)
         }
         .scrollIndicators(.hidden)
         .background(Wallpaper())
@@ -89,16 +90,15 @@ struct HomeView: View {
     // MARK: Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("冰箱美術館")
-                .font(.fmDisplay(AppLanguage.isChinese ? 40 : 34, relativeTo: .largeTitle))
-                .foregroundStyle(Palette.title)
-                .lineLimit(2)
-                .minimumScaleFactor(0.7)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.trailing, 112)
-                .accessibilityAddTraits(.isHeader)
-            HStack(alignment: .bottom, spacing: 8) {
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("冰箱美術館")
+                    .font(.fmDisplay(AppLanguage.isChinese ? 40 : 34, relativeTo: .largeTitle))
+                    .foregroundStyle(Palette.title)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
                 Label {
                     Text("照片只在這支手機上處理，不會上傳")
                 } icon: {
@@ -108,7 +108,13 @@ struct HomeView: View {
                 .foregroundStyle(Palette.muted)
                 .labelStyle(TightLabelStyle())
                 .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Window art + Settings stacked in their own column, so the art can never sit on top of the button.
+            VStack(alignment: .trailing, spacing: 8) {
+                Image("kitchen-window").resizable().scaledToFit().frame(width: 88)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
                 Button(action: showSettings) {
                     HStack(spacing: 6) {
                         Image(systemName: "gearshape")
@@ -120,13 +126,11 @@ struct HomeView: View {
                     .frame(height: 38)
                     .background(Capsule().fill(Palette.surface))
                     .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 1.5))
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .fixedSize()
             }
-        }
-        .overlay(alignment: .topTrailing) {
-            Image("kitchen-window").resizable().scaledToFit().frame(width: 96).accessibilityHidden(true)
         }
         .padding(.top, 6)
         .padding(.horizontal, Metrics.gutter + 4)
@@ -163,7 +167,7 @@ struct HomeView: View {
                 .padding(.trailing, 36)
                 .accessibilityLabel(Text(verbatim: app.store.bubbleText(for: app.captureKind)))
         }
-        .padding(.vertical, 30)
+        .padding(.vertical, 20)
     }
 
     // MARK: Main door
@@ -210,7 +214,7 @@ struct HomeView: View {
         }
         .padding(.leading, 26)
         .padding(.trailing, 40)
-        .padding(.vertical, 28)
+        .padding(.vertical, 22)
     }
 
     private func workWall(title: String, items: [Artwork], count: Int?) -> some View {
@@ -228,9 +232,9 @@ struct HomeView: View {
     }
 
     private var emptyFridge: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 10) {
             Image(colorScheme == .dark ? "bibi-sleep" : "bibi-empty")
-                .resizable().scaledToFit().frame(height: 150)
+                .resizable().scaledToFit().frame(height: 96)
                 .accessibilityHidden(true)
             Text("冰箱還空空的，拍第一張作品掛上來吧")
                 .font(.fmDisplay(19, relativeTo: .headline))
@@ -288,7 +292,7 @@ extension Bundle {
     var shortVersion: String { (infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0" }
     var buildNumber: String { (infoDictionary?["CFBundleVersion"] as? String) ?? "1" }
     /// NSHumanReadableCopyright (single source: APP_COPYRIGHT in project.yml).
-    var copyright: String { (infoDictionary?["NSHumanReadableCopyright"] as? String) ?? "© 星光工作室 Starlight Studio" }
+    var copyright: String { (infoDictionary?["NSHumanReadableCopyright"] as? String) ?? String(localized: "copyright.fallback") }
 }
 
 /// A finished work on the fridge door: taped print + compact crayon placard.
@@ -300,8 +304,8 @@ struct FridgeWork: View {
         VStack(alignment: .leading, spacing: 14) {
             HungPrint(id: artwork.id, tilt: 2.5) {
                 ArtworkImage(artwork: artwork)
-                    .frame(maxWidth: .infinity)
                     .aspectRatio(artwork.aspectRatio, contentMode: .fit)
+                    .frame(maxWidth: .infinity, maxHeight: 156)
             }
             .overlay(alignment: .bottomTrailing) {
                 if processing { ProgressView().padding(10) }
@@ -401,7 +405,7 @@ struct SampleTile: View {
                 .foregroundStyle(Palette.color(for: kind))
                 .environment(\.colorScheme, .light)
             }
-            .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: 100, alignment: .topLeading)
             .padding(12)
             .padding(.top, 8)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.card))
@@ -483,12 +487,12 @@ struct CounterDock: View {
             .overlay(alignment: .bottomLeading) {
                 Image("cat-peek").resizable().scaledToFit().frame(width: 64, height: 40)
                     .alignmentGuide(.bottom) { d in d[.bottom] + 6 }
-                    .padding(.leading, 26).accessibilityHidden(true)
+                    .padding(.leading, 26).allowsHitTesting(false).accessibilityHidden(true)
             }
             .overlay(alignment: .bottomTrailing) {
                 Image("prop-crayons").resizable().scaledToFit().frame(width: 28, height: 44)
                     .alignmentGuide(.bottom) { d in d[.bottom] + 6 }
-                    .padding(.trailing, 30).accessibilityHidden(true)
+                    .padding(.trailing, 30).allowsHitTesting(false).accessibilityHidden(true)
             }
             VStack(spacing: 10) {
                 KindSwitch(kind: $kind)

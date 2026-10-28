@@ -37,6 +37,27 @@ for root, _, files in os.walk(os.path.join(repo, "FridgeMuseum")):
 text = "".join(sorted(c for c in chars if c.isprintable()))
 
 
+def tighten_punctuation(font, chars="，。、；：", advance=540):
+    """Taiwan-style fonts centre ，。、；： in a full-width box, which reads as「處理 ， 不會」in running UI text.
+    Browsers trim that space (text-spacing-trim); Core Text doesn't, so we bake a proportional (half-ish) advance
+    into these five glyphs, glyph kept centred in the narrower box."""
+    cmap = font.getBestCmap()
+    glyf, hmtx = font["glyf"], font["hmtx"]
+    for ch in chars:
+        name = cmap.get(ord(ch))
+        if not name:
+            continue
+        g = glyf[name]
+        if g.isComposite() or g.numberOfContours <= 0:
+            continue
+        g.recalcBounds(glyf)
+        width = g.xMax - g.xMin
+        dx = int(round((advance - width) / 2 - g.xMin))
+        g.coordinates.translate((dx, 0))
+        g.recalcBounds(glyf)
+        hmtx[name] = (advance, g.xMin)
+
+
 def run(font, dst):
     opts = subset.Options()
     opts.layout_features = ["*"]
@@ -48,6 +69,7 @@ def run(font, dst):
     sub = subset.Subsetter(opts)
     sub.populate(text=text)
     sub.subset(font)
+    tighten_punctuation(font)
     font.save(dst)
     print(f"{os.path.basename(dst)}: {os.path.getsize(dst) / 1e6:.2f} MB")
 

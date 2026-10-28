@@ -7,29 +7,47 @@ enum PhotoSaveError: Error {
 
 /// Saves finished images to the Photos library.
 ///
-/// Note on permissions: PhotoKit only lets an app create/fetch albums with *full* (read-write) access.
-/// With add-only (or limited) access we can still save, just not into the per-child album.
-/// So: we ask for read-write when the per-child album is wanted; if the parent declines,
-/// we fall back to add-only and save into Recents.
+/// Permissions: PhotoKit only lets an app create/fetch albums with *full* (read-write) access; with add-only or
+/// limited access we can still save, just not into the per-child album. One save never shows two system prompts:
+/// - album wanted + full access not decided yet → the app shows a short explanation first (AppModel.photosPrimer),
+///   then asks for full access once; if that is refused we stop (no second, add-only prompt right after).
+/// - album wanted but full access already refused → no prompt for full access; save with add-only (asking for it
+///   only if it was never decided).
+/// - no album → add-only.
 final class PhotoLibrarySaver: Sendable {
     struct Outcome: Sendable {
         var savedToAlbum: Bool
     }
 
+    /// The album needs a full-access decision the app should explain first.
+    static var needsAlbumPrimer: Bool {
+        PHPhotoLibrary.authorizationStatus(for: .readWrite) == .notDetermined
+    }
+
     func save(jpeg: Data, albumTitle: String?, creationDate: Date?) async throws -> Outcome {
         var albumID: String?
+        var canAdd = false
+        var prompted = false
         if let albumTitle {
             var status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
             if status == .notDetermined {
                 status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+                prompted = true
             }
-            if status == .authorized {
+            switch status {
+            case .authorized:
                 albumID = try? await ensureAlbum(titled: albumTitle)
+                canAdd = true
+            case .limited:
+                canAdd = true   // limited library can still add new photos (no album)
+            default:
+                if prompted { throw PhotoSaveError.denied }
             }
         }
-        if albumID == nil {
+        if !canAdd {
             var add = PHPhotoLibrary.authorizationStatus(for: .addOnly)
             if add == .notDetermined {
+                if prompted { throw PhotoSaveError.denied }
                 add = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
             }
             guard add == .authorized || add == .limited else { throw PhotoSaveError.denied }

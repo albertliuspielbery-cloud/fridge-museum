@@ -1,3 +1,4 @@
+import UIKit
 import SwiftData
 import SwiftUI
 
@@ -13,6 +14,7 @@ struct RootView: View {
     @State private var path = NavigationPath()
     @State private var showSettings = false
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         @Bindable var app = app
@@ -28,6 +30,9 @@ struct RootView: View {
                         ArtworkLoader(id: id) { EditView(artwork: $0) }
                     }
                 }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if ArchiveStore.isTemporary { TemporaryStoreBanner() }
         }
         .overlay(alignment: .top) {
             if let toast = app.toast {
@@ -53,6 +58,20 @@ struct RootView: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
+        }
+        .alert(Text("為每位小朋友建立相簿？"), isPresented: Binding(get: { app.photosPrimer != nil }, set: { if !$0 { app.photosPrimer = nil } }),
+               presenting: app.photosPrimer) { primer in
+            Button { app.continueSave(after: primer, albums: true, context: modelContext) } label: { Text("建立相簿") }
+            Button { app.continueSave(after: primer, albums: false, context: modelContext) } label: { Text("只存到照片") }
+            Button(role: .cancel) { app.photosPrimer = nil } label: { Text("取消") }
+        } message: { _ in
+            Text("要建立「冰箱美術館 – 小明」這樣的相簿，iPhone 會詢問是否允許取用所有照片。App 只會新增作品，不會讀取或上傳你的照片。")
+        }
+        .alert(Text("沒有照片權限"), isPresented: $app.photosDeniedAlert) {
+            Button { openURL(URL(string: UIApplication.openSettingsURLString)!) } label: { Text("打開設定") }
+            Button(role: .cancel) {} label: { Text("好") }
+        } message: {
+            Text("作品還在 App 裡。到「設定 › 冰箱美術館 › 照片」選「僅限加入照片」或「完整取用」，就能存到照片。")
         }
         .onChange(of: app.pendingRoute) { _, route in
             guard let route else { return }
@@ -96,6 +115,24 @@ struct ArtworkLoader<Content: View>: View {
             }
             .background(Wallpaper())
         }
+    }
+}
+
+/// Shown for the whole session when the database couldn't be opened and works only live in memory.
+struct TemporaryStoreBanner: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Color(0xFFD45A, 0xFFD45A))
+            Text("作品資料庫打不開，這次收的作品不會被保存。請先存到照片，再重新開啟 App。")
+                .font(.fm(14, bold: true))
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(0xA8341F, 0x8A2A18))
+        .accessibilityElement(children: .combine)
     }
 }
 

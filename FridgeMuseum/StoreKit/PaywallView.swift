@@ -38,6 +38,7 @@ struct PaywallView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     perks
                     ticket
+                    if isUnavailable { unavailableNotice }
                     Label {
                         Text(PaywallText.familySharing)
                             .fixedSize(horizontal: false, vertical: true)
@@ -164,21 +165,45 @@ struct PaywallView: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// Price never loaded (offline / product not available): explain it full width under the ticket.
+    private var isUnavailable: Bool {
+        store.displayPrice == nil && store.hasLoaded && !store.isLoading
+    }
+
     @ViewBuilder private var priceText: some View {
         if let price = store.displayPrice {
             Text(price)
-        } else if store.isLoading || !store.hasLoaded {
-            ProgressView().accessibilityLabel(PaywallText.priceLoading)
+        } else if isUnavailable {
+            Text(verbatim: "—").accessibilityHidden(true)
         } else {
-            VStack(spacing: 6) {
-                Text(PaywallText.priceUnavailable)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                Button(PaywallText.retry) { Task { await store.load() } }
-                    .font(.footnote.weight(.semibold))
-            }
+            ProgressView().accessibilityLabel(PaywallText.priceLoading)
         }
+    }
+
+    private var unavailableNotice: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "wifi.exclamationmark")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Palette.warn)
+            Text(PaywallText.priceUnavailable)
+                .font(.fm(15))
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            Button { Task { await store.load() } } label: {
+                Text(PaywallText.retry)
+                    .font(.fm(15, bold: true))
+                    .foregroundStyle(Palette.tealInk)
+                    .padding(.horizontal, 14)
+                    .frame(height: 40)
+                    .background(Capsule().fill(Palette.tealSoft))
+            }
+            .buttonStyle(.plain)
+            .fixedSize()
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.surface2))
     }
 
     private var buttons: some View {
@@ -189,12 +214,16 @@ struct PaywallView: View {
                         ProgressView()
                     } else if let price = store.displayPrice {
                         Text(PaywallText.unlock(price: price))
+                    } else if isUnavailable {
+                        Text(PaywallText.purchaseUnavailable)
                     } else {
-                        Text(PaywallText.productName)
+                        Text(PaywallText.priceLoading)
                     }
                 }
             }
-            .buttonStyle(PrimaryCapsuleStyle())
+            .buttonStyle(store.displayPrice == nil
+                         ? PrimaryCapsuleStyle(tint: Palette.surface2, deep: Palette.line, ink: Palette.muted, dimsWhenDisabled: false)
+                         : PrimaryCapsuleStyle())
             .disabled(store.displayPrice == nil || store.isPurchasing)
 
             Button { dismiss() } label: {
@@ -336,6 +365,7 @@ enum PaywallText {
     static var failed: String { text("paywall.failed") }
     static var noPurchase: String { text("paywall.noPurchase") }
     static var restored: String { text("paywall.restored") }
+    static var purchaseUnavailable: String { text("paywall.purchaseUnavailable") }
 }
 
 #Preview("Flat") {

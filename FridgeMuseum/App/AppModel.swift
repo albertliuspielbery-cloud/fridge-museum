@@ -61,12 +61,29 @@ final class AppModel {
     let store = StoreBridge()
 
     @ObservationIgnored private var toastTask: Task<Void, Never>?
+    /// Background processing per artwork, so deleting (重拍, a replaced sample) can cancel it first.
+    @ObservationIgnored private var processTasks: [UUID: Task<Void, Never>] = [:]
+    /// Photos access was refused and we already explained it once (Settings button); later refusals only toast.
+    var photosDeniedAlert = false
+    /// Short explanation shown right before the first full-access (album) request.
+    var photosPrimer: PhotosPrimer?
+
+    struct PhotosPrimer: Identifiable, Equatable {
+        let id = UUID()
+        let artworkID: UUID
+    }
+
+    /// The artwork still exists in a context (not deleted by 重拍 / a replaced sample / the trash button).
+    static func isAlive(_ artwork: Artwork) -> Bool {
+        !artwork.isDeleted && artwork.modelContext != nil
+    }
 
     enum Keys {
         static let captureKind = "captureKind"
         static let currentChild = "currentChildID"
         /// Per-child Photos album on save (needs full Photos access; falls back to Recents).
         static let useAlbums = "useAlbums"
+        static let photosDeniedExplained = "photosDeniedExplained"
     }
 
     init() {
@@ -106,7 +123,11 @@ final class AppModel {
         artwork.isSample = isSample
         context.insert(artwork)
         try? context.save()
-        Task { await autoProcess(artwork, context: context) }
+        let id = artwork.id
+        processTasks[id] = Task { [weak self] in
+            await self?.autoProcess(artwork, context: context)
+            self?.processTasks[id] = nil
+        }
         return artwork
     }
 
@@ -116,7 +137,7 @@ final class AppModel {
               let data = try? Data(contentsOf: url) else { return nil }
         let existing = try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.isSample && !$0.isKept }))
         for old in existing ?? [] where old.kind == kind {
-            context.delete(old)
+            delete(old, context: context)
         }
         let a = ingest(data, kind: kind, child: nil, capturedAt: Date(), context: context, isSample: true)
         a.title = kind == .flat ? String(localized: "氣球派對") : String(localized: "國旗勞作")
@@ -124,14 +145,16 @@ final class AppModel {
     }
 
     func autoProcess(_ artwork: Artwork, context: ModelContext) async {
-        guard let data = artwork.originalImageData else { return }
+        guard Self.isAlive(artwork), let data = artwork.originalImageData else { return }
         let id = artwork.id
         processingIDs.insert(id)
         artwork.processingState = .processing
         defer { processingIDs.remove(id) }
         var recipe = artwork.recipe
         if recipe.kind == .flat && recipe.corners == nil {
-            recipe.corners = await processor.detectCorners(id: id, originalData: data)
+            let corners = await processor.detectCorners(id: id, originalData: data)
+            guard !Task.isCancelled, Self.isAlive(artwork) else { return }
+            recipe.corners = corners
         }
         artwork.recipe = recipe
         await rerender(artwork, context: context)
@@ -139,11 +162,13 @@ final class AppModel {
 
     /// Full-resolution render from the original + recipe; stores rendered JPEG + thumbnail.
     func rerender(_ artwork: Artwork, context: ModelContext) async {
-        guard let data = artwork.originalImageData else { return }
+        guard Self.isAlive(artwork), let data = artwork.originalImageData else { return }
         let id = artwork.id
         let recipe = artwork.recipe
         do {
             let out = try await processor.export(id: id, originalData: data, recipe: recipe)
+            // The artwork may have been deleted (重拍) while the render ran: never write to a deleted model.
+            guard !Task.isCancelled, Self.isAlive(artwork) else { return }
             artwork.renderedImageData = out.imageData
             artwork.thumbnailData = out.thumbnailData
             artwork.pixelWidth = out.pixelWidth
@@ -151,6 +176,7 @@ final class AppModel {
             artwork.renderVersion += 1
             artwork.processingState = .done
         } catch {
+            guard Self.isAlive(artwork) else { return }
             artwork.processingState = .failed
         }
         try? context.save()
@@ -207,12 +233,36 @@ final class AppModel {
 
     // MARK: Save / share
 
-    /// The exported JPEG including the optional caption band.
-    func finalJPEG(for artwork: Artwork, context: ModelContext) async -> Data? {
-        if artwork.renderedImageData == nil || artwork.processingState != .done {
-            await rerender(artwork, context: context)
+    /// The parent answered the album explanation: `albums` = 建立相簿 (ask iOS for full access) or 只存到照片.
+    func continueSave(after primer: PhotosPrimer, albums: Bool, context: ModelContext) {
+        photosPrimer = nil
+        if !albums { UserDefaults.standard.set(false, forKey: Keys.useAlbums) }
+        let id = primer.artworkID
+        guard let artwork = try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.id == id })).first else { return }
+        let wasPending = !artwork.isKept
+        Task {
+            if await saveToPhotos(artwork, context: context, primed: true), wasPending { popToRoot += 1 }
         }
-        guard let jpeg = artwork.renderedImageData else { return nil }
+    }
+
+    /// The exported JPEG including the optional caption band.
+    /// Rendered fresh at the final export size (up to 4096 px, see ImageProcessor.finalExportMaxEdge); falls back to
+    /// the stored 2400 px render if that fails (e.g. memory pressure).
+    func finalJPEG(for artwork: Artwork, context: ModelContext) async -> Data? {
+        guard Self.isAlive(artwork) else { return nil }
+        var jpeg: Data?
+        if let data = artwork.originalImageData {
+            let recipe = artwork.recipe
+            jpeg = try? await processor.export(id: artwork.id, originalData: data, recipe: recipe,
+                                               maxEdge: ImageProcessor.finalExportMaxEdge(for: recipe.kind)).imageData
+        }
+        if jpeg == nil {
+            if artwork.renderedImageData == nil || artwork.processingState != .done {
+                await rerender(artwork, context: context)
+            }
+            jpeg = artwork.renderedImageData
+        }
+        guard Self.isAlive(artwork), let jpeg else { return nil }
         guard artwork.recipe.caption else { return jpeg }
         let bg = captionBackground(artwork.recipe)
         return CaptionComposer.composeJPEG(jpeg, title: captionTitle(artwork), detail: captionDetail(artwork), background: bg) ?? jpeg
@@ -236,8 +286,13 @@ final class AppModel {
     }
 
     /// Saves to Photos (per-child album when full access is granted). Counts as keeping the artwork.
-    func saveToPhotos(_ artwork: Artwork, context: ModelContext, quiet: Bool = false) async -> Bool {
+    func saveToPhotos(_ artwork: Artwork, context: ModelContext, quiet: Bool = false, primed: Bool = false) async -> Bool {
         guard admit(artwork, action: .save) else { return false }
+        // First album save: explain why full Photos access is useful before iOS asks (PhotosPrimerAlert).
+        if !primed, UserDefaults.standard.bool(forKey: Keys.useAlbums), PhotoLibrarySaver.needsAlbumPrimer {
+            photosPrimer = PhotosPrimer(artworkID: artwork.id)
+            return false
+        }
         guard let jpeg = await finalJPEG(for: artwork, context: context) else {
             if !quiet { show(String(localized: "處理失敗，請重試"), style: .problem) }
             return false
@@ -257,7 +312,12 @@ final class AppModel {
             }
             return true
         } catch PhotoSaveError.denied {
-            show(String(localized: "沒有照片權限，請到「設定 › 冰箱美術館」開啟"), style: .problem, seconds: 4)
+            if UserDefaults.standard.bool(forKey: Keys.photosDeniedExplained) {
+                show(String(localized: "沒有照片權限，請到「設定 › 冰箱美術館」開啟"), style: .problem, seconds: 4)
+            } else {
+                UserDefaults.standard.set(true, forKey: Keys.photosDeniedExplained)
+                photosDeniedAlert = true
+            }
             return false
         } catch {
             if !quiet { show(String(localized: "儲存失敗"), style: .problem) }
@@ -265,16 +325,22 @@ final class AppModel {
         }
     }
 
+    /// Saves several artworks; stops at the first one the free quota blocks (the paywall shows once).
     func saveAll(_ artworks: [Artwork], context: ModelContext) async {
         var ok = 0
-        for a in artworks {
-            if await saveToPhotos(a, context: context, quiet: true) { ok += 1 }
+        for a in artworks where Self.isAlive(a) {
+            if await saveToPhotos(a, context: context, quiet: true) {
+                ok += 1
+            } else if paywall != nil || photosDeniedAlert || photosPrimer != nil {
+                break
+            }
         }
-        show(String(localized: "已存 \(ok) 張到照片"))
+        if ok > 0 { show(String(localized: "已存 \(ok) 張到照片")) }
     }
 
     func delete(_ artwork: Artwork, context: ModelContext) {
         let id = artwork.id
+        processTasks.removeValue(forKey: id)?.cancel()
         sessionArtworkIDs.removeAll { $0 == id }
         context.delete(artwork)
         try? context.save()
