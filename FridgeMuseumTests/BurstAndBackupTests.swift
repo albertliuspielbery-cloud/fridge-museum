@@ -40,7 +40,7 @@ struct BurstAndBackupTests {
         app.endBurst(context: context)
         #expect(!app.isBursting)
         #expect(!app.isEditorBusy)
-        for _ in 0..<200 where first.processingState != .failed || second.processingState != .failed {
+        for _ in 0..<600 where first.processingState != .failed || second.processingState != .failed {
             try await Task.sleep(for: .milliseconds(50))
         }
         #expect(first.processingState == .failed)
@@ -64,6 +64,170 @@ struct BurstAndBackupTests {
         try await Task.sleep(for: .milliseconds(300))
         #expect(shot.processingState == .pending)
         app.endEditing(open.id, context: context)
+    }
+
+    /// At launch, unfinished captures (e.g. a burst cut short) go through the queue: nothing starts while an editor
+    /// is open, and afterwards they run one at a time.
+    @Test func launchQueuesUnfinishedCapturesInsteadOfStartingThemAll() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let open = makeArtwork(.craft, kept: true, createdAt: day(2026, 10, 1), in: context)
+        let shots = (2...4).map { makeArtwork(.craft, createdAt: day(2026, 10, $0), in: context) }
+        try context.save()
+
+        app.beginEditing(open.id)
+        app.processUnfinished(context: context)
+        try await Task.sleep(for: .milliseconds(300))
+        let allHeld = shots.allSatisfy { $0.processingState == .pending }
+        #expect(allHeld)
+        #expect(app.processingIDs.isEmpty)
+
+        app.endEditing(open.id, context: context)
+        // Wall-clock deadline, not an iteration count: the exports go through the shared ImageProcessor actor, which
+        // other suites (real-photo pipeline tests) keep busy when tests run in parallel. A 4 s budget timed out on CI.
+        var mostAtOnce = 0
+        let deadline = Date().addingTimeInterval(30)
+        while shots.contains(where: { $0.processingState != .failed }) && Date() < deadline {
+            mostAtOnce = max(mostAtOnce, app.processingIDs.count)
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        for shot in shots {
+            #expect(shot.processingState == .failed)   // its export ran (the test data isn't a real image)
+        }
+        #expect(mostAtOnce <= 1)                       // never two at once
+    }
+
+    /// Stepping through pending captures: an edited artwork's render waits for the open editor, then runs even
+    /// though an older render exists.
+    @Test func renderLaterWaitsForTheEditorAndRerendersAnEditedArtwork() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let edited = makeArtwork(.craft, kept: true, in: context)
+        edited.renderedImageData = Data([9])
+        edited.processingState = .done
+        let next = makeArtwork(.craft, in: context)
+        try context.save()
+
+        app.beginEditing(next.id)
+        app.renderLater(edited, context: context, stale: true)
+        try await Task.sleep(for: .milliseconds(300))
+        // Waiting, and marked unfinished in the store (survives the app being closed).
+        #expect(edited.processingState == .pending)
+        #expect(edited.renderedImageData == Data([9]))
+
+        app.endEditing(next.id, context: context)
+        for _ in 0..<600 where edited.processingState != .failed {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(edited.processingState == .failed)   // the render ran (test data isn't a real image)
+    }
+
+    /// The app is closed before the queue reaches an edited artwork: the next launch re-renders it, even though it
+    /// has an (outdated) render.
+    @Test func editedArtworkIsReRenderedAfterARelaunch() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let edited = makeArtwork(.craft, kept: true, in: context)
+        edited.renderedImageData = Data([9])
+        edited.processingState = .done
+        let next = makeArtwork(.craft, in: context)
+        let untouched = makeArtwork(.craft, kept: true, in: context)
+        untouched.renderedImageData = Data([7])
+        untouched.processingState = .done
+        try context.save()
+
+        let before = AppModel()
+        before.beginEditing(next.id)   // the walk's next editor is open when the app is closed
+        before.renderLater(edited, context: context, stale: true)
+
+        // Next launch: a fresh model (the in-memory queue is gone) over the same store.
+        let after = AppModel()
+        after.processUnfinished(context: ModelContext(container))
+        let editedID = edited.id, untouchedID = untouched.id
+        // A fresh context per look, so it reads what the other context saved.
+        func state(_ id: UUID) -> ProcessingState? {
+            (try? ModelContext(container).fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.id == id })).first)?.processingState
+        }
+        for _ in 0..<600 where state(editedID) != .failed {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(state(editedID) == .failed)       // the re-render ran (test data isn't a real image)
+        #expect(state(untouchedID) == .done)      // a finished artwork is left alone
+        before.endEditing(next.id, context: context)
+    }
+
+    /// A single 存到手機 that comes in while a batch item is exporting goes next, before the batch's next item.
+    @Test func exportGateLetsAWaitingSingleSaveGoBeforeTheNextBatchItem() async {
+        let gate = ExportGate()
+        let log = OrderLog()
+        await gate.enter()                     // batch item 1 is exporting
+        let single = Task {
+            await gate.enter()
+            log.items.append("single")
+            gate.leave()
+        }
+        while gate.waitingCount < 1 { await Task.yield() }
+        gate.leave()                           // batch item 1 done
+        await gate.enter()                     // batch item 2 asks right away
+        log.items.append("batch 2")
+        gate.leave()
+        await single.value
+        #expect(log.items == ["single", "batch 2"])
+        #expect(gate.waitingCount == 0)
+    }
+
+    @Test func exportGateIsFreeWhenNobodyWaits() async {
+        let gate = ExportGate()
+        await gate.enter()
+        gate.leave()
+        await gate.enter()   // would hang if the slot weren't released
+        gate.leave()
+        #expect(gate.waitingCount == 0)
+    }
+
+    /// Nothing edited and already rendered: renderLater has nothing to do.
+    @Test func renderLaterSkipsAnUneditedRenderedArtwork() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let rendered = makeArtwork(.craft, kept: true, in: context)
+        rendered.renderedImageData = Data([9])
+        rendered.processingState = .done
+        try context.save()
+
+        app.renderLater(rendered, context: context, stale: false)
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(rendered.processingState == .done)
+        #expect(rendered.renderedImageData == Data([9]))
+    }
+
+    /// 全部存到照片 waits while an editor is open, then carries on.
+    @Test func saveAllWaitsWhileAnEditorIsOpen() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let open = makeArtwork(.craft, kept: true, in: context)
+        let a = makeArtwork(.craft, kept: true, in: context)
+        let b = makeArtwork(.craft, kept: true, in: context)
+        try context.save()
+
+        let openID = open.id
+        app.beginEditing(openID)
+        // The editor closes 0.4 s from now (only Sendable values cross into the task).
+        Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            app.endEditing(openID, context: ModelContext(container))
+        }
+        let started = Date()
+        // primed: skip the album explanation (the test data can't be exported, so nothing reaches Photos).
+        await app.saveAll([a, b], context: context, primed: true, addsToSession: false)
+        #expect(Date().timeIntervalSince(started) >= 0.35)   // it waited for the editor
+        #expect(app.saveAllProgress == nil)
+        #expect(a.processingState == .failed)
+        #expect(b.processingState == .failed)
+        #expect(app.sessionArtworkIDs.isEmpty)
     }
 
     @Test func endBurstWithoutABurstIsANoOp() throws {
@@ -184,4 +348,10 @@ struct BurstAndBackupTests {
         #expect(!BackupReminder.needsBackup(saved))
         #expect(BackupReminder.needsBackup(older))
     }
+}
+
+/// Order of events across tasks in the ExportGate test (main-actor class, so tasks can share it).
+@MainActor
+final class OrderLog {
+    var items: [String] = []
 }

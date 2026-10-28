@@ -195,7 +195,7 @@ struct AvatarArtworkPicker: View {
                     ForEach(artworks) { a in
                         Button { picked = a } label: { cell(a) }
                             .buttonStyle(.plain)
-                            .accessibilityLabel(Text(verbatim: a.title.isEmpty ? String(localized: "作品") : a.title))
+                            .accessibilityLabel(Text(verbatim: Self.label(for: a)))
                     }
                 }
                 .padding(Metrics.gutter)
@@ -213,6 +213,12 @@ struct AvatarArtworkPicker: View {
                 }
             }
         }
+    }
+
+    /// VoiceOver: the title, or 作品 + its date so untitled artworks can be told apart.
+    static func label(for a: Artwork) -> String {
+        if !a.title.isEmpty { return a.title }
+        return String(localized: "作品") + " " + AppLanguage.placardDate(a.capturedAt)
     }
 
     private func cell(_ a: Artwork) -> some View {

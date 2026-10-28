@@ -385,7 +385,7 @@ EN_BATCH = {
     "拍給：%@": "Artist: %@",
     "新作品的小朋友": "Artist for new photos",
     # Home sticky note
-    "全部收進": "Hang Up All",
+    "全部收進": "Hang Them All Up",
     "已把 %lld 張掛上冰箱。": {"one": "1 artwork is on the fridge.", "other": "%lld artworks are on the fridge."},
 }
 EN.update(EN_BATCH)

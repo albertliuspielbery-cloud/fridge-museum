@@ -262,7 +262,7 @@ struct CaptureChildMenu: View {
     @ViewBuilder
     private var avatar: some View {
         if let c = current {
-            AvatarDot(hex: c.avatarColorHex, name: c.displayName, size: style == .camera ? 44 : 24)
+            ChildAvatar(child: c, size: style == .camera ? 44 : 24)
         } else {
             Image(systemName: "person.crop.circle")
                 .font(.system(size: style == .camera ? 40 : 22, weight: .regular))

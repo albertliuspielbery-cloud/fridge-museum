@@ -161,6 +161,9 @@ struct EditView: View {
         .onDisappear {
             // Capture everything now: environment values must not be read after the view is gone.
             let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
+            // Stepping through pending captures: this one's full-size render waits in the queue (it runs after the
+            // walk) instead of alongside the next editor's previews. Read before continuePendingWalk ends the walk.
+            let rendersLater = advancesPendingWalk && app.isWalkingPending
             // Before endEditing: the next capture is claimed first, so held exports don't start in between.
             if advancesPendingWalk {
                 app.continuePendingWalk(after: artwork.id, context: context)
@@ -175,7 +178,13 @@ struct EditView: View {
                 return
             }
             Task {
-                await Self.commit(model: model, artwork: artwork, app: app, context: context)
+                if rendersLater {
+                    let edited = model.isDirty
+                    await Self.commit(model: model, artwork: artwork, app: app, context: context, render: false)
+                    app.renderLater(artwork, context: context, stale: edited)
+                } else {
+                    await Self.commit(model: model, artwork: artwork, app: app, context: context)
+                }
                 await model.evictCaches()
             }
         }
@@ -680,7 +689,11 @@ struct EditView: View {
 
     private func keep() {
         let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
-        Task { await Self.commit(model: model, artwork: artwork, app: app, context: context) }
+        // Stepping through pending captures: the commit (and its render) happens when the editor closes, queued
+        // behind the walk (onDisappear → AppModel.renderLater).
+        if !app.isWalkingPending {
+            Task { await Self.commit(model: model, artwork: artwork, app: app, context: context) }
+        }
         if app.keep(artwork, context: context) {
             advancesPendingWalk = true
             dismiss()
@@ -824,7 +837,7 @@ struct DuplicateNotice: View {
                 .foregroundStyle(Color.white)
                 .lineLimit(1)
                 .padding(.horizontal, 14)
-                .frame(height: 34)
+                .frame(minHeight: 34)
                 .background(Capsule().fill(Palette.teal))
         }
         .buttonStyle(.plain)
@@ -837,7 +850,7 @@ struct DuplicateNotice: View {
                 .foregroundStyle(Palette.red)
                 .lineLimit(1)
                 .padding(.horizontal, 12)
-                .frame(height: 34)
+                .frame(minHeight: 34)
                 .overlay(Capsule().strokeBorder(Palette.red, lineWidth: 1.5))
                 .contentShape(Capsule())
         }
