@@ -111,10 +111,12 @@ nonisolated func originalPoint(fromOutputPoint p: CGPoint, in result: PreviewRes
 
 Cast shadows (1.0.1, flat only, no recipe field): when the sheet was found or the user set corners (quad ≠ full),
 `IlluminationEstimator.model(_:shadows: true)` also runs `ShadowEstimator` on the cell grid. It finds shadowed paper
-(smooth, darker, one level and tint per region, grown over crayon / ink with each block's brightest 10 % of pixels)
+(smooth, darker, one level and tint per region, reaching the sheet's border or attached to a region that does, grown
+over crayon / ink with each block's brightest 10 % of pixels)
 and returns `FlattenModel.shadow` (light / high / low grids). `renderFlat` then divides with `fmFlattenDivideShadow`,
 which at a shadow edge takes the light from the pixel itself (guide: a 4 px@1600 morphological closing, so thin ink
-survives). No shadow found → `shadow == nil` and the output is exactly the v0.9 one. Not for paintCovered sheets.
+survives). No shadow found → `shadow == nil` and the output is exactly the v0.9 one. Not for paintCovered sheets; on coloured
+paper the shadow gain is capped at 2.5× and the edge step is off (plain divide).
 
 ## Tap-to-keep (pure helpers, call on the main actor)
 

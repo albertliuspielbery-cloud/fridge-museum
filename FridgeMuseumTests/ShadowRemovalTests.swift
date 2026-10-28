@@ -19,7 +19,7 @@ struct ShadowRemovalTests {
         case .none: return 0
         case .hard: return (fx < 0.42 * w && fy > 0.55 * h) ? 1 : 0
         case .soft:
-            let dx = (fx - 0.3 * w) / (0.25 * w), dy = (fy - 0.35 * h) / (0.2 * h)
+            let dx = (fx - 0.2 * w) / (0.25 * w), dy = (fy - 0.35 * h) / (0.2 * h)   // enters at the left edge
             return 1 - smoothStep(Float(0.8), 1.2, (dx * dx + dy * dy).squareRoot())
         }
     }
@@ -52,6 +52,39 @@ struct ShadowRemovalTests {
                     return UInt8(((base + noise) * f).rounded().clamped(0, 255))
                 }
                 img.set(x, y, (v(c.0, tint.0), v(c.1, tint.1), v(c.2, tint.2)))
+            }
+        }
+        return img
+    }
+
+    /// Shadow-free white sheet with a flat mid-grey ellipse in the middle (poster-paint cloud), optionally outlined.
+    static func greyShapeSheet(outline: Bool) -> RGBA8Image {
+        var img = sheet(.none)
+        for y in 0..<height {
+            for x in 0..<width {
+                let dx = Float(x - 450) / 170, dy = Float(y - 620) / 130
+                let d = dx * dx + dy * dy
+                if d < 1 {
+                    img.set(x, y, (128, 128, 128))
+                } else if outline && d < 1.12 {
+                    img.set(x, y, (25, 25, 25))
+                }
+            }
+        }
+        return img
+    }
+
+    /// Light-blue construction paper with a neutral 50 % shadow over the left 40 % (entering from the edge).
+    static func blueSheet() -> RGBA8Image {
+        var img = RGBA8Image(width: width, height: height)
+        var seed: UInt32 = 777
+        for y in 0..<height {
+            for x in 0..<width {
+                seed = seed &* 1_664_525 &+ 1_013_904_223
+                let noise = Float(Int(seed >> 29) - 3) * 0.67
+                let f: Float = Float(x) < 0.4 * Float(width) ? 0.5 : 1
+                func v(_ base: Float) -> UInt8 { UInt8(((base + noise) * f).rounded().clamped(0, 255)) }
+                img.set(x, y, (v(170), v(200), v(235)))
             }
         }
         return img
@@ -114,6 +147,32 @@ struct ShadowRemovalTests {
             #expect(c.z < 0.88)          // …but still clearly yellow (blue well below red)
             #expect(c.x - c.z > 0.1)
         }
+    }
+
+    @Test func greyFilledShapeIsNotTakenForAShadow() {
+        for outline in [false, true] {
+            let img = Self.greyShapeSheet(outline: outline)
+            let plain = IlluminationEstimator.model(img)
+            let withDetection = IlluminationEstimator.model(img, shadows: true)
+            #expect(withDetection.shadow == nil)
+            #expect(withDetection == plain)
+        }
+    }
+
+    @Test func colouredPaperShadowIsEvenedWithoutBlowOut() {
+        let img = Self.blueSheet()
+        let m = IlluminationEstimator.model(img, shadows: true)
+        #expect(m.mode == .colored)
+        #expect(m.shadow != nil)
+        let shadowed = Self.flattenedMean(img, m, x: 60..<300, y: 500..<700)
+        let lit = Self.flattenedMean(img, m, x: 500..<800, y: 500..<700)
+        // shadow evened out: same colour as the lit paper…
+        #expect(abs(shadowed.x - lit.x) < 0.05 && abs(shadowed.y - lit.y) < 0.05 && abs(shadowed.z - lit.z) < 0.05)
+        // …which keeps its blue (not whitened, not blown out)
+        #expect(lit.z - lit.x > 0.15)
+        #expect(lit.max() < 0.99)
+        // the gain under the shadow stays bounded (grey map, ≥ 1/2.5)
+        #expect(m.map.allSatisfy { $0 >= 0.39 })
     }
 
     // MARK: End to end (ImageProcessor, Core Image kernel)

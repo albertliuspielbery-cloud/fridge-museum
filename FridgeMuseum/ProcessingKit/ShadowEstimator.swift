@@ -34,6 +34,9 @@ enum ShadowEstimator {
     static let minRegionFraction = 0.004
     static let regionRhoMax: Float = 0.85
     static let regionRhoMin: Float = 0.12
+    /// A shadow region must come this close (cells) to the paper border, or lie within `attachCells` of one that does.
+    static let borderCells = 3
+    static let attachCells = 4
     /// One shadow level per region: neighbours differ by less than this in ln(ratio).
     static let stepLog: Float = 0.12
     /// …and by less than this in chromaticity (sum of |r/Σ − r'/Σ'|).
@@ -50,6 +53,8 @@ enum ShadowEstimator {
     static let rangeRadius = 3
     static let floorK: Float = 0.08
     static let litLow: Float = 0.3
+    /// Coloured paper: the shadow may brighten by at most this factor (v0.9's colored map allows 1.6×).
+    static let coloredMaxGain: Float = 2.5
 
     @inline(__always) static func lum(_ r: Float, _ g: Float, _ b: Float) -> Float { 0.299 * r + 0.587 * g + 0.114 * b }
 
@@ -88,30 +93,41 @@ enum ShadowEstimator {
         var inSeed = [Bool](repeating: false, count: n)
         var seedRho = [Float](repeating: 0, count: n)
         var seedTint = [SIMD3<Float>](repeating: .zero, count: n)
-        var accepted: [(cells: [Int], rho: Float, tint: SIMD3<Float>)] = []
+        var candidates: [(cells: [Int], rho: Float, tint: SIMD3<Float>, atBorder: Bool)] = []
         for cells in regions where cells.count >= minSize {
             let md = ImageOps.median(cells.map { rho[$0] })
             guard md >= regionRhoMin && md < regionRhoMax else { continue }
             let t = SIMD3<Float>(ImageOps.median(cells.map { tint[$0].x }), ImageOps.median(cells.map { tint[$0].y }),
                                  ImageOps.median(cells.map { tint[$0].z }))
-            accepted.append((cells: cells, rho: md, tint: t))
+            let atBorder = cells.contains { c in
+                let x = c % w, y = c / w
+                return x < borderCells || y < borderCells || x >= w - borderCells || y >= h - borderCells
+            }
+            candidates.append((cells: cells, rho: md, tint: t, atBorder: atBorder))
         }
+        // A cast shadow (phone, hand) enters the sheet from outside: keep regions that reach the paper border, and
+        // regions attached to a kept one (a second shadow level). A grey fill in the middle of the drawing (paint,
+        // marker, a printed grey area – outlined or not) never qualifies.
+        var candidateOwner = [Int](repeating: -1, count: n)
+        for (ri, reg) in candidates.enumerated() { for c in reg.cells { candidateOwner[c] = ri } }
+        let attached = candidates.indices.map { regionsNear($0, candidates[$0].cells, owner: candidateOwner, radius: attachCells, w, h) }
+        var keep = candidates.map { $0.atBorder }
+        var changed = true
+        while changed {
+            changed = false
+            for ri in candidates.indices where !keep[ri] && attached[ri].contains(where: { keep[$0] }) {
+                keep[ri] = true
+                changed = true
+            }
+        }
+        let accepted = candidates.indices.filter { keep[$0] }.map { (cells: candidates[$0].cells, rho: candidates[$0].rho, tint: candidates[$0].tint) }
         // A smaller region at the same level but with another tint right next to a bigger one is a colour patch
         // lying in the shadow (pale marker, smooth crayon), not a second shadow: drop it.
         var owner = [Int](repeating: -1, count: n)
         for (ri, reg) in accepted.enumerated() { for c in reg.cells { owner[c] = ri } }
         var dropped = Set<Int>()
         for (ri, reg) in accepted.enumerated() {
-            var touching = Set<Int>()
-            for c in reg.cells {
-                let x = c % w, y = c / w
-                for yy in max(0, y - 2)...min(h - 1, y + 2) {
-                    for xx in max(0, x - 2)...min(w - 1, x + 2) {
-                        let o = owner[yy * w + xx]
-                        if o >= 0 && o != ri { touching.insert(o) }
-                    }
-                }
-            }
+            let touching = regionsNear(ri, reg.cells, owner: owner, radius: 2, w, h)
             for o in touching {
                 let other = accepted[o]
                 if abs(log(reg.rho / other.rho)) < growSeedLog, tintDistance(reg.tint, other.tint) >= tintTolerance,
@@ -249,15 +265,16 @@ enum ShadowEstimator {
             }
         }
         if a.mode == .colored {
-            // coloured paper: light only, as grey gain maps (like the v0.9 colored map)
-            func grey(_ m: inout [Float]) {
-                for i in 0..<n {
-                    let l = max(lum(m[i * 4], m[i * 4 + 1], m[i * 4 + 2]), 1e-4)
-                    let v = 1 / (PL / l).clamped(0.7, 1 / floorK)
-                    m[i * 4] = v; m[i * 4 + 1] = v; m[i * 4 + 2] = v
-                }
+            // Coloured paper: light only, as a grey gain map (like the v0.9 colored map), gain capped. The edge step
+            // compares brightness with light levels, which a gain map is not, so it is switched off (high = low =
+            // light → the kernel reduces to the plain divide).
+            for i in 0..<n {
+                let l = max(lum(light[i * 4], light[i * 4 + 1], light[i * 4 + 2]), 1e-4)
+                let v = 1 / (PL / l).clamped(0.7, coloredMaxGain)
+                light[i * 4] = v; light[i * 4 + 1] = v; light[i * 4 + 2] = v
             }
-            grey(&light); grey(&high); grey(&low)
+            high = light
+            low = light
         }
         return ShadowLayers(light: light, high: high, low: low, shadowCells: shadowPaper.reduce(0) { $0 + ($1 ? 1 : 0) })
     }
@@ -272,6 +289,21 @@ enum ShadowEstimator {
     @inline(__always) static func tintDistance(_ a: SIMD3<Float>, _ b: SIMD3<Float>) -> Float {
         let d = a - b
         return abs(d.x) + abs(d.y) + abs(d.z)
+    }
+
+    /// Indices of the other regions (by `owner`) that have a cell within `radius` (square) of the region's cells.
+    static func regionsNear(_ region: Int, _ cells: [Int], owner: [Int], radius r: Int, _ w: Int, _ h: Int) -> Set<Int> {
+        var found = Set<Int>()
+        for c in cells {
+            let x = c % w, y = c / w
+            for yy in max(0, y - r)...min(h - 1, y + r) {
+                for xx in max(0, x - r)...min(w - 1, x + r) {
+                    let o = owner[yy * w + xx]
+                    if o >= 0 && o != region { found.insert(o) }
+                }
+            }
+        }
+        return found
     }
 
     static func neighbours4(_ x: Int, _ y: Int, _ w: Int, _ h: Int) -> [Int] {
