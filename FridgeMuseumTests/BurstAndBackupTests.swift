@@ -40,7 +40,7 @@ struct BurstAndBackupTests {
         app.endBurst(context: context)
         #expect(!app.isBursting)
         #expect(!app.isEditorBusy)
-        for _ in 0..<200 where first.processingState != .failed || second.processingState != .failed {
+        for _ in 0..<600 where first.processingState != .failed || second.processingState != .failed {
             try await Task.sleep(for: .milliseconds(50))
         }
         #expect(first.processingState == .failed)
@@ -84,14 +84,18 @@ struct BurstAndBackupTests {
         #expect(app.processingIDs.isEmpty)
 
         app.endEditing(open.id, context: context)
+        // Wall-clock deadline, not an iteration count: the exports go through the shared ImageProcessor actor, which
+        // other suites (real-photo pipeline tests) keep busy when tests run in parallel. A 4 s budget timed out on CI.
         var mostAtOnce = 0
-        for _ in 0..<200 where shots.contains(where: { $0.processingState != .failed }) {
+        let deadline = Date().addingTimeInterval(30)
+        while shots.contains(where: { $0.processingState != .failed }) && Date() < deadline {
             mostAtOnce = max(mostAtOnce, app.processingIDs.count)
             try await Task.sleep(for: .milliseconds(20))
         }
-        let allRan = shots.allSatisfy { $0.processingState == .failed }
-        #expect(allRan)
-        #expect(mostAtOnce <= 1)
+        for shot in shots {
+            #expect(shot.processingState == .failed)   // its export ran (the test data isn't a real image)
+        }
+        #expect(mostAtOnce <= 1)                       // never two at once
     }
 
     /// Stepping through pending captures: an edited artwork's render waits for the open editor, then runs even
@@ -114,7 +118,7 @@ struct BurstAndBackupTests {
         #expect(edited.renderedImageData == Data([9]))
 
         app.endEditing(next.id, context: context)
-        for _ in 0..<200 where edited.processingState != .failed {
+        for _ in 0..<600 where edited.processingState != .failed {
             try await Task.sleep(for: .milliseconds(50))
         }
         #expect(edited.processingState == .failed)   // the render ran (test data isn't a real image)
@@ -146,7 +150,7 @@ struct BurstAndBackupTests {
         func state(_ id: UUID) -> ProcessingState? {
             (try? ModelContext(container).fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.id == id })).first)?.processingState
         }
-        for _ in 0..<200 where state(editedID) != .failed {
+        for _ in 0..<600 where state(editedID) != .failed {
             try await Task.sleep(for: .milliseconds(50))
         }
         #expect(state(editedID) == .failed)       // the re-render ran (test data isn't a real image)
