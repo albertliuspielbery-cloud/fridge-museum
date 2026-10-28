@@ -8,13 +8,13 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "慢慢來～想多收幾張的時候，再來找我就好"
+            "value" : "有了完整版，一整個抽屜的畫也能一次收完～"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No rush! Come find me whenever you want to hang up more."
+            "value" : "With the Full Version, a whole drawer of art can go up at once!"
           }
         }
       }
@@ -51,24 +51,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The purchase didn’t go through. Try again later."
-          }
-        }
-      }
-    },
-    "paywall.family" : {
-      "comment" : "Family Sharing line (present tense: the IAP has Family Sharing on).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "全家共享：支援 Apple「家人共享」，家人的手機也能一起用。"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Works with Family Sharing, so family members can use it on their own devices."
           }
         }
       }
@@ -163,44 +145,86 @@
         }
       }
     },
-    "paywall.perk1" : {
-      "comment" : "Perk 1",
+    "paywall.perk.craft %lld" : {
+      "comment" : "Perk: unlimited crafts. %lld = lifetime free trial crafts (QuotaTracker.craftFreeTrial).",
       "extractionState" : "manual",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "畫作、勞作不限張數，想收多少就收多少"
+            "value" : "立體勞作不限件數（免費版試用 %lld 件）"
           }
         },
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unlimited drawings and crafts — keep as many as you like"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Unlimited crafts (free trial: 1)"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Unlimited crafts (free trial: %lld)"
+                }
+              }
+            }
           }
         }
       }
     },
-    "paywall.perk2" : {
-      "comment" : "Perk 2",
+    "paywall.perk.family" : {
+      "comment" : "Perk: Family Sharing (the IAP has Family Sharing on; the app is iPhone-only).",
       "extractionState" : "manual",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "勞作不限件數"
+            "value" : "全家共享：一次買，家人的 iPhone 也能用"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unlimited crafts"
+            "value" : "Family Sharing: one purchase covers the whole family"
           }
         }
       }
     },
-    "paywall.perk3" : {
-      "comment" : "Perk 3",
+    "paywall.perk.flat %lld" : {
+      "comment" : "Perk: unlimited drawings. %lld = free drawings per day (QuotaTracker.freeFlatPerDay).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平面畫作不限張數（免費版每天 %lld 張）"
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Unlimited drawings (free: 1 a day)"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Unlimited drawings (free: %lld a day)"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "paywall.perk.updates" : {
+      "comment" : "Perk: free updates. Owner-approved wording; do NOT promise future features.",
       "extractionState" : "manual",
       "localizations" : {
         "zh-Hant" : {
@@ -212,7 +236,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "All future updates included"
+            "value" : "Future updates are free"
+          }
+        }
+      }
+    },
+    "paywall.perks.title" : {
+      "comment" : "Small heading above the perk list.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完整版包含"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Full Version includes"
           }
         }
       }

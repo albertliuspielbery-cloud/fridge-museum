@@ -39,15 +39,6 @@ struct PaywallView: View {
                     perks
                     ticket
                     if isUnavailable { unavailableNotice }
-                    Label {
-                        Text(PaywallText.familySharing)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } icon: {
-                        Image(systemName: "house").foregroundStyle(Palette.teal)
-                    }
-                    .font(.fm(14.5))
-                    .foregroundStyle(Palette.muted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     if let message {
                         Text(message)
                             .font(.footnote.weight(.medium))
@@ -117,9 +108,17 @@ struct PaywallView: View {
     }
 
     private var perks: some View {
-        let dots = [Palette.blue, Palette.red, Palette.teal]
-        let items = [PaywallText.perk1, PaywallText.perk2, PaywallText.perk3]
+        let dots = [Palette.blue, Palette.red, Palette.teal, Palette.yellow]
+        let flat = PaywallText.perkFlat(QuotaTracker.freeFlatPerDay)
+        let craft = PaywallText.perkCraft(QuotaTracker.craftFreeTrial)
+        // The limit the person just hit comes first.
+        let items: [String] = (isCraft ? [craft, flat] : [flat, craft]) + [PaywallText.perkFamily, PaywallText.perkUpdates]
         return VStack(alignment: .leading, spacing: 12) {
+            Text(PaywallText.perksTitle)
+                .font(.fm(15, bold: true))
+                .foregroundStyle(Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
             ForEach(Array(items.enumerated()), id: \.offset) { i, perk in
                 HStack(alignment: .firstTextBaseline, spacing: 14) {
                     Circle().fill(dots[i]).frame(width: 18, height: 18)
@@ -346,13 +345,14 @@ enum PaywallText {
     static func subtitleFlat(_ n: Int) -> String { text("paywall.subtitle.flat \(n)") }
     static func subtitleCraft(_ n: Int) -> String { text("paywall.subtitle.craft \(n)") }
     static var bibiSays: String { text("paywall.bibi") }
-    static var perk1: String { text("paywall.perk1") }
-    static var perk2: String { text("paywall.perk2") }
-    static var perk3: String { text("paywall.perk3") }
+    static var perksTitle: String { text("paywall.perks.title") }
+    static func perkFlat(_ n: Int) -> String { text("paywall.perk.flat \(n)") }
+    static func perkCraft(_ n: Int) -> String { text("paywall.perk.craft \(n)") }
+    static var perkFamily: String { text("paywall.perk.family") }
+    static var perkUpdates: String { text("paywall.perk.updates") }
     static var ticketKicker: String { text("paywall.ticketKicker") }
     static var productName: String { text("paywall.productName") }
     static var oneTime: String { text("paywall.oneTime") }
-    static var familySharing: String { text("paywall.family") }
     static func unlock(price: String) -> String { text("paywall.unlock \(price)") }
     static var laterFlat: String { text("paywall.later.flat") }
     static var laterCraft: String { text("paywall.later.craft") }
