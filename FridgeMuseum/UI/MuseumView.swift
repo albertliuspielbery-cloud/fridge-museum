@@ -49,9 +49,21 @@ struct MuseumView: View {
     @AppStorage("museumNewestFirst") private var newestFirst = true
     @State private var editingChild: Child?
     @State private var showNewChild = false
+    // 選取: change several artworks at once.
+    @State private var selecting = false
+    @State private var selection: Set<UUID> = []
+    @State private var batchSheet: BatchSheet?
+    @State private var confirmBatchDelete = false
+    @State private var batchSaving = false
+
+    enum BatchSheet: String, Identifiable {
+        case tags, date
+        var id: String { rawValue }
+    }
 
     private var grouping: Grouping { Grouping(rawValue: groupingRaw) ?? .term }
-    private var artworks: [Artwork] { allArtworks.filter(\.isInMuseum) }
+    /// `isAlive` first: a batch delete must never make a view read a deleted model.
+    private var artworks: [Artwork] { allArtworks.filter { AppModel.isAlive($0) && $0.isInMuseum } }
 
     /// Artworks matching the child filter only (drives the other menus' options).
     private var childScoped: [Artwork] {
@@ -75,6 +87,14 @@ struct MuseumView: View {
         }
         if !newestFirst { list.reverse() }
         return list
+    }
+
+    /// Selected artworks that the current filter shows (only these are changed).
+    private var selectedArtworks: [Artwork] { filtered.filter { selection.contains($0.id) } }
+
+    private var allVisibleSelected: Bool {
+        let list = filtered
+        return !list.isEmpty && list.allSatisfy { selection.contains($0.id) }
     }
 
     private var hasFilters: Bool {
@@ -108,13 +128,77 @@ struct MuseumView: View {
         }
         .scrollIndicators(.hidden)
         .background(Wallpaper())
-        .navigationTitle(Text("美術館"))
+        .navigationTitle(selecting ? Text("已選 \(selectedArtworks.count) 件") : Text("美術館"))
+        .navigationBarBackButtonHidden(selecting)
         .toolbarBackground(Palette.wall, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(action: showSettings) { Image(systemName: "gearshape") }
-                    .accessibilityLabel(Text("設定"))
+            ToolbarItem(placement: .topBarLeading) {
+                if selecting {
+                    Button {
+                        if allVisibleSelected { selection = [] } else { selection = Set(filtered.map(\.id)) }
+                    } label: {
+                        Text(allVisibleSelected ? "全不選" as LocalizedStringKey : "全選")
+                    }
+                }
             }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if selecting {
+                    Button {
+                        withAnimation { endSelection() }
+                    } label: {
+                        Text("完成").font(.fm(17, bold: true))
+                    }
+                } else {
+                    Button {
+                        withAnimation { selecting = true }
+                    } label: {
+                        Text("選取")
+                    }
+                    .disabled(artworks.isEmpty)
+                    Button(action: showSettings) { Image(systemName: "gearshape") }
+                        .accessibilityLabel(Text("設定"))
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if selecting {
+                MuseumSelectionBar(
+                    count: selectedArtworks.count,
+                    children: children,
+                    saving: batchSaving,
+                    onChild: batchAssign,
+                    onTags: { batchSheet = .tags },
+                    onDate: { batchSheet = .date },
+                    onFavorite: batchFavorite,
+                    onSave: batchSave,
+                    onDelete: { confirmBatchDelete = true }
+                )
+                .transition(.move(edge: .bottom))
+            }
+        }
+        .sheet(item: $batchSheet) { sheet in
+            switch sheet {
+            case .tags:
+                BatchTagSheet(count: selectedArtworks.count, existing: allTags) { tags in
+                    let n = app.addTags(tags, to: selectedArtworks, context: modelContext)
+                    if n > 0 { app.show(String(localized: "已幫 \(n) 件作品加上標籤")) }
+                }
+            case .date:
+                BatchDateSheet(count: selectedArtworks.count, initial: selectedArtworks.first?.capturedAt ?? Date()) { date in
+                    let n = app.setCapturedAt(date, for: selectedArtworks, context: modelContext)
+                    if n > 0 { app.show(String(localized: "已改 \(n) 件作品的日期，學期和年齡也更新了")) }
+                }
+            }
+        }
+        .confirmationDialog(Text("刪除這 \(selectedArtworks.count) 件作品？"), isPresented: $confirmBatchDelete,
+                            titleVisibility: .visible) {
+            Button(role: .destructive) {
+                batchDelete()
+            } label: {
+                Text("刪除 \(selectedArtworks.count) 件")
+            }
+        } message: {
+            Text("只會刪除 App 裡的資料，已存到照片的不受影響。")
         }
         .sheet(item: $editingChild) { child in
             ChildEditorView(child: child)
@@ -384,22 +468,32 @@ struct MuseumView: View {
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)],
                       alignment: .leading, spacing: 28) {
                 ForEach(section.items) { a in
-                    Button { open(.detail(a.id)) } label: {
+                    let isSelected = selection.contains(a.id)
+                    Button {
+                        if selecting { toggleSelection(a.id) } else { open(.detail(a.id)) }
+                    } label: {
                         MuseumTile(artwork: a, processing: app.processingIDs.contains(a.id), showChild: childFilter == .all)
+                            .overlay(alignment: .topLeading) {
+                                if selecting { SelectionMark(selected: isSelected) }
+                            }
+                            .opacity(selecting && !isSelected ? 0.8 : 1)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(selecting && isSelected ? .isSelected : [])
                     .contextMenu {
-                        Button {
-                            a.isFavorite.toggle()
-                            try? modelContext.save()
-                        } label: {
-                            Label(a.isFavorite ? "取消最愛" as LocalizedStringKey : "加到最愛", systemImage: a.isFavorite ? "star.slash" : "star")
-                        }
-                        Button { open(.edit(a.id)) } label: { Label("編輯", systemImage: "slider.horizontal.3") }
-                        Button {
-                            Task { _ = await app.saveToPhotos(a, context: modelContext) }
-                        } label: {
-                            Label("存到手機", systemImage: "square.and.arrow.down")
+                        if !selecting {
+                            Button {
+                                a.isFavorite.toggle()
+                                try? modelContext.save()
+                            } label: {
+                                Label(a.isFavorite ? "取消最愛" as LocalizedStringKey : "加到最愛", systemImage: a.isFavorite ? "star.slash" : "star")
+                            }
+                            Button { open(.edit(a.id)) } label: { Label("編輯", systemImage: "slider.horizontal.3") }
+                            Button {
+                                Task { _ = await app.saveToPhotos(a, context: modelContext) }
+                            } label: {
+                                Label("存到手機", systemImage: "square.and.arrow.down")
+                            }
                         }
                     }
                 }
@@ -407,6 +501,57 @@ struct MuseumView: View {
             .padding(.horizontal, Metrics.gutter + 6)
         }
         .padding(.top, 8)
+    }
+
+    // MARK: Selection (選取)
+
+    /// Every tag used in the museum (suggestions in 加標籤).
+    private var allTags: [String] {
+        Array(Set(artworks.flatMap(\.tags))).sorted()
+    }
+
+    private func toggleSelection(_ id: UUID) {
+        if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
+    }
+
+    private func endSelection() {
+        selecting = false
+        selection = []
+    }
+
+    private func batchAssign(_ child: Child?) {
+        let n = app.assignChild(child, to: selectedArtworks, context: modelContext)
+        guard n > 0 else { return }
+        if let child {
+            app.show(String(localized: "已把 \(n) 件作品設為「\(child.displayName)」"))
+        } else {
+            app.show(String(localized: "已把 \(n) 件作品設為未分類"))
+        }
+    }
+
+    private func batchFavorite(_ on: Bool) {
+        let n = app.setFavorite(on, for: selectedArtworks, context: modelContext)
+        guard n > 0 else { return }
+        app.show(on ? String(localized: "已把 \(n) 件作品加到最愛") : String(localized: "已把 \(n) 件作品取消最愛"))
+    }
+
+    /// Same path as saving one artwork (quota, Photos primer / permission, per-child albums). saveAll stops at the
+    /// first artwork that needs the parent (paywall, album explanation, Photos access) and toasts 已存 N 張到照片.
+    private func batchSave() {
+        let list = selectedArtworks
+        guard !list.isEmpty, !batchSaving else { return }
+        batchSaving = true
+        Task {
+            await app.saveAll(list, context: modelContext)
+            batchSaving = false
+        }
+    }
+
+    private func batchDelete() {
+        let list = selectedArtworks
+        withAnimation { endSelection() }
+        let n = app.deleteAll(list, context: modelContext)
+        if n > 0 { app.show(String(localized: "已刪除 \(n) 件作品")) }
     }
 
     // MARK: Empty states

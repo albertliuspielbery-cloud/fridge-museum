@@ -344,6 +344,44 @@ EN_AVATARS = {
     "拖曳移動，兩指縮放": "Drag to move, pinch to zoom",
 }
 EN.update(EN_AVATARS)
+# ---- feat/batch: 美術館「選取」(batch edit), 拍給 (capture child), 全部收進. New strings only, kept apart for merging.
+EN_BATCH = {
+    # Museum selection
+    "選取": "Select",
+    "全選": "Select All",
+    "全不選": "Deselect All",
+    "已選 %lld 件": {"one": "1 Selected", "other": "%lld Selected"},
+    "設定孩子": "Artist",
+    "加標籤": "Add Tags",
+    "日期": "Date",
+    "套用": "Apply",
+    "會加到選取的 %lld 件作品，原本的標籤會保留。": {
+        "one": "Adds to the selected artwork. Its current tags stay.",
+        "other": "Adds to the %lld selected artworks. Their current tags stay."},
+    "美術館裡的標籤": "Tags in Your Museum",
+    "加入標籤 %@": "Add tag %@",
+    "選取的 %lld 件會改成這天，學期和年齡也會跟著改（%@）。":
+        "Selected: %1$lld. Their semester and age will follow the new date (%2$@).",
+    "已把 %lld 件作品設為「%@」": "Artist set to %2$@ (%1$lld)",
+    "已把 %lld 件作品設為未分類": {"one": "Moved 1 artwork to Unsorted", "other": "Moved %lld artworks to Unsorted"},
+    "已幫 %lld 件作品加上標籤": {"one": "Tagged 1 artwork", "other": "Tagged %lld artworks"},
+    "已改 %lld 件作品的日期，學期和年齡也更新了": {
+        "one": "Changed the date of 1 artwork. Semester and age updated too.",
+        "other": "Changed the date of %lld artworks. Semester and age updated too."},
+    "已把 %lld 件作品加到最愛": {"one": "Added 1 artwork to Favorites", "other": "Added %lld artworks to Favorites"},
+    "已把 %lld 件作品取消最愛": {"one": "Removed 1 artwork from Favorites", "other": "Removed %lld artworks from Favorites"},
+    "刪除這 %lld 件作品？": {"one": "Delete this artwork?", "other": "Delete these %lld artworks?"},
+    "刪除 %lld 件": {"one": "Delete 1 Artwork", "other": "Delete %lld Artworks"},
+    "已刪除 %lld 件作品": {"one": "Deleted 1 artwork", "other": "Deleted %lld artworks"},
+    # Capture child (home + camera)
+    "拍給：%@": "Artist: %@",
+    "新作品的小朋友": "Artist for new photos",
+    # Home sticky note
+    "全部收進": "Hang Up All",
+    "已把 %lld 張掛上冰箱。": {"one": "1 artwork is on the fridge.", "other": "%lld artworks are on the fridge."},
+}
+EN.update(EN_BATCH)
+# ---- end feat/batch
 
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),

@@ -120,13 +120,14 @@ struct CameraScreen: View {
 
     private var bottomBar: some View {
         HStack {
-            Color.clear.frame(width: 58, height: 58)
+            // Who this shot is for (each new capture goes to this child; change it here between shots).
+            CaptureChildMenu(style: .camera)
             Spacer()
             ShutterButton(action: shoot)
                 .disabled(camera.state != .running || camera.isCapturing)
                 .environment(\.colorScheme, .light)
             Spacer()
-            Color.clear.frame(width: 58, height: 58)
+            Color.clear.frame(width: 72, height: 58)
         }
         .padding(.horizontal, 28)
         .padding(.bottom, 18)

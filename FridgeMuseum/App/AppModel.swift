@@ -469,13 +469,14 @@ final class AppModel {
         if ok > 0 { show(String(localized: "已存 \(ok) 張到照片")) }
     }
 
-    func delete(_ artwork: Artwork, context: ModelContext) {
+    /// `save: false` lets a batch delete (美術館「選取」) save once at the end.
+    func delete(_ artwork: Artwork, context: ModelContext, save: Bool = true) {
         let id = artwork.id
         processTasks.removeValue(forKey: id)?.cancel()
         deferredIDs.remove(id)
         sessionArtworkIDs.removeAll { $0 == id }
         context.delete(artwork)
-        try? context.save()
+        if save { try? context.save() }
         Task { await processor.evict(id: id) }
     }
 
@@ -491,6 +492,34 @@ final class AppModel {
         let pending = pendingArtworks(context: context)
         for artwork in pending { delete(artwork, context: context) }
         return pending.count
+    }
+
+    /// 全部收進: hangs every pending capture on the fridge, oldest first, through the same quota gate as 收進這次.
+    /// Stops at the first one the free quota blocks (the paywall shows once and resumes that one after an unlock;
+    /// the rest stay on the sticky note). Unassigned captures go to `child` (the current capture child).
+    /// Returns how many were kept.
+    @discardableResult
+    func keepAllPending(child: Child?, context: ModelContext) -> Int {
+        let pending = pendingArtworks(context: context).sorted { $0.createdAt < $1.createdAt }
+        var kept = 0
+        for artwork in pending {
+            if artwork.child == nil, let child { artwork.child = child }
+            guard admit(artwork, action: .keep) else { break }
+            markKept(artwork, context: context)
+            kept += 1
+        }
+        try? context.save()
+        if kept > 0 {
+            show(String(localized: "已把 \(kept) 張掛上冰箱。"), style: .hung(count: sessionArtworkIDs.count),
+                 headline: String(localized: "已掛上冰箱！"), seconds: 3.2)
+        }
+        return kept
+    }
+
+    /// The child new captures and imports go to (shown and changeable on the home screen and the camera).
+    func setCaptureChild(_ id: UUID?) {
+        currentChildID = id
+        persistPreferences()
     }
 }
 
