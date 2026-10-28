@@ -41,7 +41,7 @@ jobs:
       - name: 挑一台 iPhone 模擬器並固定狀態列
         id: sim
         run: |
-          UDID=$(xcrun simctl list devices available -j | python3 ci/pick_simulator.py)
+          UDID=$(xcrun simctl list devices available -j | python3 ci/pick_simulator.py "iPhone 17 Pro" "iPhone 16 Pro" "iPhone 17" "iPhone 16")
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b

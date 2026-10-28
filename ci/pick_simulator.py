@@ -21,6 +21,12 @@ for runtime, items in devices.items():
 if not candidates:
     sys.exit("::error::找不到可用的 iPhone 模擬器")
 candidates.sort(reverse=True)
+# Optional preferred model names (argv), e.g. "iPhone 17 Pro" "iPhone 16 Pro": first match on the newest runtime wins.
+for want in sys.argv[1:]:
+    match = [c for c in candidates if c[3] == want]
+    if match:
+        candidates = match
+        break
 _, udid, runtime, name = candidates[0]
 print(f"使用模擬器：{name}（{runtime}）", file=sys.stderr)
 print(udid)

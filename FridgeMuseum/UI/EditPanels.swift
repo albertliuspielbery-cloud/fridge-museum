@@ -8,32 +8,23 @@ struct CropPanel: View {
     var onCorners: () -> Void = {}
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 0) {
-                knob("viewfinder", String(localized: "重新自動找四角")) {
-                    onCorners()
-                    Task { await model.redetectCorners() }
-                }
-                Spacer(minLength: 0)
-                knob("arrow.up.left.and.arrow.down.right", String(localized: "用整張照片")) {
-                    onCorners()
-                    model.useWholePhoto()
-                }
-                Spacer(minLength: 0)
-                knob("rotate.left", String(localized: "向左轉")) {
-                    model.rotate(clockwise: false)
-                    onTurn()
-                }
-                Spacer(minLength: 0)
-                knob("rotate.right", String(localized: "向右轉")) {
-                    model.rotate(clockwise: true)
-                    onTurn()
-                }
+        HStack(alignment: .center, spacing: 10) {
+            knob("arrow.up.left.and.arrow.down.right", String(localized: "用整張照片")) {
+                onCorners()
+                model.useWholePhoto()
             }
-            VStack(alignment: .leading, spacing: 2) {
+            knob("rotate.left", String(localized: "向左轉")) {
+                model.rotate(clockwise: false)
+                onTurn()
+            }
+            knob("rotate.right", String(localized: "向右轉")) {
+                model.rotate(clockwise: true)
+                onTurn()
+            }
+            VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text("拉直").font(.fm(16.5, bold: true)).foregroundStyle(Palette.ink)
-                    Spacer()
+                    Text("拉直").font(.fm(15.5, bold: true)).foregroundStyle(Palette.ink)
+                    Spacer(minLength: 4)
                     ValueBadge(text: "\(Int(model.recipe.straightenDegrees.rounded()))°")
                 }
                 Slider(value: Binding(get: { model.recipe.straightenDegrees },
@@ -43,20 +34,13 @@ struct CropPanel: View {
                     .accessibilityLabel(Text("拉直"))
                     .accessibilityValue(Text(verbatim: "\(Int(model.recipe.straightenDegrees))°"))
             }
+            .padding(.leading, 4)
         }
     }
 
     private func knob(_ icon: String, _ label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) {
-                RoundKnob(systemImage: icon, size: 48)
-                Text(verbatim: label)
-                    .font(.fm(11.5, bold: true))
-                    .foregroundStyle(Palette.muted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
-            .frame(width: 74)
+            RoundKnob(systemImage: icon, size: 46)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(verbatim: label))

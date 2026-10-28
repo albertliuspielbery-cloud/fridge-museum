@@ -89,27 +89,26 @@ struct HomeView: View {
     // MARK: Header
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 8) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("冰箱美術館")
-                    .font(.fmDisplay(38, relativeTo: .largeTitle))
-                    .foregroundStyle(Palette.title)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .accessibilityAddTraits(.isHeader)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("冰箱美術館")
+                .font(.fmDisplay(AppLanguage.isChinese ? 40 : 34, relativeTo: .largeTitle))
+                .foregroundStyle(Palette.title)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.trailing, 112)
+                .accessibilityAddTraits(.isHeader)
+            HStack(alignment: .bottom, spacing: 8) {
                 Label {
                     Text("照片只在這支手機上處理，不會上傳")
                 } icon: {
                     Image(systemName: "lock")
                 }
-                .font(.fm(13.5, relativeTo: .footnote))
+                .font(.fm(13, relativeTo: .footnote))
                 .foregroundStyle(Palette.muted)
                 .labelStyle(TightLabelStyle())
-            }
-            .padding(.top, 10)
-            Spacer(minLength: 4)
-            VStack(alignment: .trailing, spacing: 10) {
-                Image("kitchen-window").resizable().scaledToFit().frame(width: 92).accessibilityHidden(true)
+                .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
                 Button(action: showSettings) {
                     HStack(spacing: 6) {
                         Image(systemName: "gearshape")
@@ -123,8 +122,13 @@ struct HomeView: View {
                     .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 1.5))
                 }
                 .buttonStyle(.plain)
+                .fixedSize()
             }
         }
+        .overlay(alignment: .topTrailing) {
+            Image("kitchen-window").resizable().scaledToFit().frame(width: 96).accessibilityHidden(true)
+        }
+        .padding(.top, 6)
         .padding(.horizontal, Metrics.gutter + 4)
     }
 
@@ -141,8 +145,8 @@ struct HomeView: View {
             Image(bibiFace)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 128)
-                .padding(.leading, 22)
+                .frame(width: 116)
+                .padding(.leading, 20)
                 .accessibilityHidden(true)
                 .animation(.easeInOut(duration: 0.2), value: bibiFace)
             Spacer(minLength: 0)
@@ -154,9 +158,9 @@ struct HomeView: View {
                 .padding(.leading, 26)
                 .padding(.trailing, 16)
                 .padding(.vertical, 12)
-                .frame(maxWidth: 190, alignment: .leading)
+                .frame(maxWidth: 220, alignment: .leading)
                 .background(SpeechBubble().fill(Palette.bubble).shadow(color: Palette.shadow, radius: 4, y: 3))
-                .padding(.trailing, 44)
+                .padding(.trailing, 36)
                 .accessibilityLabel(Text(verbatim: app.store.bubbleText(for: app.captureKind)))
         }
         .padding(.vertical, 30)
@@ -477,10 +481,14 @@ struct CounterDock: View {
                 Rectangle().fill(Palette.woodDeep).frame(height: 3)
             }
             .overlay(alignment: .bottomLeading) {
-                Image("cat-peek").resizable().scaledToFit().frame(width: 70).offset(x: 26, y: -10).accessibilityHidden(true)
+                Image("cat-peek").resizable().scaledToFit().frame(width: 64, height: 40)
+                    .alignmentGuide(.bottom) { d in d[.bottom] + 6 }
+                    .padding(.leading, 26).accessibilityHidden(true)
             }
             .overlay(alignment: .bottomTrailing) {
-                Image("prop-crayons").resizable().scaledToFit().frame(width: 30).offset(x: -30, y: -10).accessibilityHidden(true)
+                Image("prop-crayons").resizable().scaledToFit().frame(width: 28, height: 44)
+                    .alignmentGuide(.bottom) { d in d[.bottom] + 6 }
+                    .padding(.trailing, 30).accessibilityHidden(true)
             }
             VStack(spacing: 10) {
                 KindSwitch(kind: $kind)

@@ -126,13 +126,15 @@ struct ArtworkDetailView: View {
     private var actionBar: some View {
         HStack(spacing: 10) {
             Button { open(.edit(artwork.id)) } label: {
-                Label("編輯", systemImage: "slider.horizontal.3")
+                RoundKnob(systemImage: "slider.horizontal.3", size: 54)
             }
-            .buttonStyle(SecondaryCapsuleStyle())
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("編輯"))
             ShareLink(item: shareItem, preview: SharePreview(artwork.placardTitle, image: Image("bibi-proud"))) {
-                Label("分享", systemImage: "square.and.arrow.up")
+                RoundKnob(systemImage: "square.and.arrow.up", size: 54)
             }
-            .buttonStyle(SecondaryCapsuleStyle())
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("分享"))
             Button {
                 isSaving = true
                 Task {

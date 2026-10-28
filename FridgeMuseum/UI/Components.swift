@@ -401,12 +401,20 @@ struct AvatarDot: View {
             .fill(Color(hex: hex))
             .frame(width: size, height: size)
             .overlay(
-                Text(verbatim: String(name.prefix(1)))
+                Text(verbatim: Self.initial(of: name))
                     .font(.fm(size * 0.48, bold: true))
                     .foregroundStyle(.white)
             )
             .overlay(Circle().strokeBorder(.white.opacity(0.7), lineWidth: size > 30 ? 2.5 : 1.5))
             .accessibilityHidden(true)
+    }
+
+    /// Latin names → first letter; Chinese names → the last character (小明 → 明, the way kids are called).
+    static func initial(of name: String) -> String {
+        guard let first = name.first else { return "?" }
+        let isCJK = first.unicodeScalars.first.map { (0x3400...0x9FFF).contains(Int($0.value)) } ?? false
+        if isCJK, name.count >= 2, let last = name.last { return String(last) }
+        return String(first).uppercased()
     }
 }
 
@@ -471,6 +479,10 @@ struct ValueBadge: View {
 struct PanelCard<Content: View>: View {
     var title: String
     var onDone: () -> Void
+    /// Optional small action next to 完成 (e.g. 重新自動找四角 in the crop panel).
+    var accessoryIcon: String? = nil
+    var accessoryLabel: String = ""
+    var onAccessory: (() -> Void)? = nil
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -480,6 +492,18 @@ struct PanelCard<Content: View>: View {
                     .accessibilityHidden(true)
                 Text(verbatim: title).font(.fmDisplay(21, relativeTo: .headline)).foregroundStyle(Palette.ink)
                 Spacer()
+                if let accessoryIcon, let onAccessory {
+                    Button(action: onAccessory) {
+                        Image(systemName: accessoryIcon)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Palette.tealInk)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(Palette.tealSoft))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(verbatim: accessoryLabel))
+                    .padding(.trailing, 6)
+                }
                 Button(action: onDone) {
                     Text("完成").font(.fm(17, bold: true)).foregroundStyle(Palette.tealInk)
                 }

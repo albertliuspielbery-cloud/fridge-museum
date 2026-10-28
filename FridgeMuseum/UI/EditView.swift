@@ -68,7 +68,7 @@ struct EditView: View {
     var body: some View {
         VStack(spacing: 10) {
             stage
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 190, maxHeight: .infinity)
                 .padding(.horizontal, Metrics.gutter)
                 .padding(.trailing, 8)
             BibiHint(text: hintText)
@@ -583,12 +583,28 @@ struct EditView: View {
         }
     }
 
+    private func redetectCorners() {
+        cropShowsResult = false
+        Task { await model.redetectCorners() }
+    }
+
     @ViewBuilder
     private func panel(for tool: EditTool) -> some View {
-        PanelCard(title: tool.panelTitle, onDone: { self.tool = nil }) {
+        PanelCard(title: tool.panelTitle, onDone: { self.tool = nil },
+                  accessoryIcon: tool == .crop ? "viewfinder" : nil,
+                  accessoryLabel: String(localized: "重新自動找四角"),
+                  onAccessory: tool == .crop ? redetectCorners : nil) {
             switch tool {
             case .crop: CropPanel(model: model, onTurn: { cropShowsResult = true }, onCorners: { cropShowsResult = false })
-            case .adjust: AdjustPanel(model: model)
+            case .adjust:
+                if model.recipe.kind == .flat {
+                    // Four controls: scroll inside the card so the artwork keeps most of the screen on small phones.
+                    ScrollView { AdjustPanel(model: model).padding(.trailing, 2) }
+                        .scrollIndicators(.visible)
+                        .frame(maxHeight: 236)
+                } else {
+                    AdjustPanel(model: model)
+                }
             case .brush: BrushPanel(model: model, brushMode: $brushMode, brushSize: $brushSize)
             case .label: EmptyView()
             }
