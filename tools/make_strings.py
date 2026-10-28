@@ -327,6 +327,14 @@ EN = {
     "無法開始錄音": "Couldn’t start recording.",
     "無法播放": "Couldn’t play the recording.",
     "這台手機無法離線辨識語音，已保留錄音": "This phone can’t transcribe speech offline. The recording is kept.",
+
+    # ---- 這張好像收過了 (duplicate reminder in the editor, feat/duplicates) ----
+    "這張好像收過了": "Looks like you kept this one already",
+    "看一下": "Take a Look",
+    "已經收過的作品": "Already in Your Museum",
+    "已經在美術館裡了。兩張都想留，就按「收進這次」。":
+        "This one is already in your museum. Want to keep both? Just tap “Hang It Up.”",
+    # ---- end 這張好像收過了 ----
 }
 
 INFOPLIST = {

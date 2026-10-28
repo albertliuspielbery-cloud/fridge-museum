@@ -59,6 +59,12 @@ struct EditView: View {
     /// 重拍 reopens the camera after discarding; 不要這張 just goes back.
     @State private var retakeAfterDiscard = false
     @State private var confirmDiscard = false
+    /// 這張好像收過了: a kept artwork that looks like this capture (checked when the preview is ready, once per kind).
+    @State private var duplicate: Artwork?
+    @State private var duplicateCheckedKind: ArtworkKind?
+    @State private var peekDuplicate = false
+    /// 不要這張 tapped in the peek sheet: ask (the usual discard dialog) once the sheet is gone.
+    @State private var discardAfterPeek = false
 
     init(artwork: Artwork) {
         _artwork = Bindable(artwork)
@@ -76,9 +82,15 @@ struct EditView: View {
                 .frame(maxWidth: .infinity, minHeight: 190, maxHeight: .infinity)
                 .padding(.horizontal, Metrics.gutter)
                 .padding(.trailing, 8)
-            BibiHint(text: hintText)
-                .padding(.horizontal, Metrics.gutter + 4)
-                .animation(.easeInOut(duration: 0.2), value: hintText)
+            if let duplicate, showsDuplicateNotice {
+                DuplicateNotice(existing: duplicate, onPeek: { peekDuplicate = true }, onDiscard: { confirmDiscard = true })
+                    .padding(.horizontal, Metrics.gutter)
+                    .transition(.opacity)
+            } else {
+                BibiHint(text: hintText)
+                    .padding(.horizontal, Metrics.gutter + 4)
+                    .animation(.easeInOut(duration: 0.2), value: hintText)
+            }
             if let tool, tool != .label {
                 panel(for: tool)
                     .padding(.horizontal, Metrics.gutter)
@@ -126,6 +138,22 @@ struct EditView: View {
         }
         .sheet(isPresented: $showLabel) {
             LabelSheet(artwork: artwork, model: model)
+        }
+        .sheet(isPresented: $peekDuplicate, onDismiss: {
+            if discardAfterPeek {
+                discardAfterPeek = false
+                confirmDiscard = true
+            }
+        }) {
+            if let duplicate {
+                DuplicatePeekSheet(existing: duplicate, onDiscard: {
+                    discardAfterPeek = true
+                    peekDuplicate = false
+                })
+            }
+        }
+        .onChange(of: model.output != nil) { _, ready in
+            if ready { checkDuplicate() }
         }
         .onDisappear {
             // Capture everything now: environment values must not be read after the view is gone.
@@ -503,6 +531,36 @@ struct EditView: View {
         CGPoint(x: rect.minX + CGFloat(p.x) * rect.width, y: rect.minY + CGFloat(p.y) * rect.height)
     }
 
+    // MARK: 這張好像收過了
+
+    /// The notice takes the hint line's place while no tool, compare or part picking needs that line.
+    private var showsDuplicateNotice: Bool {
+        !artwork.isKept && !artwork.isSample && tool == nil && !compare && !pickingParts
+            && model.output != nil && duplicate.map { AppModel.isAlive($0) } == true
+    }
+
+    /// Compares this capture's preview with the kept artworks of the same kind. Only a reminder: 收進這次 and
+    /// 存到手機 stay exactly the same (no extra question when the parent keeps it anyway).
+    private func checkDuplicate() {
+        guard !artwork.isKept, !artwork.isSample, !DemoMode.isActive, let cg = model.output?.cgImage else { return }
+        let kind = model.recipe.kind
+        guard duplicateCheckedKind != kind else { return }
+        duplicateCheckedKind = kind
+        duplicate = nil
+        let preview = RenderedImage(cgImage: cg)
+        // Environment values are read now, not after the await (the editor may be gone by then).
+        let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
+        Task {
+            let fingerprint = await Task.detached(priority: .userInitiated) {
+                ArtFingerprint.make(cgImage: preview.cgImage)
+            }.value
+            guard let fingerprint, AppModel.isAlive(artwork), !artwork.isKept, model.recipe.kind == kind else { return }
+            let match = app.likelyDuplicate(of: fingerprint, kind: kind, childID: artwork.child?.id,
+                                            excluding: artwork.id, context: context)
+            withAnimation(.easeInOut(duration: 0.2)) { duplicate = match }
+        }
+    }
+
     // MARK: Hint / tools / actions
 
     private var hintText: String {
@@ -689,6 +747,140 @@ struct EditView: View {
         } else if render, app.needsRender(artwork) {
             await app.rerender(artwork, context: context)
         }
+    }
+}
+
+// MARK: 這張好像收過了 — notice card + peek sheet
+
+/// Gentle reminder under the stage: the kept artwork this capture looks like, with 看一下 / 不要這張.
+/// Keeping it anyway is still the one 收進這次 tap.
+struct DuplicateNotice: View {
+    let existing: Artwork
+    let onPeek: () -> Void
+    let onDiscard: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            ArtworkImage(artwork: existing)
+                .frame(width: 50, height: 58)
+                .clipped()
+                .padding(3)
+                .background(Palette.print)
+                .rotationEffect(.degrees(-4))
+                .shadow(color: Palette.printShadow.opacity(0.6), radius: 3, y: 2)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("這張好像收過了")
+                    .font(.fm(15.5, bold: true))
+                    .foregroundStyle(Palette.ink)
+                Text(verbatim: existing.duplicateCaption)
+                    .font(.fm(13.5))
+                    .foregroundStyle(Palette.muted)
+                    .lineLimit(1)
+                // Side by side when they fit; stacked on narrow phones / long English labels.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        peekButton
+                        discardButton
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        peekButton
+                        discardButton
+                    }
+                }
+                .padding(.top, 2)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Palette.surface)
+                .shadow(color: Palette.shadow, radius: 4, y: 2)
+        )
+        // .contain so VoiceOver reaches 看一下 and 不要這張 separately.
+        .accessibilityElement(children: .contain)
+    }
+
+    private var peekButton: some View {
+        Button(action: onPeek) {
+            Text("看一下")
+                .font(.fm(14.5, bold: true))
+                .foregroundStyle(Color.white)
+                .lineLimit(1)
+                .padding(.horizontal, 14)
+                .frame(height: 34)
+                .background(Capsule().fill(Palette.teal))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var discardButton: some View {
+        Button(action: onDiscard) {
+            Text("不要這張")
+                .font(.fm(14.5, bold: true))
+                .foregroundStyle(Palette.red)
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .overlay(Capsule().strokeBorder(Palette.red, lineWidth: 1.5))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// 看一下: the kept artwork, big, with its placard. 不要這張 hands back to the editor's usual discard question.
+struct DuplicatePeekSheet: View {
+    let existing: Artwork
+    let onDiscard: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    ArtworkImage(artwork: existing)
+                        .padding(6)
+                        .background(Palette.print)
+                        .shadow(color: Palette.printShadow, radius: 8, y: 4)
+                        .frame(maxHeight: 340)
+                    Placard(artwork: existing)
+                        .padding(.horizontal, 24)
+                    Text("已經在美術館裡了。兩張都想留，就按「收進這次」。")
+                        .font(.fm(14.5))
+                        .foregroundStyle(Palette.muted)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(action: onDiscard) {
+                        Label("不要這張", systemImage: "trash")
+                    }
+                    .buttonStyle(SecondaryCapsuleStyle(ink: Palette.red))
+                    .frame(maxWidth: 220)
+                }
+                .padding(20)
+            }
+            .background(Palette.surface)
+            .navigationTitle(Text("已經收過的作品"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { dismiss() } label: { Text("關閉").font(.fm(17, bold: true)) }
+                        .tint(Palette.tealInk)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(30)
+    }
+}
+
+extension Artwork {
+    /// “小明 · 2026/03/14” — who and when, for 這張好像收過了.
+    var duplicateCaption: String {
+        let name = child.map(\.displayName) ?? String(localized: "小畫家")
+        return "\(name) · \(AppLanguage.placardDate(capturedAt))"
     }
 }
 
