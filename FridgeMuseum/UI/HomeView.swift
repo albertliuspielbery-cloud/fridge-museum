@@ -17,6 +17,7 @@ struct HomeView: View {
     @State private var showPhotoPicker = false
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var openAfterCamera: UUID?
+    @State private var confirmDiscardPending = false
 
     private var museum: [Artwork] {
         artworks.filter(\.isInMuseum).sorted { ($0.keptAt ?? $0.createdAt) > ($1.keptAt ?? $1.createdAt) }
@@ -77,6 +78,18 @@ struct HomeView: View {
         .overlay(alignment: .topLeading) {
             if demoReady { ReadyMarker() }
         }
+        .alert(pending.count > 1 ? Text("不要這 \(pending.count) 張作品？") : Text("不要這張作品？"),
+               isPresented: $confirmDiscardPending) {
+            Button(role: .destructive) {
+                app.discardPending(context: modelContext)
+            } label: {
+                Text(pending.count > 1 ? "全部不要" as LocalizedStringKey : "不要了")
+            }
+            Button(role: .cancel) {} label: { Text("取消") }
+        } message: {
+            Text(pending.count > 1 ? "這 \(pending.count) 張會從 App 裡刪掉，不會存到手機。" as LocalizedStringKey
+                 : "這張會從 App 裡刪掉，不會存到手機。")
+        }
     }
 
     private var demoReady: Bool {
@@ -89,28 +102,21 @@ struct HomeView: View {
     // MARK: Header
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
+            // Title | window art | Settings (top-right, iOS convention). Siblings in one HStack, so the art can never
+            // sit on top of the button.
+            HStack(alignment: .top, spacing: 8) {
                 Text("冰箱美術館")
                     .font(.fmDisplay(AppLanguage.isChinese ? 40 : 34, relativeTo: .largeTitle))
                     .foregroundStyle(Palette.title)
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
-                Label {
-                    Text("照片只在這支手機上處理，不會上傳")
-                } icon: {
-                    Image(systemName: "lock")
-                }
-                .font(.fm(13, relativeTo: .footnote))
-                .foregroundStyle(Palette.muted)
-                .labelStyle(TightLabelStyle())
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            // Window art + Settings stacked in their own column, so the art can never sit on top of the button.
-            HStack(alignment: .top, spacing: 8) {
+                Image("kitchen-window").resizable().scaledToFit().frame(width: 72)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
                 Button(action: showSettings) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 18, weight: .semibold))
@@ -122,10 +128,17 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("設定"))
-                Image("kitchen-window").resizable().scaledToFit().frame(width: 84)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
             }
+            // Full width under the title row, so the line no longer wraps its last character.
+            Label {
+                Text("照片只在這支手機上處理，不會上傳")
+            } icon: {
+                Image(systemName: "lock")
+            }
+            .font(.fm(13, relativeTo: .footnote))
+            .foregroundStyle(Palette.muted)
+            .labelStyle(TightLabelStyle())
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, 6)
         .padding(.horizontal, Metrics.gutter + 4)
@@ -170,7 +183,8 @@ struct HomeView: View {
     private var mainDoor: some View {
         VStack(alignment: .leading, spacing: 22) {
             if let p = pending.first {
-                PendingCard(artwork: p, extra: pending.count - 1) { open(.edit(p.id)) }
+                PendingCard(artwork: p, extra: pending.count - 1, resume: { open(.edit(p.id)) },
+                            discard: { confirmDiscardPending = true })
             }
             if !session.isEmpty {
                 workWall(title: String(localized: "這次收的作品"), items: Array(session.prefix(6)), count: session.count)
@@ -263,7 +277,9 @@ struct HomeView: View {
         for item in items {
             if let data = try? await item.loadTransferable(type: Data.self), UIImage(data: data) != nil {
                 let date = ImageMetadata.captureDate(of: data) ?? Date()
-                let a = app.ingest(data, kind: app.captureKind, child: child, capturedAt: date, context: modelContext)
+                // The first one opens in the editor; the rest wait to be processed until it closes.
+                let a = app.ingest(data, kind: app.captureKind, child: child, capturedAt: date, context: modelContext,
+                                   opensEditor: first == nil)
                 if first == nil { first = a.id }
             } else {
                 failed += 1
@@ -339,6 +355,8 @@ struct PendingCard: View {
     let artwork: Artwork
     var extra: Int = 0
     let resume: () -> Void
+    /// 不要了 / 全部不要 (HomeView asks first).
+    let discard: () -> Void
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
@@ -357,15 +375,17 @@ struct PendingCard: View {
                     .font(.fm(14))
                     .foregroundStyle(Palette.noteInk.opacity(0.8))
                     .fixedSize(horizontal: false, vertical: true)
-                Button(action: resume) {
-                    Text("繼續")
-                        .font(.fm(15, bold: true))
-                        .foregroundStyle(Color.white)
-                        .padding(.horizontal, 20)
-                        .frame(height: 38)
-                        .background(Capsule().fill(Color(0x2B2E4A, 0x1E2340)))
+                // Side by side when they fit; stacked on narrow phones / long English labels.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        resumeButton
+                        discardButton
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        resumeButton
+                        discardButton
+                    }
                 }
-                .buttonStyle(.plain)
                 .padding(.top, 4)
             }
             Spacer(minLength: 0)
@@ -374,8 +394,36 @@ struct PendingCard: View {
         .background(Rectangle().fill(Palette.note).shadow(color: Palette.printShadow.opacity(0.5), radius: 6, y: 4))
         .rotationEffect(.degrees(-0.8))
         .overlay(alignment: .topTrailing) { Tape(style: .check, width: 96, angle: 4).offset(x: -24, y: -10) }
-        .accessibilityElement(children: .combine)
+        // .contain (not .combine) so VoiceOver can reach 繼續 and 不要了 separately.
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("還沒收進的作品"))
+    }
+
+    private var resumeButton: some View {
+        Button(action: resume) {
+            Text("繼續")
+                .font(.fm(15, bold: true))
+                .foregroundStyle(Color.white)
+                .lineLimit(1)
+                .padding(.horizontal, 18)
+                .frame(height: 38)
+                .background(Capsule().fill(Color(0x2B2E4A, 0x1E2340)))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var discardButton: some View {
+        Button(action: discard) {
+            Text(extra > 0 ? "全部不要" as LocalizedStringKey : "不要了")
+                .font(.fm(15, bold: true))
+                .foregroundStyle(Palette.noteInk)
+                .lineLimit(1)
+                .padding(.horizontal, 14)
+                .frame(height: 38)
+                .overlay(Capsule().strokeBorder(Palette.noteInk.opacity(0.5), lineWidth: 1.5))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }
 

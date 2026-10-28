@@ -63,6 +63,15 @@ final class AppModel {
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     /// Background processing per artwork, so deleting (重拍, a replaced sample) can cancel it first.
     @ObservationIgnored private var processTasks: [UUID: Task<Void, Never>] = [:]
+    /// Artworks whose full-size export is running right now (any caller), so nobody starts a second one.
+    @ObservationIgnored private var renderingIDs: Set<UUID> = []
+    /// Artworks open in an editor. While any editor is open, background exports wait (the editor renders its own
+    /// previews; two heavy renders at once make the phone warm).
+    @ObservationIgnored private var editingIDs: Set<UUID> = []
+    /// Fresh captures about to open in the editor (claimed at ingest, before the editor appears).
+    @ObservationIgnored private var claimedIDs: Set<UUID> = []
+    /// Background exports held back while an editor was open; they run when the last editor closes.
+    @ObservationIgnored private var deferredIDs: Set<UUID> = []
     /// Photos access was refused and we already explained it once (Settings button); later refusals only toast.
     var photosDeniedAlert = false
     /// Short explanation shown right before the first full-access (album) request.
@@ -115,20 +124,85 @@ final class AppModel {
 
     /// Creates the artwork right away (the original is never lost) as *pending* — it joins the museum once the parent
     /// taps 收進這次 or 存到手機 — then processes it in the background.
+    /// `opensEditor`: the caller opens this artwork in the editor next. Its full-size export then waits for the editor
+    /// to close (EditView.commit renders it once) instead of running alongside the editor's previews.
     @discardableResult
     func ingest(_ data: Data, kind: ArtworkKind, child: Child?, capturedAt: Date, context: ModelContext,
-                isSample: Bool = false) -> Artwork {
+                isSample: Bool = false, opensEditor: Bool = false) -> Artwork {
         let artwork = Artwork(kind: kind, child: child, capturedAt: capturedAt, originalImageData: data)
         artwork.isKept = false
         artwork.isSample = isSample
         context.insert(artwork)
         try? context.save()
+        if opensEditor { claimEditor(artwork.id, context: context) }
+        startProcessing(artwork, context: context)
+        return artwork
+    }
+
+    private func startProcessing(_ artwork: Artwork, context: ModelContext) {
         let id = artwork.id
         processTasks[id] = Task { [weak self] in
             await self?.autoProcess(artwork, context: context)
             self?.processTasks[id] = nil
         }
-        return artwork
+    }
+
+    // MARK: Editor bookkeeping (one heavy render at a time)
+
+    /// True while an editor is open (or about to open on a fresh capture).
+    var isEditorBusy: Bool { !editingIDs.isEmpty || !claimedIDs.isEmpty }
+
+    /// Marks a fresh capture as "the editor is about to open it". Released by `beginEditing`, or after a few seconds
+    /// if the editor never shows up, so background exports are never held back forever.
+    private func claimEditor(_ id: UUID, context: ModelContext) {
+        claimedIDs.insert(id)
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            guard let self, self.claimedIDs.remove(id) != nil else { return }
+            self.runDeferred(context: context)
+        }
+    }
+
+    /// The editor appeared for this artwork.
+    func beginEditing(_ id: UUID) {
+        claimedIDs.remove(id)
+        editingIDs.insert(id)
+    }
+
+    /// The editor closed. Its own artwork is rendered by EditView.commit; other held-back exports run now.
+    func endEditing(_ id: UUID, context: ModelContext) {
+        editingIDs.remove(id)
+        claimedIDs.remove(id)
+        deferredIDs.remove(id)
+        runDeferred(context: context)
+    }
+
+    /// The artwork has no full-size render yet and nothing is producing one.
+    func needsRender(_ artwork: Artwork) -> Bool {
+        Self.isAlive(artwork) && artwork.renderedImageData == nil
+            && !processingIDs.contains(artwork.id) && !renderingIDs.contains(artwork.id)
+    }
+
+    private func runDeferred(context: ModelContext) {
+        guard !isEditorBusy, !deferredIDs.isEmpty else { return }
+        let ids = deferredIDs
+        deferredIDs = []
+        for id in ids where processTasks[id] == nil {
+            guard let artwork = try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.id == id })).first,
+                  needsRender(artwork) else { continue }
+            startProcessing(artwork, context: context)
+        }
+    }
+
+    /// At launch: artworks whose processing never finished (app closed mid-render, or while an editor was open).
+    func processUnfinished(context: ModelContext) {
+        guard !DemoMode.isActive else { return }
+        let done = ProcessingState.done.rawValue
+        let failed = ProcessingState.failed.rawValue
+        let descriptor = FetchDescriptor<Artwork>(predicate: #Predicate { $0.processingStateRaw != done && $0.processingStateRaw != failed })
+        for artwork in (try? context.fetch(descriptor)) ?? [] where processTasks[artwork.id] == nil && needsRender(artwork) {
+            startProcessing(artwork, context: context)
+        }
     }
 
     /// Opens one of the bundled sample photos (看範例) in the editor. Samples never count toward the quota.
@@ -139,24 +213,37 @@ final class AppModel {
         for old in existing ?? [] where old.kind == kind {
             delete(old, context: context)
         }
-        let a = ingest(data, kind: kind, child: nil, capturedAt: Date(), context: context, isSample: true)
+        let a = ingest(data, kind: kind, child: nil, capturedAt: Date(), context: context, isSample: true, opensEditor: true)
         a.title = kind == .flat ? String(localized: "氣球派對") : String(localized: "國旗勞作")
         return a
     }
 
+    /// Finds the paper corners (cheap), then exports the full-size render — unless an editor is open: then the export
+    /// waits (the editor's own artwork is rendered once by EditView.commit when it closes; others run after that).
     func autoProcess(_ artwork: Artwork, context: ModelContext) async {
         guard Self.isAlive(artwork), let data = artwork.originalImageData else { return }
         let id = artwork.id
+        let startVersion = artwork.renderVersion
         processingIDs.insert(id)
-        artwork.processingState = .processing
         defer { processingIDs.remove(id) }
-        var recipe = artwork.recipe
-        if recipe.kind == .flat && recipe.corners == nil {
+        if artwork.recipe.kind == .flat && artwork.recipe.corners == nil {
             let corners = await processor.detectCorners(id: id, originalData: data)
             guard !Task.isCancelled, Self.isAlive(artwork) else { return }
-            recipe.corners = corners
+            // Re-read: the editor may have written its recipe while the corners were being found.
+            var recipe = artwork.recipe
+            if recipe.kind == .flat && recipe.corners == nil {
+                recipe.corners = corners
+                artwork.recipe = recipe
+            }
         }
-        artwork.recipe = recipe
+        // The editor already rendered it (or is rendering it): nothing left to do.
+        if renderingIDs.contains(id) || artwork.renderVersion != startVersion { return }
+        if isEditorBusy {
+            deferredIDs.insert(id)
+            try? context.save()
+            return
+        }
+        artwork.processingState = .processing
         await rerender(artwork, context: context)
     }
 
@@ -165,6 +252,8 @@ final class AppModel {
         guard Self.isAlive(artwork), let data = artwork.originalImageData else { return }
         let id = artwork.id
         let recipe = artwork.recipe
+        renderingIDs.insert(id)
+        defer { renderingIDs.remove(id) }
         do {
             let out = try await processor.export(id: id, originalData: data, recipe: recipe)
             // The artwork may have been deleted (重拍) while the render ran: never write to a deleted model.
@@ -341,9 +430,24 @@ final class AppModel {
     func delete(_ artwork: Artwork, context: ModelContext) {
         let id = artwork.id
         processTasks.removeValue(forKey: id)?.cancel()
+        deferredIDs.remove(id)
         sessionArtworkIDs.removeAll { $0 == id }
         context.delete(artwork)
         try? context.save()
         Task { await processor.evict(id: id) }
+    }
+
+    /// Captures that were never kept (the home sticky note). Samples are left alone.
+    func pendingArtworks(context: ModelContext) -> [Artwork] {
+        let all = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { !$0.isKept && !$0.isSample }))) ?? []
+        return all.filter { Self.isAlive($0) }
+    }
+
+    /// 不要了 / 全部不要: deletes every pending (captured, never kept) artwork. Returns how many were deleted.
+    @discardableResult
+    func discardPending(context: ModelContext) -> Int {
+        let pending = pendingArtworks(context: context)
+        for artwork in pending { delete(artwork, context: context) }
+        return pending.count
     }
 }

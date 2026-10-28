@@ -37,6 +37,11 @@ struct CameraScreen: View {
         .statusBarHidden()
         .task {
             await camera.start()
+            // Closed before the session finished starting: don't leave the camera running behind the editor.
+            if Task.isCancelled {
+                camera.stop()
+                return
+            }
             camera.setDetectionEnabled(app.captureKind == .flat)
         }
         .onDisappear { camera.stop() }
@@ -135,7 +140,8 @@ struct CameraScreen: View {
         }
         Task {
             if let data = await camera.capture() {
-                let a = app.ingest(data, kind: app.captureKind, child: currentChild, capturedAt: Date(), context: modelContext)
+                let a = app.ingest(data, kind: app.captureKind, child: currentChild, capturedAt: Date(), context: modelContext,
+                                   opensEditor: true)
                 onCaptured(a.id)
             } else {
                 app.show(String(localized: "拍照失敗，再試一次"), style: .problem)

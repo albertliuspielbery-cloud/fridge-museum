@@ -86,6 +86,7 @@ struct RootView: View {
         }
         .task {
             await app.store.load()
+            app.processUnfinished(context: modelContext)
             await DemoMode.prepare(app: app, context: modelContext, path: $path, showSettings: $showSettings)
         }
     }

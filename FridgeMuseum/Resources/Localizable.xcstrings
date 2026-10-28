@@ -412,6 +412,62 @@
         }
       }
     },
+    "不要了" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard"
+          }
+        }
+      }
+    },
+    "不要這 %lld 張作品？" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Discard this artwork?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Discard these %lld artworks?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "不要這張" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard"
+          }
+        }
+      }
+    },
+    "不要這張作品？" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard this artwork?"
+          }
+        }
+      }
+    },
     "也可以回到廚房，按「相簿」從照片挑選" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -706,6 +762,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "All"
+          }
+        }
+      }
+    },
+    "全部不要" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard All"
           }
         }
       }
@@ -2761,6 +2828,29 @@
         }
       }
     },
+    "這 %lld 張會從 App 裡刪掉，不會存到手機。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "It will be deleted from the app and won’t be saved to Photos."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "These %lld artworks will be deleted from the app and won’t be saved to Photos."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "這個 Apple 帳號沒有購買紀錄" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2790,6 +2880,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The camera isn’t available on this device.\nGo back and tap “Photos” to pick from your library."
+          }
+        }
+      }
+    },
+    "這張會從 App 裡刪掉，不會存到手機。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It will be deleted from the app and won’t be saved to Photos."
           }
         }
       }

@@ -73,7 +73,7 @@
 
 - Secrets：`ASC_KEY_ID`、`ASC_ISSUER_ID`、`ASC_KEY_P8`、`APPLE_TEAM_ID`（Albert 設的，Admin 權限金鑰）。
 - 沒有 Mac：CI 是唯一的編譯器。雲端環境的 proxy 擋掉 Actions log 和 artifact 下載，看錯誤用 annotations（`ci/annotate_log.py`），看畫面用 `git fetch origin ci-shots`。
-- push 到 main 會自動跑模擬器編譯＋單元測試（95 個測試）。
+- push 到 main 會自動跑模擬器編譯＋單元測試（100 個測試）。
 
 ### TestFlight 還要做的
 1. 再跑一次「App 內購買項目」，讓商品從 MISSING_METADATA 變成 Ready to Submit（沙盒才拿得到價格）。之後最好換成實機付費頁截圖（存成 `ci/iap_review.png` 重跑）。
@@ -85,8 +85,8 @@
 重拍／刪除不閃退；12MP/48MP/ProRAW 匯出 4096 的記憶體（舊機 4GB RAM）；照片權限四種狀態（每次只跳一個系統視窗、每個孩子的相簿）；沙盒購買／恢復／Ask to Buy／退款；相機權限與中斷；語音轉文字；跨午夜額度；Dynamic Type、VoiceOver；Vision instance 去背實際效果。
 
 ### 已知小問題（nit）
-- 語音轉文字完成後寫入前沒檢查作品是否已刪除（`UI/EditPanels.swift` 約 529 行）。
-- 中文首頁副標最後一字掉到第二行；英文空冰箱範例卡不捲動時被流理台切到。
+- 英文空冰箱範例卡不捲動時被流理台切到。
+- （1.0.1 已修：語音轉文字寫入前檢查作品是否還在；中文首頁副標掉字。）
 
 ---
 

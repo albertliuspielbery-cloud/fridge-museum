@@ -528,7 +528,8 @@ struct VoiceNoteRow: View {
         try? modelContext.save()
         let artwork = self.artwork, recorder = self.recorder, context = modelContext
         Task {
-            if let text = await recorder.transcribe(data) {
+            // The artwork may have been thrown away (不要這張 / 重拍) while the speech was being transcribed.
+            if let text = await recorder.transcribe(data), AppModel.isAlive(artwork) {
                 artwork.voiceTranscript = text
                 try? context.save()
             }

@@ -54,8 +54,11 @@ struct EditView: View {
     /// After 向左轉 / 向右轉 / 拉直 the crop tool shows the turned result; tapping 裁切 again returns to the corners.
     @State private var cropShowsResult = false
     @State private var pickingParts = false
-    /// 重拍: the capture is thrown away only after the editor is gone, so nothing renders a deleted model.
+    /// 重拍 / 不要這張: the capture is thrown away only after the editor is gone, so nothing renders a deleted model.
     @State private var discardOnDisappear = false
+    /// 重拍 reopens the camera after discarding; 不要這張 just goes back.
+    @State private var retakeAfterDiscard = false
+    @State private var confirmDiscard = false
 
     init(artwork: Artwork) {
         _artwork = Bindable(artwork)
@@ -104,6 +107,19 @@ struct EditView: View {
             pickingParts = false
             Task { await model.setKind(newKind) }
         }
+        .confirmationDialog(Text("不要這張作品？"), isPresented: $confirmDiscard, titleVisibility: .visible) {
+            Button(role: .destructive) {
+                retakeAfterDiscard = false
+                discardOnDisappear = true
+                dismiss()
+            } label: {
+                Text("不要這張")
+            }
+            Button(role: .cancel) {} label: { Text("取消") }
+        } message: {
+            Text("這張會從 App 裡刪掉，不會存到手機。")
+        }
+        .onAppear { app.beginEditing(artwork.id) }
         .task {
             model.render()
             if DemoMode.isActive { DemoMode.configure(editor: model, tool: $tool, compare: $compare, activeCorner: $activeCorner, showLabel: $showLabel) }
@@ -114,9 +130,10 @@ struct EditView: View {
         .onDisappear {
             // Capture everything now: environment values must not be read after the view is gone.
             let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
+            app.endEditing(artwork.id, context: context)
             if discardOnDisappear {
                 app.delete(artwork, context: context)
-                app.cameraRequest += 1
+                if retakeAfterDiscard { app.cameraRequest += 1 }
                 Task { await model.evictCaches() }
                 return
             }
@@ -142,14 +159,20 @@ struct EditView: View {
     private var trailingButton: some View {
         if !artwork.isKept && !artwork.isSample {
             Button {
+                retakeAfterDiscard = true
                 discardOnDisappear = true
                 dismiss()
             } label: {
-                Label("重拍", systemImage: "camera")
-                    .labelStyle(.titleAndIcon)
-                    .font(.fm(16, bold: true))
-                    .foregroundStyle(Palette.ink)
+                // Icon + text as a plain HStack: toolbars collapse a `Label` to its icon, which hid what 重拍 does.
+                HStack(spacing: 5) {
+                    Image(systemName: "camera")
+                    Text("重拍")
+                }
+                .font(.fm(16, bold: true))
+                .foregroundStyle(Palette.ink)
+                .fixedSize()
             }
+            .accessibilityLabel(Text("重拍"))
         } else if artwork.isKept {
             Button {
                 artwork.isFavorite.toggle()
@@ -196,6 +219,19 @@ struct EditView: View {
                     .frame(height: 36)
                     .background(Capsule().fill(Palette.chip))
                     .padding(12)
+            } else if !artwork.isKept, tool == nil, !pickingParts, !compare {
+                // 不要這張: throw a capture away without reopening the camera (asks first).
+                Button { confirmDiscard = true } label: {
+                    Label("不要這張", systemImage: "trash")
+                        .font(.fm(15, bold: true))
+                        .foregroundStyle(Palette.red)
+                        .padding(.horizontal, 14)
+                        .frame(height: 38)
+                        .background(Capsule().fill(Palette.surface))
+                        .overlay(Capsule().strokeBorder(Palette.red, lineWidth: 2))
+                }
+                .buttonStyle(.plain)
+                .padding(12)
             }
         }
         .overlay(alignment: .bottomLeading) {
@@ -629,13 +665,18 @@ struct EditView: View {
         }
     }
 
-    /// Writes the recipe back and re-renders the full-size output if anything changed.
+    /// Writes the recipe back and re-renders the full-size output if anything changed. A fresh capture has no
+    /// full-size render yet (the background export waits while the editor is open), so it gets its one render here.
     static func commit(model: EditModel, artwork: Artwork, app: AppModel, context: ModelContext) async {
-        guard model.isDirty, AppModel.isAlive(artwork) else { return }
-        artwork.recipe = model.recipe
-        artwork.kind = model.recipe.kind
-        model.markSaved()
-        await app.rerender(artwork, context: context)
+        guard AppModel.isAlive(artwork) else { return }
+        if model.isDirty {
+            artwork.recipe = model.recipe
+            artwork.kind = model.recipe.kind
+            model.markSaved()
+            await app.rerender(artwork, context: context)
+        } else if app.needsRender(artwork) {
+            await app.rerender(artwork, context: context)
+        }
     }
 }
 
