@@ -178,8 +178,230 @@ enum Sketch {
     }
 }
 
+/// Synthetic craft renders, built like ImageProcessor.composeCraft: the cut-out on its bounding box plus a 16 % margin
+/// (2.3 margins in total vertically), on one of the four backgrounds — 柔光漸層 is the radial gradient (white at 45 %
+/// height to #D9DDE3 at 0.75 × the long side, interpolated in linear light) — with the two synthetic contact shadows
+/// (the mask squashed onto its bottom line, blurred, tinted dark). A re-shoot is a new cut-out of the same piece:
+/// smaller, turned, seen a little flatter, or under other light.
+enum CraftSketch {
+    typealias RGB = (Double, Double, Double)
+
+    enum Background: CaseIterable {
+        case white, warm, gray, gradient
+
+        var center: RGB {
+            switch self {
+            case .white, .gradient: (255, 255, 255)
+            case .warm: (241, 239, 233)
+            case .gray: (230, 233, 238)
+            }
+        }
+        var edge: RGB { self == .gradient ? (217, 221, 227) : center }
+    }
+
+    enum Piece: CaseIterable {
+        /// Red paper cup with a white band, wider at the top · red ball with a blue stripe · gray-headed blue robot
+        /// with yellow eyes · green triangle tree on a brown trunk.
+        case cup, ball, robot, tree
+
+        var aspect: Double {
+            switch self {
+            case .cup, .tree: 0.8
+            case .ball: 1.0
+            case .robot: 0.75
+            }
+        }
+
+        func color(_ u: Double, _ v: Double) -> RGB? {
+            let red: RGB = (215, 45, 50), blue: RGB = (45, 90, 210)
+            switch self {
+            case .cup:
+                if abs(u - 0.5) > 0.5 - 0.14 * v { return nil }
+                return v > 0.35 && v < 0.47 ? (245, 245, 240) : red
+            case .ball:
+                if (u - 0.5) * (u - 0.5) + (v - 0.5) * (v - 0.5) > 0.25 { return nil }
+                return abs(v - 0.5) < 0.08 ? blue : red
+            case .robot:
+                if v < 0.32 {
+                    if abs(u - 0.5) > 0.3 { return nil }
+                    if v > 0.12 && v < 0.2 && (abs(u - 0.38) < 0.05 || abs(u - 0.62) < 0.05) { return (245, 205, 40) }
+                    return (150, 150, 160)
+                }
+                return blue
+            case .tree:
+                if v > 0.8 { return abs(u - 0.5) < 0.1 ? (130, 80, 45) : nil }
+                return abs(u - 0.5) < 0.5 * v / 0.8 ? (50, 160, 70) : nil
+            }
+        }
+    }
+
+    struct Cutout {
+        var width: Int
+        var height: Int
+        var rgb: [Double]
+        var mask: [Bool]
+    }
+
+    /// The piece's cut-out, cropped to its bounding box.
+    static func cutout(_ piece: Piece, height: Int = 160, degrees: Double = 0, squash: Double = 1,
+                       gain: RGB = (1, 1, 1)) -> Cutout {
+        let bh = Double(height), bw = (Double(height) * piece.aspect).rounded()
+        let side = Int(max(bw, bh) * 1.6)
+        let a = degrees * Double.pi / 180, ca = cos(a), sa = sin(a), c = Double(side) / 2
+        var rgb = [Double](repeating: 0, count: side * side * 3)
+        var mask = [Bool](repeating: false, count: side * side)
+        var x0 = side, y0 = side, x1 = -1, y1 = -1
+        for y in 0..<side {
+            for x in 0..<side {
+                let dx = Double(x) + 0.5 - c, dy = Double(y) + 0.5 - c
+                let u = (ca * dx + sa * dy) / bw + 0.5, v = (-sa * dx + ca * dy) / squash / bh + 0.5
+                guard u >= 0, u < 1, v >= 0, v < 1, let col = piece.color(u, v) else { continue }
+                let i = y * side + x
+                mask[i] = true
+                rgb[i * 3] = min(255, col.0 * gain.0)
+                rgb[i * 3 + 1] = min(255, col.1 * gain.1)
+                rgb[i * 3 + 2] = min(255, col.2 * gain.2)
+                x0 = min(x0, x); x1 = max(x1, x); y0 = min(y0, y); y1 = max(y1, y)
+            }
+        }
+        let w = x1 - x0 + 1, h = y1 - y0 + 1
+        var out = Cutout(width: w, height: h, rgb: [Double](repeating: 0, count: w * h * 3),
+                         mask: [Bool](repeating: false, count: w * h))
+        for y in 0..<h {
+            for x in 0..<w {
+                let s = (y + y0) * side + x + x0, d = y * w + x
+                out.mask[d] = mask[s]
+                for k in 0..<3 { out.rgb[d * 3 + k] = rgb[s * 3 + k] }
+            }
+        }
+        return out
+    }
+
+    private static func toLinear(_ c: Double) -> Double {
+        let v = c / 255
+        return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+    }
+
+    private static func toSRGB(_ l: Double) -> Double {
+        (l <= 0.0031308 ? l * 12.92 : 1.055 * pow(l, 1 / 2.4) - 0.055) * 255
+    }
+
+    static func render(_ cut: Cutout, on background: Background) -> RGBA8Image {
+        let bw = cut.width, bh = cut.height
+        let mg = Int((Double(max(bw, bh)) * 0.16).rounded())
+        let cw = bw + 2 * mg, ch = bh + Int((Double(mg) * 2.3).rounded())
+        var out = [Double](repeating: 0, count: cw * ch * 3)
+        let c0 = background.center, c1 = background.edge
+        let l0 = [toLinear(c0.0), toLinear(c0.1), toLinear(c0.2)], l1 = [toLinear(c1.0), toLinear(c1.1), toLinear(c1.2)]
+        let cx = Double(cw) / 2, cy = Double(ch) * 0.45, radius = 0.75 * Double(max(cw, ch))
+        for y in 0..<ch {
+            for x in 0..<cw {
+                let i = (y * cw + x) * 3
+                if background == .gradient {
+                    let t = min(1, hypot(Double(x) + 0.5 - cx, Double(y) + 0.5 - cy) / radius)
+                    for k in 0..<3 { out[i + k] = toSRGB(l0[k] * (1 - t) + l1[k] * t) }
+                } else {
+                    out[i] = c0.0; out[i + 1] = c0.1; out[i + 2] = c0.2
+                }
+            }
+        }
+        var full = [Float](repeating: 0, count: cw * ch)
+        for y in 0..<bh { for x in 0..<bw where cut.mask[y * bw + x] { full[(y + mg) * cw + x + mg] = 1 } }
+        let bottom = Double(mg + bh)
+        let shadows: [(squash: Double, blur: Double, drop: Double, opacity: Double)] = [(0.22, 0.05, 0.01, 0.28),
+                                                                                        (0.06, 0.015, 0.002, 0.55)]
+        for s in shadows {
+            var squashed = [Float](repeating: 0, count: cw * ch)
+            for y in 0..<ch {
+                let src = Int((bottom - (bottom - (Double(y) - s.drop * Double(ch))) / s.squash + 0.5).rounded(.down))
+                guard src >= 0, src < ch else { continue }
+                for x in 0..<cw { squashed[y * cw + x] = full[src * cw + x] }
+            }
+            let radius = max(1, Int((s.blur * Double(cw) + 0.5).rounded(.down)))
+            let blurred = ImageOps.blur3(squashed, cw, ch, radius)
+            for p in 0..<(cw * ch) {
+                let alpha = min(1, max(0, Double(blurred[p]) * s.opacity))
+                out[p * 3] = out[p * 3] * (1 - alpha) + 38 * alpha
+                out[p * 3 + 1] = out[p * 3 + 1] * (1 - alpha) + 34 * alpha
+                out[p * 3 + 2] = out[p * 3 + 2] * (1 - alpha) + 30 * alpha
+            }
+        }
+        for y in 0..<bh {
+            for x in 0..<bw where cut.mask[y * bw + x] {
+                let d = ((y + mg) * cw + x + mg) * 3, s = (y * bw + x) * 3
+                for k in 0..<3 { out[d + k] = cut.rgb[s + k] }
+            }
+        }
+        var image = RGBA8Image(width: cw, height: ch)
+        for p in 0..<(cw * ch) {
+            for k in 0..<3 { image.pixels[p * 4 + k] = UInt8(max(0, min(255, (out[p * 3 + k] + 0.5).rounded(.down)))) }
+        }
+        return image
+    }
+
+    static func image(_ piece: Piece, on background: Background, height: Int = 160, degrees: Double = 0,
+                      squash: Double = 1, gain: RGB = (1, 1, 1)) -> RGBA8Image {
+        render(cutout(piece, height: height, degrees: degrees, squash: squash, gain: gain), on: background)
+    }
+}
+
+/// 這張好像收過了 for crafts. NumPy port of the same renders (threshold 0.40):
+/// different crafts 0.53 and up on every background (closest: the red cup vs. the red ball; the gradient is no closer
+/// than the plain backgrounds), re-shoots 0.33 at most, the same piece on another background ≤ 0.07.
+struct CraftFingerprintTests {
+    private func fp(_ im: RGBA8Image) throws -> ArtFingerprint {
+        try #require(ArtFingerprint.make(im))
+    }
+
+    @Test func differentCraftsDoNotMatchOnAnyBackground() throws {
+        let pieces = CraftSketch.Piece.allCases
+        for background in CraftSketch.Background.allCases {
+            let prints = try pieces.map { try fp(CraftSketch.image($0, on: background)) }
+            for i in 0..<pieces.count {
+                for j in 0..<pieces.count where j != i {
+                    let score = prints[i].score(against: prints[j])
+                    #expect(!prints[i].isLikelyDuplicate(of: prints[j]),
+                            "\(background): \(pieces[i]) vs \(pieces[j]): \(String(describing: score))")
+                }
+            }
+        }
+    }
+
+    @Test func reshotCraftMatches() throws {
+        for background in [CraftSketch.Background.white, .gradient] {
+            for piece in CraftSketch.Piece.allCases {
+                let original = try fp(CraftSketch.image(piece, on: background))
+                let reshoots: [(String, RGBA8Image)] = [
+                    ("smaller", CraftSketch.image(piece, on: background, height: 120)),
+                    ("turned 4°", CraftSketch.image(piece, on: background, degrees: 4)),
+                    ("turned -6°", CraftSketch.image(piece, on: background, degrees: -6)),
+                    ("relit", CraftSketch.image(piece, on: background, gain: (0.92, 0.9, 0.84))),
+                    ("all at once", CraftSketch.image(piece, on: background, height: 130, degrees: -3, squash: 0.94,
+                                                      gain: (0.95, 0.93, 0.88))),
+                ]
+                for (name, image) in reshoots {
+                    let b = try fp(image)
+                    let score = original.score(against: b)
+                    #expect(original.isLikelyDuplicate(of: b), "\(background) \(piece) \(name): \(String(describing: score))")
+                }
+            }
+        }
+    }
+
+    /// Switching the background (純白 → 柔光漸層 / 淺灰) keeps it the same piece.
+    @Test func sameCraftOnAnotherBackgroundMatches() throws {
+        for piece in CraftSketch.Piece.allCases {
+            let white = try fp(CraftSketch.image(piece, on: .white))
+            let gradient = try fp(CraftSketch.image(piece, on: .gradient))
+            let gray = try fp(CraftSketch.image(piece, on: .gray))
+            #expect(white.isLikelyDuplicate(of: gradient), "\(piece) white vs gradient")
+            #expect(white.isLikelyDuplicate(of: gray), "\(piece) white vs gray")
+        }
+    }
+}
+
 /// 這張好像收過了: the fingerprint and the matcher. (Scores were checked against a NumPy port of ArtFingerprint:
-/// re-shoots score 0.02–0.33, different drawings 0.67 and up; the threshold is 0.40.)
+/// re-shoots score 0.02–0.27, different drawings 0.72 and up; the threshold is 0.40.)
 struct ArtFingerprintTests {
     private func fp(_ im: RGBA8Image) throws -> ArtFingerprint {
         try #require(ArtFingerprint.make(im))

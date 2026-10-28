@@ -8,14 +8,19 @@ import ImageIO
 ///
 /// Three parts, all from a 64×64 box-averaged copy whose white point is normalized per channel (so a re-shoot
 /// under warmer / dimmer light lines up again):
-/// - `hash`: 64-bit pHash (8×8 low-frequency DCT of 32×32 luminance vs. the median) — layout of light and dark.
+/// - `dct`: the 63 low-frequency AC coefficients (8×8 DCT of 32×32 luminance, scaled to ±127) — layout of light
+///   and dark. Compared like a pHash (which side of the median each coefficient is on), but a coefficient only
+///   counts in full when it is clearly away from the median in both images: symmetric crafts (a cup, a ball) have
+///   many near-zero coefficients whose pHash bits flip at random when the piece is turned a few degrees.
 /// - `grid`: 16×16 RGB, 3×3-blurred — compared with a ±1 cell shift search, so a slightly shifted, cropped or
 ///   rotated re-shoot still lines up; normalized by the amount of "ink" so mostly-white sheets aren't all alike.
 /// - `hues`: 12-bin hue histogram of the coloured cells (fraction of the sheet) — tells apart drawings with a
 ///   similar layout but different crayons.
 /// The tuning (threshold 0.40) is in `score(against:)`; synthetic cases are in DuplicateDetectionTests.
 struct ArtFingerprint: Sendable, Equatable {
-    static let version: UInt8 = 1
+    /// 2: `dct` coefficients replaced the 64-bit hash (1.1.0). Older fingerprints are recomputed by the backfill.
+    static let version: UInt8 = 2
+    static let dctCount = 63
     static let gridSide = 16
     static let hueBins = 12
     /// Score at or below which two fingerprints are "likely the same artwork".
@@ -23,7 +28,8 @@ struct ArtFingerprint: Sendable, Equatable {
     /// Long edge the image is scaled to before fingerprinting.
     static let workingEdge = 128
 
-    var hash: UInt64
+    /// Low-frequency AC coefficients (row-major 8×8 without the DC term), scaled so the largest is ±127.
+    var dct: [Int8]
     /// gridSide × gridSide × RGB, 0...255.
     var grid: [UInt8]
     /// Fraction of the sheet in each hue bin, 0...255 (= 0...1).
@@ -31,16 +37,16 @@ struct ArtFingerprint: Sendable, Equatable {
     /// Width / height × 1000.
     var aspect: UInt16
 
-    // MARK: Encoding — [version][hash 8 LE][aspect 2 LE][hues 12][grid 768]
+    // MARK: Encoding — [version][aspect 2 LE][dct 63][hues 12][grid 768]
 
-    static let encodedCount = 1 + 8 + 2 + hueBins + gridSide * gridSide * 3
+    static let encodedCount = 1 + 2 + dctCount + hueBins + gridSide * gridSide * 3
 
     var encoded: Data {
         var bytes: [UInt8] = [Self.version]
         bytes.reserveCapacity(Self.encodedCount)
-        for i in 0..<8 { bytes.append(UInt8(truncatingIfNeeded: hash >> UInt64(8 * i))) }
         bytes.append(UInt8(truncatingIfNeeded: aspect))
         bytes.append(UInt8(truncatingIfNeeded: aspect >> 8))
+        bytes.append(contentsOf: dct.map { UInt8(bitPattern: $0) })
         bytes.append(contentsOf: hues)
         bytes.append(contentsOf: grid)
         return Data(bytes)
@@ -51,18 +57,17 @@ struct ArtFingerprint: Sendable, Equatable {
         guard let data, data.count == Self.encodedCount else { return nil }
         let bytes = [UInt8](data)
         guard bytes[0] == Self.version else { return nil }
-        var h: UInt64 = 0
-        for i in 0..<8 { h |= UInt64(bytes[1 + i]) << UInt64(8 * i) }
-        hash = h
-        aspect = UInt16(bytes[9]) | (UInt16(bytes[10]) << 8)
-        let huesStart = 11
+        aspect = UInt16(bytes[1]) | (UInt16(bytes[2]) << 8)
+        let dctStart = 3
+        let huesStart = dctStart + Self.dctCount
+        dct = bytes[dctStart..<huesStart].map { Int8(bitPattern: $0) }
         let gridStart = huesStart + Self.hueBins
         hues = Array(bytes[huesStart..<gridStart])
         grid = Array(bytes[gridStart..<Self.encodedCount])
     }
 
-    init(hash: UInt64, grid: [UInt8], hues: [UInt8], aspect: UInt16) {
-        self.hash = hash
+    init(dct: [Int8], grid: [UInt8], hues: [UInt8], aspect: UInt16) {
+        self.dct = dct
         self.grid = grid
         self.hues = hues
         self.aspect = aspect
@@ -137,7 +142,7 @@ struct ArtFingerprint: Sendable, Equatable {
             for i in 0..<(n * n) { g[i * 3 + c] = min(1, g[i * 3 + c] / white) }
         }
 
-        // 3. pHash: 32×32 luminance → 8×8 low-frequency DCT → bit = coefficient above the median of the 63 AC ones.
+        // 3. 32×32 luminance → 8×8 low-frequency DCT; the 63 AC coefficients, largest scaled to ±127.
         let m = 32
         var lum = [Float](repeating: 0, count: m * m)
         func luma(_ x: Int, _ y: Int) -> Float {
@@ -170,9 +175,11 @@ struct ArtFingerprint: Sendable, Equatable {
                 dct[v * 8 + u] = s
             }
         }
-        let median = dct[1...].sorted()[31]
-        var hash: UInt64 = 0
-        for i in 0..<64 where dct[i] > median { hash |= UInt64(1) << UInt64(i) }
+        let ac = Array(dct[1...])
+        let largest = ac.reduce(Float(0)) { max($0, abs($1)) }
+        let coefficients: [Int8] = ac.map { c in
+            largest > 0 ? Int8(max(-127, min(127, (c / largest * 127).rounded()))) : 0
+        }
 
         // 4. Colour grid: 16×16 (4×4 blocks of the 64 grid), then a 3×3 blur (edges clamped).
         let k = gridSide, block = n / k
@@ -230,26 +237,26 @@ struct ArtFingerprint: Sendable, Equatable {
         let hues = hist.map { UInt8(max(0, min(255, (min(1, $0 / cells) * 255).rounded()))) }
 
         let aspect = UInt16(max(1, min(65535, (Double(W) / Double(H) * 1000).rounded())))
-        return ArtFingerprint(hash: hash, grid: grid, hues: hues, aspect: aspect)
+        return ArtFingerprint(dct: coefficients, grid: grid, hues: hues, aspect: aspect)
     }
 
     // MARK: Comparing
 
     /// 0 = identical; ≤ `matchThreshold` = likely the same artwork. nil when the two can't be the same piece
     /// (very different shape) or there is too little on either sheet to compare.
-    ///   score = gridDistance + hamming(hash) / 64 + 0.6 · hueDistance
+    ///   score = gridDistance + 0.6 · hueDistance + 1.3 · dctDistance
     /// `cutoff`: stop early (returning nil) once the cheap parts alone exceed it.
     func score(against other: ArtFingerprint, cutoff: Float = .greatestFiniteMagnitude) -> Float? {
-        guard aspect > 0, other.aspect > 0, hues.count == Self.hueBins, other.hues.count == Self.hueBins else { return nil }
+        guard aspect > 0, other.aspect > 0, hues.count == Self.hueBins, other.hues.count == Self.hueBins,
+              dct.count == Self.dctCount, other.dct.count == Self.dctCount else { return nil }
         if abs(log(Double(aspect) / Double(other.aspect))) > 0.3 { return nil }
-        let hamming = Float((hash ^ other.hash).nonzeroBitCount)
         var diff: Float = 0, total: Float = 0
         for i in 0..<Self.hueBins {
             let a = Float(hues[i]) / 255, b = Float(other.hues[i]) / 255
             diff += abs(a - b)
             total += a + b
         }
-        let cheap = hamming / 64 + 0.6 * diff / max(total, 0.1)
+        let cheap = 1.3 * dctDistance(other) + 0.6 * diff / max(total, 0.1)
         if cheap > cutoff { return nil }
         guard let grid = gridDistance(other) else { return nil }
         return cheap + grid
@@ -258,6 +265,28 @@ struct ArtFingerprint: Sendable, Equatable {
     func isLikelyDuplicate(of other: ArtFingerprint) -> Bool {
         guard let s = score(against: other, cutoff: Self.matchThreshold) else { return false }
         return s <= Self.matchThreshold
+    }
+
+    /// Soft pHash distance, 0...1: coefficients on opposite sides of their image's median, each weighted by how
+    /// clearly both are away from it (full weight from 0.1 mean deviations on). Near-median coefficients — the
+    /// ones that flip on a re-shoot — barely count.
+    private func dctDistance(_ other: ArtFingerprint) -> Float {
+        let a = Self.centered(dct), b = Self.centered(other.dct)
+        var sum: Float = 0
+        for i in 0..<Self.dctCount where (a[i] > 0) != (b[i] > 0) {
+            sum += min(1, min(abs(a[i]), abs(b[i])) / 0.1)
+        }
+        return sum / Float(Self.dctCount)
+    }
+
+    /// Coefficients minus their median, in units of their mean absolute deviation.
+    private static func centered(_ q: [Int8]) -> [Float] {
+        let v = q.map { Float($0) }
+        let median = v.sorted()[v.count / 2]
+        let z = v.map { $0 - median }
+        let spread = z.reduce(Float(0)) { $0 + abs($1) } / Float(max(1, z.count))
+        let inv = 1 / max(spread, 1e-6)
+        return z.map { $0 * inv }
     }
 
     /// Σ|a − b| / Σ(ink a + ink b) over the overlap, best of the 9 one-cell shifts. 0 = same, 1 = nothing in common.
