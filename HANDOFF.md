@@ -2,7 +2,7 @@
 
 2026-10-28　星光工作室 Starlight Studio　著作權與 IP 屬於星光工作室 Starlight Studio
 
-這份是給「新對話的 Claude」看的完整交接。新對話開始時先讀完這份，再動手。
+這份是給「新對話的 Claude」看的完整交接。新對話開始時先讀完這份和 DECISIONS.md（討論歷程與決策理由），再動手。
 
 ---
 
