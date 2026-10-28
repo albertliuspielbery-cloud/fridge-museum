@@ -40,15 +40,15 @@ Keep every drawing they make
 
 zh-Hant
 ```
-拍下孩子的畫和勞作，紙自動拉正、底色變白，勞作從桌面上去背，再依孩子、學期和年齡收進每個孩子的美術館。全部在手機上處理，照片不上傳。
+拍下孩子的畫和勞作：紙自動拉正、底色變白，勞作自動去背，再依學期和年齡收進每個孩子的美術館。全部在手機上處理，App 不會上傳照片。
 ```
 字元數：66
 
 en-US
 ```
-Snap your child's drawings and crafts. Paper is straightened and turned white, crafts are lifted off the table, and each piece goes into that child's museum. On-device.
+Snap your child's art. Drawings come out straight and white, crafts are lifted off the table, and each piece is filed in that child's own museum, all on your iPhone.
 ```
-字元數：168
+字元數：165
 
 ## 4. 描述 Description（上限 4000）
 
@@ -67,7 +67,7 @@ zh-Hant
 ・四角沒對準可以拖曳調整，也能旋轉、拉直；左右拖曳就能比較前後
 
 【勞作：從桌面上去背】
-・用 iPhone 內建的裝置端 AI 把作品從桌面上分出來，換上純白、暖白、淺灰或柔光漸層背景，還能加上自然陰影
+・用裝置端 AI 把作品從桌面上分出來（在手機上完成，不上傳），換上純白、暖白、淺灰或柔光漸層背景，還能加上自然陰影
 ・旁邊有其他東西？點一下選要留下的部分
 ・被誤刪的地方，用「補回作品」筆刷塗回來
 
@@ -75,16 +75,16 @@ zh-Hant
 ・可以新增好幾個孩子，填名字（或暱稱）和生日
 ・畫作、勞作分開看，也能依學期（上學期 8–1 月、下學期 2–7 月）、年齡或年份分組
 ・每件作品都有一張說明牌：作品名稱、日期、當時幾歲、用什麼做的、標籤和備註
-・錄下孩子介紹自己作品的聲音，在手機上轉成文字
+・錄下孩子介紹作品的聲音，支援的機型會直接在手機上轉成文字
 ・喜歡的加到最愛，用學期、年齡、標籤篩選，很快就找到
 
 【存到手機】
 ・按「存到手機」存進「照片」App，畫作最長邊可達 4096 像素，細節清楚
-・允許完整照片權限時，每個孩子會有一本「冰箱美術館 – 名字」相簿；不允許也能存，會放在「最近項目」
+・允許完整照片權限時，每個孩子會有一本「冰箱美術館 – 名字」相簿；只允許「加入照片」也能存，會放在「最近項目」
 ・可以在圖片下方加上名字、年齡和日期，也能用 iPhone 的分享選單傳給家人
 
 【隱私】
-・所有處理都在這支 iPhone 上完成，照片不會上傳
+・所有處理都在這支 iPhone 上完成，App 不會上傳你的照片
 ・不需要註冊帳號，沒有廣告、沒有追蹤，不蒐集任何資料
 ・不用生成式 AI 改動孩子的作品：只整理紙張和背景，不會重畫或添加任何內容
 ・拍照、整理、存到手機都不用連網
@@ -94,57 +94,57 @@ zh-Hant
 ・按「收進這次」或「存到手機」才算，同一件作品只算一次；看範例不算
 ・完整版：一次買斷，不是訂閱，不會每月扣款。畫作、勞作不限張數，支援 Apple「家人共享」，之後的更新都免費
 
-冰箱美術館是給家長用的整理工具，孩子不需要帳號。
+冰箱美術館是給家長用的整理工具。
 
 有問題或建議，歡迎來信：starlight.kids.app@gmail.com
 ```
-字元數：975
+字元數：986
 
 en-US
 ```
-The fridge is full and the drawer of crafts keeps growing. My Fridge Museum lets you take one photo with your iPhone and keep each piece neatly organized. Even when the original can't stay, the artwork stays in the museum.
+The fridge is covered and the craft drawer won't close. With My Fridge Museum, one photo is all it takes to tidy up and keep each piece. When the original can't stay, the artwork lives on in the museum.
 
 DRAWINGS: STRAIGHT AND WHITE
 • Finds the paper's corners and straightens a photo taken at an angle
 • Evens out the light, so yellowed or dim paper turns clean white
 • Keeps pale yellow crayon, watercolor, and pencil from washing out
-• Removes little specks, and does its best to clear shadows that fall across the sheet from its edge
+• Removes little specks, and reduces shadows that reach in from the edge of the sheet
 • Colored paper keeps its color
-• Drag the corners, rotate, or straighten by hand, and drag a line to compare before and after
+• Fine-tune the corners, rotate or straighten, and drag the slider to compare before and after
 
 CRAFTS: LIFTED OFF THE TABLE
-• iPhone's built-in, on-device AI separates the craft from the table, then places it on white, warm white, light gray, or a soft glow, with an optional natural shadow
+• On-device AI separates the craft from the table, then places it on white, warm white, light gray, or a soft glow, with an optional natural shadow
 • Something else in the shot? Tap the parts you want to keep
-• If a bit was cut away by mistake, paint it back with the Restore brush
+• If a bit was cut away by mistake, paint it back with the Restore Artwork brush
 
 A MUSEUM FOR EACH CHILD
 • Add several children, each with a name or nickname and a birthday
-• See drawings and crafts separately, and group by semester (Aug–Jan, Feb–Jul), age, or year
+• See drawings and crafts separately, and group by semester (Fall: Aug–Jan, Spring: Feb–Jul), age, or year
 • Every artwork gets a museum label: title, date, age at the time, what it was made with, tags, and a note
-• Record your child talking about their work; it's transcribed on the phone
+• Record your child talking about their work, transcribed right on your iPhone (on supported models)
 • Mark favorites and filter by semester, age, or tag to find a piece quickly
 
 SAVE TO PHOTOS
 • Save to Photos at high resolution, up to 4096 pixels on the long side for drawings
-• With full Photos access, each child gets an album such as "My Fridge Museum – Mia". Without it, artworks still save to Recents
+• With full Photos access, each child gets an album such as "My Fridge Museum – Mia". With add-only access, artworks save to Recents
 • Add the name, age, and date below the image if you like, or send it to family with the iPhone share sheet
 
 PRIVACY
-• Everything is processed on your iPhone. Photos are never uploaded
+• Everything is processed on your iPhone. The app never uploads your photos
 • No account, no ads, no tracking, and no data collected
 • No generative AI changes your child's work. The app tidies the paper and background; it never redraws or adds anything
 • Taking photos, organizing, and saving all work without an internet connection
 
 FREE AND FULL VERSION
-• Free: hang up 3 drawings a day (resets at local midnight) and try 3 crafts
+• Free: keep up to 3 drawings a day (resets at midnight) and try 3 crafts
 • A piece counts only when you tap "Hang It Up" or "Save to Photos", and only once. Samples don't count
 • Full Version: a one-time purchase, not a subscription, with no recurring charges. Unlimited drawings and crafts, works with Family Sharing, and all future updates are included
 
-My Fridge Museum is an organizing tool for parents. Children don't need an account.
+My Fridge Museum is an organizing tool for parents.
 
 Questions or ideas? Write to starlight.kids.app@gmail.com
 ```
-字元數：2660
+字元數：2630
 
 ## 5. 關鍵字 Keywords（上限 100 字元，逗號分隔、逗號後不空格）
 
@@ -152,15 +152,15 @@ Questions or ideas? Write to starlight.kids.app@gmail.com
 
 zh-Hant
 ```
-畫作,勞作,作品集,孩子,小孩,兒童,幼兒園,塗鴉,美勞,掃描,收藏,保存,整理,去背,紀錄,成長,回憶,相簿,蠟筆,親子,學校,家長
+畫作,勞作,作品集,孩子,小孩,兒童,幼兒園,塗鴉,美勞,掃描,收藏,保存,整理,去背,紀錄,成長,回憶,相簿,蠟筆,親子,學校,家長,斷捨離,收納,幼稚園,數位化
 ```
-字元數：67（UTF-8 159 bytes）
+字元數：82（UTF-8 196 bytes）
 
 en-US
 ```
-kids,children,art,artwork,craft,scan,portfolio,preschool,kindergarten,school,keepsake,memories,album
+kids,children,art,organizer,craft,scan,portfolio,preschool,kindergarten,school,keepsake,memories
 ```
-字元數：100（UTF-8 100 bytes）
+字元數：96（UTF-8 96 bytes）
 
 ## 6. 此版本新增內容 What's New（1.0.1）
 
@@ -169,20 +169,20 @@ kids,children,art,artwork,craft,scan,portfolio,preschool,kindergarten,school,kee
 zh-Hant
 ```
 ・不想留的作品，可以直接「不要這張」，或一次「全部不要」
-・從紙邊伸進來的影子會自動修掉
+・從紙邊伸進來的影子，現在會盡量自動修淡
 ・處理作品時手機比較不會發熱
 ・設定移到首頁右上角
 ```
-字元數：70
+字元數：75
 
 en-US
 ```
-• Discard a photo you don't want to keep, or discard them all at once
-• Shadows falling across the paper from its edge are now cleaned up
+• Don't want to keep a photo? Tap Discard, or Discard All
+• Shadows reaching in from the edge of the paper are now reduced automatically
 • The phone stays cooler while artworks are processed
 • Settings moved to the top-right corner of the home screen
 ```
-字元數：251
+字元數：250
 
 ## 7. 截圖文字（依截圖順序）
 
@@ -190,13 +190,13 @@ en-US
 
 | # | 畫面（scenario） | zh 標題 | zh 副標 | en 標題 | en 副標 |
 |---|---|---|---|---|---|
-| 1 | home-full 冰箱首頁 | 把孩子的作品掛上冰箱（10） | 拍一張就收好，這次收的都在這裡 | Hang their art on the fridge (28) | Snap a piece and it's put away |
-| 2 | edit-flat 畫作前後對照 | 紙拉正，底色變白（8） | 淡黃蠟筆、水彩、鉛筆不會被洗掉 | Straight, white, and clean (26) | Pale crayon and watercolor stay put |
+| 1 | home-full 冰箱首頁 | 把孩子的作品掛上冰箱（10） | 拍一張就收好，這次收的都在這裡 | Hang their art on the fridge (28) | Snap once and it's kept |
+| 2 | edit-flat 畫作前後對照 | 紙拉正，底色變白（8） | 淡黃蠟筆、水彩、鉛筆不會被洗掉 | Straight, white, and clean (26) | Pale crayon and watercolor stay bright |
 | 3 | edit-craft 勞作去背 | 勞作自動去背（6） | 去掉桌面，換上乾淨背景和陰影 | Crafts lifted off the table (27) | A clean background and soft shadow |
 | 4 | museum 每個孩子的美術館 | 每個孩子的美術館（8） | 依學期、年齡、標籤找作品 | A museum for each child (23) | Find art by semester, age, or tag |
 | 5 | detail 作品說明牌 | 每件作品的說明牌（8） | 當時幾歲、哪個學期，錄下孩子說的話 | A label for every piece (23) | Age, semester, and their own words |
-| 6a | success 已掛上冰箱（建議） | 收進這次，馬上拍下一張（11） | 想存到照片，就依孩子分相簿 | Hang it up, snap the next (25) | Saves to Photos in each child's album |
-| 6b | paywall 付費頁（備選） | 一次買斷，全家共享（9） | 不是訂閱；免費版每天可收 3 張畫作 | One purchase, whole family (26) | Not a subscription. Free: 3 a day |
+| 6a | success 已掛上冰箱（建議） | 收進這次，馬上拍下一張（11） | 存到照片時，依孩子分相簿 | Hang it up, snap the next (25) | Save to Photos, one album per child |
+| 6b | paywall 付費頁（備選） | 一次買斷，全家共享（9） | 不是訂閱；免費版每天可收 3 張畫作 | One purchase, whole family (26) | Not a subscription. 3 free drawings a day |
 
 說明：
 - 第 6 張建議用 `success`（已掛上冰箱的提示）。目前截圖腳本沒有「已存到手機」的畫面，所以副標寫的是存照片的功能，不是畫面上的字。用付費頁當最後一張也可以，但第一眼看到價格頁對家長比較不友善。
@@ -257,6 +257,10 @@ Testing without real children's art:
 In-app purchase (non-consumable "Full Version", tw.starlight.fridgemuseum.full):
 - Free use allows 3 drawings per day and 3 crafts in total. The paywall appears only when you tap "收進這次 / Hang It Up" or "存到手機 / Save to Photos" after that quota is used, i.e. on the 4th drawing of the day or the 4th craft. It never interrupts editing.
 - The quickest way to see it: tap the gear at the top right of the home screen (Settings) > "解鎖完整版 / Unlock Full Version". "恢復購買 / Restore Purchases" is in the same section and on the paywall.
+- The Full Version IAP is submitted with this version. Family Sharing is enabled. Ask to Buy shows a "Waiting for approval" state and unlocks automatically when approved.
+- No sign-in is needed; use a Sandbox Apple Account to purchase. Restore Purchases is in Settings and on the paywall.
+- The UI follows the device language.
+- iPhone only. If the camera is unavailable, use the "Photos" button to import.
 
 Permissions:
 - Camera: to photograph artwork. If denied, importing from Photos still works.
@@ -267,7 +271,7 @@ Privacy: all image processing (including the craft cutout, which uses Apple's Vi
 
 Contact: starlight.kids.app@gmail.com
 ```
-字元數：2104
+字元數：2511
 
 ## 12. 網址與版權
 
