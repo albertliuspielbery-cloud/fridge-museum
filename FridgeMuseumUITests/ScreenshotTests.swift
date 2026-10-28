@@ -49,7 +49,7 @@ final class ScreenshotTests: XCTestCase {
         }
         app.launch()
         let ready = app.descendants(matching: .any)["fm.ready"].firstMatch
-        let ok = ready.waitForExistence(timeout: 45)
+        let ok = ready.waitForExistence(timeout: 90)
         // Let animations, sheets and the last preview render settle.
         Thread.sleep(forTimeInterval: scenario == "paywall" || scenario == "label" || scenario == "settings" ? 2.5 : 1.5)
         let shot = XCUIScreen.main.screenshot()

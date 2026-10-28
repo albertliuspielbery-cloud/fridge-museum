@@ -486,7 +486,11 @@ struct EditView: View {
             else { t = String(localized: "看起來可以了，就存到手機或收進這次。") }
         }
         if flat, tool != .crop, !pickingParts, model.recipe.removeSpecks, model.specksRemoved > 0, model.output != nil {
-            t += AppLanguage.isChinese ? " · " : " "
+            if AppLanguage.isChinese {
+                if !t.hasSuffix("。") { t += " · " }
+            } else {
+                t += " "
+            }
             t += String(localized: "已自動清掉 \(model.specksRemoved) 個小黑點")
         }
         return t
