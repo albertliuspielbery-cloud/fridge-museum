@@ -31,18 +31,38 @@ enum VisionPaths {
     /// Subject-lifting mask (0...255, row 0 = top) at width×height, from VNGenerateForegroundInstanceMaskRequest.
     /// Returns nil when Vision finds no foreground instance or the request is unsupported (e.g. Simulator).
     static func foregroundMask(cgImage: CGImage, width: Int, height: Int) -> [UInt8]? {
+        foregroundInstances(cgImage: cgImage, width: width, height: height)?.alpha
+    }
+
+    /// Soft mask of all foreground instances at width×height plus Vision's low-resolution instance label image
+    /// (0 = background, 1...n = instance), so each instance can become a separately removable part.
+    static func foregroundInstances(cgImage: CGImage, width: Int, height: Int) -> ForegroundInstances? {
         let request = VNGenerateForegroundInstanceMaskRequest()
         let handler = VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:])
         do { try handler.perform([request]) } catch { return nil }
         guard let obs = request.results?.first, !obs.allInstances.isEmpty else { return nil }
-        guard let buffer = try? obs.generateScaledMaskForImage(forInstances: obs.allInstances, from: handler) else { return nil }
-        return PixelBufferReader.grayscale(buffer, width: width, height: height)
+        guard let buffer = try? obs.generateScaledMaskForImage(forInstances: obs.allInstances, from: handler),
+              let alpha = PixelBufferReader.grayscale(buffer, width: width, height: height) else { return nil }
+        let labelBuffer = obs.instanceMask
+        let lw = CVPixelBufferGetWidth(labelBuffer), lh = CVPixelBufferGetHeight(labelBuffer)
+        let labels = PixelBufferReader.grayscale(labelBuffer, width: lw, height: lh, rawFloat: true)
+        return ForegroundInstances(alpha: alpha, labels: labels ?? [], labelWidth: labels == nil ? 0 : lw,
+                                   labelHeight: labels == nil ? 0 : lh, instanceCount: obs.allInstances.count)
     }
+}
+
+struct ForegroundInstances: Sendable {
+    var alpha: [UInt8]
+    var labels: [UInt8]
+    var labelWidth: Int
+    var labelHeight: Int
+    var instanceCount: Int
 }
 
 enum PixelBufferReader {
     /// Reads a one-component (Float32 or UInt8) pixel buffer into 8-bit values, nearest-sampled to width×height.
-    static func grayscale(_ pb: CVPixelBuffer, width: Int, height: Int) -> [UInt8]? {
+    /// `rawFloat`: Float32 values are label numbers, copied as-is instead of scaled from 0...1.
+    static func grayscale(_ pb: CVPixelBuffer, width: Int, height: Int, rawFloat: Bool = false) -> [UInt8]? {
         CVPixelBufferLockBaseAddress(pb, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(pb, .readOnly) }
         guard let base = CVPixelBufferGetBaseAddress(pb) else { return nil }
@@ -61,7 +81,7 @@ enum PixelBufferReader {
                 let sx = min(bw - 1, x * bw / width)
                 if isFloat {
                     let v = row.assumingMemoryBound(to: Float32.self)[sx]
-                    out[y * width + x] = UInt8((v * 255).rounded().clamped(0, 255))
+                    out[y * width + x] = UInt8(((rawFloat ? v : v * 255).rounded()).clamped(0, 255))
                 } else {
                     out[y * width + x] = row.assumingMemoryBound(to: UInt8.self)[sx]
                 }
@@ -79,6 +99,29 @@ enum ImageMetadata {
               let raw = props[kCGImagePropertyOrientation as String] as? UInt32,
               let o = CGImagePropertyOrientation(rawValue: raw) else { return .up }
         return o
+    }
+
+    /// EXIF FocalLenIn35mmFilm (35 mm-equivalent focal length in mm), if present.
+    static func focalLength35mm(of data: Data) -> Double? {
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [String: Any],
+              let exif = props[kCGImagePropertyExifDictionary as String] as? [String: Any],
+              let f = exif[kCGImagePropertyExifFocalLenIn35mmFilm as String] as? NSNumber else { return nil }
+        let v = f.doubleValue
+        return v > 0 ? v : nil
+    }
+
+    /// Upright (EXIF orientation applied) decode with the long edge capped at `maxPixelSize`, without decoding the
+    /// full-resolution bitmap first (ImageIO subsamples), so 48 MP photos stay cheap.
+    static func uprightThumbnail(of data: Data, maxPixelSize: Int) -> CGImage? {
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(src, 0, options as CFDictionary)
     }
 
     /// EXIF DateTimeOriginal, if present (used when importing from the photo library).
