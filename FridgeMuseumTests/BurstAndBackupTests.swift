@@ -109,13 +109,78 @@ struct BurstAndBackupTests {
         app.beginEditing(next.id)
         app.renderLater(edited, context: context, stale: true)
         try await Task.sleep(for: .milliseconds(300))
-        #expect(edited.processingState == .done)
+        // Waiting, and marked unfinished in the store (survives the app being closed).
+        #expect(edited.processingState == .pending)
+        #expect(edited.renderedImageData == Data([9]))
 
         app.endEditing(next.id, context: context)
         for _ in 0..<200 where edited.processingState != .failed {
             try await Task.sleep(for: .milliseconds(50))
         }
         #expect(edited.processingState == .failed)   // the render ran (test data isn't a real image)
+    }
+
+    /// The app is closed before the queue reaches an edited artwork: the next launch re-renders it, even though it
+    /// has an (outdated) render.
+    @Test func editedArtworkIsReRenderedAfterARelaunch() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let edited = makeArtwork(.craft, kept: true, in: context)
+        edited.renderedImageData = Data([9])
+        edited.processingState = .done
+        let next = makeArtwork(.craft, in: context)
+        let untouched = makeArtwork(.craft, kept: true, in: context)
+        untouched.renderedImageData = Data([7])
+        untouched.processingState = .done
+        try context.save()
+
+        let before = AppModel()
+        before.beginEditing(next.id)   // the walk's next editor is open when the app is closed
+        before.renderLater(edited, context: context, stale: true)
+
+        // Next launch: a fresh model (the in-memory queue is gone) over the same store.
+        let after = AppModel()
+        after.processUnfinished(context: ModelContext(container))
+        let editedID = edited.id, untouchedID = untouched.id
+        // A fresh context per look, so it reads what the other context saved.
+        func state(_ id: UUID) -> ProcessingState? {
+            (try? ModelContext(container).fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.id == id })).first)?.processingState
+        }
+        for _ in 0..<200 where state(editedID) != .failed {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(state(editedID) == .failed)       // the re-render ran (test data isn't a real image)
+        #expect(state(untouchedID) == .done)      // a finished artwork is left alone
+        before.endEditing(next.id, context: context)
+    }
+
+    /// A single 存到手機 that comes in while a batch item is exporting goes next, before the batch's next item.
+    @Test func exportGateLetsAWaitingSingleSaveGoBeforeTheNextBatchItem() async {
+        let gate = ExportGate()
+        let log = OrderLog()
+        await gate.enter()                     // batch item 1 is exporting
+        let single = Task {
+            await gate.enter()
+            log.items.append("single")
+            gate.leave()
+        }
+        while gate.waitingCount < 1 { await Task.yield() }
+        gate.leave()                           // batch item 1 done
+        await gate.enter()                     // batch item 2 asks right away
+        log.items.append("batch 2")
+        gate.leave()
+        await single.value
+        #expect(log.items == ["single", "batch 2"])
+        #expect(gate.waitingCount == 0)
+    }
+
+    @Test func exportGateIsFreeWhenNobodyWaits() async {
+        let gate = ExportGate()
+        await gate.enter()
+        gate.leave()
+        await gate.enter()   // would hang if the slot weren't released
+        gate.leave()
+        #expect(gate.waitingCount == 0)
     }
 
     /// Nothing edited and already rendered: renderLater has nothing to do.
@@ -279,4 +344,10 @@ struct BurstAndBackupTests {
         #expect(!BackupReminder.needsBackup(saved))
         #expect(BackupReminder.needsBackup(older))
     }
+}
+
+/// Order of events across tasks in the ExportGate test (main-actor class, so tasks can share it).
+@MainActor
+final class OrderLog {
+    var items: [String] = []
 }
