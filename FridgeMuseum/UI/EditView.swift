@@ -588,26 +588,34 @@ struct EditView: View {
         Task { await model.redetectCorners() }
     }
 
-    @ViewBuilder
     private func panel(for tool: EditTool) -> some View {
-        PanelCard(title: tool.panelTitle, onDone: { self.tool = nil },
-                  accessoryIcon: tool == .crop ? "viewfinder" : nil,
-                  accessoryLabel: String(localized: "重新自動找四角"),
-                  onAccessory: tool == .crop ? redetectCorners : nil) {
-            switch tool {
-            case .crop: CropPanel(model: model, onTurn: { cropShowsResult = true }, onCorners: { cropShowsResult = false })
-            case .adjust:
-                if model.recipe.kind == .flat {
-                    // Four controls: scroll inside the card so the artwork keeps most of the screen on small phones.
-                    ScrollView { AdjustPanel(model: model).padding(.trailing, 2) }
-                        .scrollIndicators(.visible)
-                        .frame(maxHeight: 236)
-                } else {
-                    AdjustPanel(model: model)
-                }
-            case .brush: BrushPanel(model: model, brushMode: $brushMode, brushSize: $brushSize)
-            case .label: EmptyView()
+        let isCrop = tool == .crop
+        let icon: String? = isCrop ? "viewfinder" : nil
+        let action: (() -> Void)? = isCrop ? { redetectCorners() } : nil
+        return PanelCard(title: tool.panelTitle, onDone: { self.tool = nil }, accessoryIcon: icon,
+                         accessoryLabel: String(localized: "重新自動找四角"), onAccessory: action) {
+            panelContent(for: tool)
+        }
+    }
+
+    @ViewBuilder
+    private func panelContent(for tool: EditTool) -> some View {
+        switch tool {
+        case .crop:
+            CropPanel(model: model, onTurn: { cropShowsResult = true }, onCorners: { cropShowsResult = false })
+        case .adjust:
+            if model.recipe.kind == .flat {
+                // Four controls: scroll inside the card so the artwork keeps most of the screen on small phones.
+                ScrollView { AdjustPanel(model: model).padding(.trailing, 2) }
+                    .scrollIndicators(.visible)
+                    .frame(maxHeight: 236)
+            } else {
+                AdjustPanel(model: model)
             }
+        case .brush:
+            BrushPanel(model: model, brushMode: $brushMode, brushSize: $brushSize)
+        case .label:
+            EmptyView()
         }
     }
 
