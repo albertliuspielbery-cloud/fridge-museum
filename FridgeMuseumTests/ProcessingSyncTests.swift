@@ -48,7 +48,7 @@ struct PaperAspectTests {
                 let q = projectSheet(width: w, height: h, pitch: pitch, yaw: yaw, roll: roll, focal: 0.75 * Self.L,
                                      imageWidth: Self.iw, imageHeight: Self.ih)
                 let r = PaperAspect.estimate(q, imageWidth: Self.iw, imageHeight: Self.ih)
-                let truth = landscape ? 2.0.squareRoot() : 1 / 2.0.squareRoot()
+                let truth = landscape ? Double(2).squareRoot() : 1 / Double(2).squareRoot()
                 #expect(abs(r / truth - 1) < 0.03, "pitch \(pitch) yaw \(yaw) roll \(roll) landscape \(landscape): \(r)")
             }
         }
@@ -62,7 +62,7 @@ struct PaperAspectTests {
                 let q = projectSheet(width: 0.297, height: 0.21, pitch: pitch, yaw: yaw, roll: 5, focal: f * Self.L,
                                      imageWidth: Self.iw, imageHeight: Self.ih)
                 let raw = PaperAspect.estimate(q, imageWidth: Self.iw, imageHeight: Self.ih, snap: false)
-                #expect(abs(raw / 2.0.squareRoot() - 1) < 0.03, "f \(f) yaw \(yaw): \(raw)")
+                #expect(abs(raw / Double(2).squareRoot() - 1) < 0.03, "f \(f) yaw \(yaw): \(raw)")
             }
         }
     }
@@ -74,7 +74,7 @@ struct PaperAspectTests {
             let q = projectSheet(width: 0.297, height: 0.21, pitch: pitch, yaw: 0, roll: 0, focal: f,
                                  imageWidth: Self.iw, imageHeight: Self.ih)
             let r = PaperAspect.estimate(q, imageWidth: Self.iw, imageHeight: Self.ih, focalPixels: f)
-            #expect(abs(r / 2.0.squareRoot() - 1) < 0.03)
+            #expect(abs(r / Double(2).squareRoot() - 1) < 0.03)
         }
         // 26 mm on a 4:3 frame is the 0.75 × long-edge guess.
         let fp = PaperAspect.focalPixels(focal35mm: 26, imageWidth: 4000, imageHeight: 3000) ?? 0
@@ -86,8 +86,8 @@ struct PaperAspectTests {
         func rect(_ r: Double) -> [NormPoint] {
             [.init(x: 100, y: 100), .init(x: 100 + 1000 * r, y: 100), .init(x: 100 + 1000 * r, y: 1100), .init(x: 100, y: 1100)]
         }
-        #expect(PaperAspect.estimate(rect(1.39), imageWidth: 4000, imageHeight: 3000) == 2.0.squareRoot())
-        #expect(PaperAspect.estimate(rect(1.0 / 1.39), imageWidth: 4000, imageHeight: 3000) == 1 / 2.0.squareRoot())
+        #expect(PaperAspect.estimate(rect(1.39), imageWidth: 4000, imageHeight: 3000) == Double(2).squareRoot())
+        #expect(PaperAspect.estimate(rect(1.0 / 1.39), imageWidth: 4000, imageHeight: 3000) == 1 / Double(2).squareRoot())
         #expect(PaperAspect.estimate(rect(1.02), imageWidth: 4000, imageHeight: 3000) == 1)
         #expect(abs(PaperAspect.estimate(rect(1.9), imageWidth: 4000, imageHeight: 3000) - 1.9) < 1e-9)   // nothing near: kept
     }
@@ -98,7 +98,7 @@ struct PaperAspectTests {
         let n = px.map { NormPoint(x: $0.x / Self.iw, y: $0.y / Self.ih) }
         let q = Quad(topLeft: n[0], topRight: n[1], bottomRight: n[2], bottomLeft: n[3])
         let s = q.outputSize(imageWidth: Self.iw, imageHeight: Self.ih, maxEdge: 1600)
-        #expect(abs(Double(s.width) / Double(s.height) / 2.0.squareRoot() - 1) < 0.01)
+        #expect(abs(Double(s.width) / Double(s.height) / Double(2).squareRoot() - 1) < 0.01)
         #expect(max(s.width, s.height) <= 1600)
     }
 }

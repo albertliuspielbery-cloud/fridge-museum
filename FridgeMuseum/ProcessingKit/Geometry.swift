@@ -192,7 +192,7 @@ struct Homography: Sendable, Equatable {
 /// phone main camera (26 mm equivalent: f = 0.75 × long edge), is used. Results near a common sheet snap to it.
 enum PaperAspect {
     /// A4/A3 (√2), Letter, 4:3, square, 台灣八開, 四開.
-    static let sheetRatios: [Double] = [2.0.squareRoot(), 1.294, 4.0 / 3.0, 1, 1.443, 1.383]
+    static let sheetRatios: [Double] = [Double(2).squareRoot(), 1.294, 4.0 / 3.0, 1, 1.443, 1.383]
 
     /// `q`: TL, TR, BR, BL in PIXELS. Returns width / height of the real sheet.
     static func estimate(_ q: [NormPoint], imageWidth iw: Double, imageHeight ih: Double,

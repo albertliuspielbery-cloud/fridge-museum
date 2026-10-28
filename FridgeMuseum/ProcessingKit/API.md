@@ -1,6 +1,9 @@
 # ProcessingKit API (for the UI team)
 
-Status: signatures are final; implementation lands on `feat/processing-sync`.
+Status: final, implemented on `feat/processing-sync` (CI green).
+
+Brush strokes with turning: convert a touch at output-normalized `p` with `mapping.toStrokeSpace(p)` and the radius with
+`mapping.strokeRadius(fromOutputRadius:)` (replaces the old `outputToSource` / warped-image math, which is wrong once turned).
 Reference behaviour: web prototype `kidart.html` v0.9.0 (detectPaper, paperAspect, flatten/whiten, edgeFill,
 removeSpecks, turning, craft parts / tap-to-keep, processNote).
 
@@ -53,6 +56,7 @@ struct CutoutPart: Identifiable, Sendable, Hashable {
 
 struct OutputMapping: Sendable, Hashable {
     let outputWidth: Int, outputHeight: Int
+    static func identity(width: Int, height: Int) -> OutputMapping
     func toOriginal(_ p: CGPoint) -> CGPoint        // output-normalized → original-normalized (respects turn + warp)
     func fromOriginal(_ p: CGPoint) -> CGPoint?     // inverse (nil if it cannot be mapped)
     func toStrokeSpace(_ p: CGPoint) -> CGPoint     // output-normalized → BrushStroke point space
@@ -68,6 +72,7 @@ struct PreviewResult: Sendable {
     var notes: [ProcessingNote]      // most important first; show `notes.first` on the hint line
     var paperMode: PaperMode?        // flat only (paintCovered = web "sparse": only light was evened out)
     var mapping: OutputMapping
+    var partMap: PartMap?            // craft: coarse part labels used by the hit tests (no need to read it)
     var canPickParts: Bool { get }   // parts.count >= 2 → show the "點一下選主體" chip
 
     func partID(atOutputPoint p: CGPoint, toleranceCells: Int = 1) -> Int?   // output-normalized → part id
