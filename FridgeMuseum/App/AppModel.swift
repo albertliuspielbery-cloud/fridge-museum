@@ -150,7 +150,23 @@ final class AppModel {
     // MARK: Editor bookkeeping (one heavy render at a time)
 
     /// True while an editor is open (or about to open on a fresh capture).
-    var isEditorBusy: Bool { !editingIDs.isEmpty || !claimedIDs.isEmpty }
+    var isEditorBusy: Bool { !editingIDs.isEmpty || !claimedIDs.isEmpty || importHolds > 0 }
+
+    /// A library import is loading its photos (its first one opens in the editor afterwards).
+    @ObservationIgnored private var importHolds = 0
+
+    /// Holds background exports while a library import loads (it can take longer than the editor claim lasts).
+    func beginImport() {
+        importHolds += 1
+    }
+
+    /// The import finished loading. `opening`: the artwork it opens in the editor next, claimed like a fresh capture
+    /// so the hold carries over until the editor appears.
+    func endImport(opening id: UUID?, context: ModelContext) {
+        if let id { claimEditor(id, context: context) }
+        importHolds = max(0, importHolds - 1)
+        runDeferred(context: context)
+    }
 
     /// Marks a fresh capture as "the editor is about to open it". Released by `beginEditing`, or after a few seconds
     /// if the editor never shows up, so background exports are never held back forever.
@@ -339,11 +355,32 @@ final class AppModel {
     /// the stored 2400 px render if that fails (e.g. memory pressure).
     func finalJPEG(for artwork: Artwork, context: ModelContext) async -> Data? {
         guard Self.isAlive(artwork) else { return nil }
+        let id = artwork.id
+        // A fresh capture saved straight from the editor has no working copy yet: keep a downscaled copy of this
+        // export instead of running a second (2400 px) render. Marked as rendering so nobody starts one meanwhile.
+        let storeCopy = needsRender(artwork)
+        if storeCopy { renderingIDs.insert(id) }
+        defer { if storeCopy { renderingIDs.remove(id) } }
         var jpeg: Data?
         if let data = artwork.originalImageData {
             let recipe = artwork.recipe
-            jpeg = try? await processor.export(id: artwork.id, originalData: data, recipe: recipe,
+            jpeg = try? await processor.export(id: id, originalData: data, recipe: recipe,
                                                maxEdge: ImageProcessor.finalExportMaxEdge(for: recipe.kind)).imageData
+            if storeCopy, let raw = jpeg {
+                let copy = await Task.detached(priority: .userInitiated) {
+                    StoredRenderCopy.make(fromFinalJPEG: raw)
+                }.value
+                // Only if nothing changed meanwhile (deleted, re-rendered, or the recipe edited).
+                if let copy, Self.isAlive(artwork), artwork.renderedImageData == nil, artwork.recipe == recipe {
+                    artwork.renderedImageData = copy.imageData
+                    artwork.thumbnailData = copy.thumbnailData
+                    artwork.pixelWidth = copy.pixelWidth
+                    artwork.pixelHeight = copy.pixelHeight
+                    artwork.renderVersion += 1
+                    artwork.processingState = .done
+                    try? context.save()
+                }
+            }
         }
         if jpeg == nil {
             if artwork.renderedImageData == nil || artwork.processingState != .done {
@@ -449,5 +486,23 @@ final class AppModel {
         let pending = pendingArtworks(context: context)
         for artwork in pending { delete(artwork, context: context) }
         return pending.count
+    }
+}
+
+/// The stored working copy (≤ 2400 px JPEG + 480 px thumbnail, same sizes and qualities as ImageProcessor.export)
+/// made from a larger final export, so 存到手機 on a fresh capture doesn't render twice.
+struct StoredRenderCopy: Sendable {
+    var imageData: Data
+    var thumbnailData: Data
+    var pixelWidth: Int
+    var pixelHeight: Int
+
+    static func make(fromFinalJPEG jpeg: Data) -> StoredRenderCopy? {
+        guard let image = ImageMetadata.uprightThumbnail(of: jpeg, maxPixelSize: ImageProcessor.exportMaxEdge),
+              let imageData = ImageEncoding.jpegData(image, quality: 0.92),
+              let thumb = ImageMetadata.uprightThumbnail(of: jpeg, maxPixelSize: ImageProcessor.thumbnailMaxEdge),
+              let thumbnailData = ImageEncoding.jpegData(thumb, quality: 0.8) else { return nil }
+        return StoredRenderCopy(imageData: imageData, thumbnailData: thumbnailData,
+                                pixelWidth: image.width, pixelHeight: image.height)
     }
 }

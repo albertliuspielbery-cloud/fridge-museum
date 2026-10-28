@@ -622,7 +622,12 @@ struct EditView: View {
         let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
         let wasPending = !artwork.isKept
         Task {
-            await Self.commit(model: model, artwork: artwork, app: app, context: context)
+            // Only write edits back here. A fresh capture with no working copy gets it from the save's own export
+            // (AppModel.finalJPEG), so the tap runs one heavy render, not two.
+            if model.isDirty {
+                await Self.commit(model: model, artwork: artwork, app: app, context: context,
+                                  render: artwork.renderedImageData != nil)
+            }
             let ok = await app.saveToPhotos(artwork, context: context)
             isSaving = false
             if ok && wasPending { dismiss() }
@@ -667,14 +672,21 @@ struct EditView: View {
 
     /// Writes the recipe back and re-renders the full-size output if anything changed. A fresh capture has no
     /// full-size render yet (the background export waits while the editor is open), so it gets its one render here.
-    static func commit(model: EditModel, artwork: Artwork, app: AppModel, context: ModelContext) async {
+    /// `render: false` only writes the recipe back (存到手機 on a capture with no working copy: the save's export
+    /// stores one; if the save stops early, the commit on disappear still renders because `needsRender` is true).
+    static func commit(model: EditModel, artwork: Artwork, app: AppModel, context: ModelContext,
+                       render: Bool = true) async {
         guard AppModel.isAlive(artwork) else { return }
         if model.isDirty {
             artwork.recipe = model.recipe
             artwork.kind = model.recipe.kind
             model.markSaved()
-            await app.rerender(artwork, context: context)
-        } else if app.needsRender(artwork) {
+            if render {
+                await app.rerender(artwork, context: context)
+            } else {
+                try? context.save()
+            }
+        } else if render, app.needsRender(artwork) {
             await app.rerender(artwork, context: context)
         }
     }

@@ -1,4 +1,6 @@
+import CoreGraphics
 import Foundation
+import ImageIO
 import SwiftData
 import Testing
 @testable import FridgeMuseum
@@ -96,5 +98,63 @@ struct PendingArtworkTests {
 
         app.endEditing(open.id, context: context)
         #expect(!app.isEditorBusy)
+    }
+
+    /// A library import holds background exports until it has loaded; with nothing to open they are released.
+    @Test func importHoldsBackgroundExportsUntilItEnds() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let imported = makeArtwork(.craft, in: context)
+        try context.save()
+
+        app.beginImport()
+        #expect(app.isEditorBusy)
+        await app.autoProcess(imported, context: context)
+        #expect(imported.renderedImageData == nil)
+        #expect(imported.processingState == .pending)
+
+        app.endImport(opening: nil, context: context)
+        #expect(!app.isEditorBusy)
+    }
+
+    /// The import's first photo stays claimed for the editor after loading, so the hold carries over.
+    @Test func importClaimsTheArtworkItOpens() throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let first = makeArtwork(in: context)
+        try context.save()
+
+        app.beginImport()
+        app.endImport(opening: first.id, context: context)
+        #expect(app.isEditorBusy)
+        app.beginEditing(first.id)
+        app.endEditing(first.id, context: context)
+        #expect(!app.isEditorBusy)
+    }
+
+    private func decoded(_ jpeg: Data) throws -> CGImage {
+        let source = try #require(CGImageSourceCreateWithData(jpeg as CFData, nil))
+        return try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+    }
+
+    /// 存到手機 keeps a downscaled copy of the final export: same size limits as a normal render.
+    @Test func storedCopyOfAFinalExportMatchesTheWorkingSizes() throws {
+        let ctx = try #require(CGContext(data: nil, width: 4096, height: 3072, bitsPerComponent: 8, bytesPerRow: 0,
+                                         space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        ctx.setFillColor(CGColor(srgbRed: 0.9, green: 0.4, blue: 0.2, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: 4096, height: 3072))
+        let image = try #require(ctx.makeImage())
+        let finalJPEG = try #require(ImageEncoding.jpegData(image, quality: 0.92))
+
+        let copy = try #require(StoredRenderCopy.make(fromFinalJPEG: finalJPEG))
+        #expect(copy.pixelWidth == ImageProcessor.exportMaxEdge)
+        #expect(copy.pixelHeight == 1800)
+        let thumb = try decoded(copy.thumbnailData)
+        #expect(max(thumb.width, thumb.height) == ImageProcessor.thumbnailMaxEdge)
+        let stored = try decoded(copy.imageData)
+        #expect(stored.width == copy.pixelWidth && stored.height == copy.pixelHeight)
     }
 }

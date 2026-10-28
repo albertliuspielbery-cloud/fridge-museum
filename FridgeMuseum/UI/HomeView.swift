@@ -274,17 +274,19 @@ struct HomeView: View {
         var first: UUID?
         var failed = 0
         let child = app.currentChildID.flatMap { id in try? modelContext.fetch(FetchDescriptor<Child>(predicate: #Predicate { $0.id == id })).first }
+        // Hold background exports while the photos load (can take a while from iCloud); the first one opens in the
+        // editor and the rest are processed after it closes.
+        app.beginImport()
         for item in items {
             if let data = try? await item.loadTransferable(type: Data.self), UIImage(data: data) != nil {
                 let date = ImageMetadata.captureDate(of: data) ?? Date()
-                // The first one opens in the editor; the rest wait to be processed until it closes.
-                let a = app.ingest(data, kind: app.captureKind, child: child, capturedAt: date, context: modelContext,
-                                   opensEditor: first == nil)
+                let a = app.ingest(data, kind: app.captureKind, child: child, capturedAt: date, context: modelContext)
                 if first == nil { first = a.id }
             } else {
                 failed += 1
             }
         }
+        app.endImport(opening: first, context: modelContext)
         if failed > 0 { app.show(String(localized: "這張照片打不開，請換一張再試一次。"), style: .problem) }
         if let first { open(.edit(first)) }
     }
