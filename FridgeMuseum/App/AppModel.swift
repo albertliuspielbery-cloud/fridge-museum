@@ -82,6 +82,28 @@ final class AppModel {
         let artworkID: UUID
     }
 
+    /// 全部存到照片 / a museum batch save in progress (the backup card shows it).
+    struct SaveAllProgress: Equatable {
+        var done: Int
+        var total: Int
+    }
+
+    var saveAllProgress: SaveAllProgress?
+    /// A save-all that stopped at the album explanation: continueSave carries on with these once it is answered.
+    @ObservationIgnored private var saveAllResume: (ids: [UUID], addsToSession: Bool)?
+    /// The last saveToPhotos failed for lack of Photos access (saveAll stops instead of rendering the rest for nothing).
+    @ObservationIgnored private var lastSaveDenied = false
+
+    /// When this launch started (備份提醒 never nags about artworks kept during the very first visit).
+    let launchedAt = Date()
+    /// 之後再說 on the backup card: hidden until this date.
+    var backupSnoozedUntil: Date?
+
+    /// 連拍: the camera is taking shots in a row without opening the editor (CameraScreen).
+    @ObservationIgnored private(set) var isBursting = false
+    /// 繼續 on the sticky note with several pending: after each 收進這次 / 存到手機 / 不要這張 the next one opens.
+    @ObservationIgnored private(set) var isWalkingPending = false
+
     /// The artwork still exists in a context (not deleted by 重拍 / a replaced sample / the trash button).
     static func isAlive(_ artwork: Artwork) -> Bool {
         !artwork.isDeleted && artwork.modelContext != nil
@@ -93,6 +115,8 @@ final class AppModel {
         /// Per-child Photos album on save (needs full Photos access; falls back to Recents).
         static let useAlbums = "useAlbums"
         static let photosDeniedExplained = "photosDeniedExplained"
+        /// 備份提醒「之後再說」: the date the card may show again.
+        static let backupSnoozedUntil = "backupSnoozedUntil"
     }
 
     init() {
@@ -100,6 +124,7 @@ final class AppModel {
         captureKind = ArtworkKind(rawValue: defaults.string(forKey: Keys.captureKind) ?? "") ?? .flat
         currentChildID = defaults.string(forKey: Keys.currentChild).flatMap(UUID.init(uuidString:))
         defaults.register(defaults: [Keys.useAlbums: true])
+        backupSnoozedUntil = defaults.object(forKey: Keys.backupSnoozedUntil) as? Date
     }
 
     /// Remembers the camera mode and selected child across launches.
@@ -149,8 +174,22 @@ final class AppModel {
 
     // MARK: Editor bookkeeping (one heavy render at a time)
 
-    /// True while an editor is open (or about to open on a fresh capture).
-    var isEditorBusy: Bool { !editingIDs.isEmpty || !claimedIDs.isEmpty || importHolds > 0 }
+    /// True while an editor is open (or about to open on a fresh capture), a library import is loading, or the
+    /// camera is in 連拍. Background exports wait meanwhile and then run one at a time (runDeferred).
+    var isEditorBusy: Bool { !editingIDs.isEmpty || !claimedIDs.isEmpty || importHolds > 0 || isBursting }
+
+    /// 連拍 started: shots are ingested without the editor. Each still gets its paper corners found right away
+    /// (autoProcess), but its export is held like an import's until the burst ends.
+    func beginBurst() {
+        isBursting = true
+    }
+
+    /// 連拍 ended (完成, the toggle turned off, or the camera closed): held exports run, one at a time.
+    func endBurst(context: ModelContext) {
+        guard isBursting else { return }
+        isBursting = false
+        runDeferred(context: context)
+    }
 
     /// A library import is loading its photos (its first one opens in the editor afterwards).
     @ObservationIgnored private var importHolds = 0
@@ -199,15 +238,45 @@ final class AppModel {
             && !processingIDs.contains(artwork.id) && !renderingIDs.contains(artwork.id)
     }
 
+    /// A drain of held-back exports is running (runDeferred).
+    @ObservationIgnored private var isDrainingDeferred = false
+
+    /// Runs the held-back exports one at a time, oldest capture first (a burst can leave dozens), and pauses again —
+    /// the rest stay held — as soon as an editor opens or a burst / import starts.
     private func runDeferred(context: ModelContext) {
-        guard !isEditorBusy, !deferredIDs.isEmpty else { return }
-        let ids = deferredIDs
-        deferredIDs = []
-        for id in ids where processTasks[id] == nil {
-            guard let artwork = try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.id == id })).first,
-                  needsRender(artwork) else { continue }
-            startProcessing(artwork, context: context)
+        guard !isEditorBusy, !deferredIDs.isEmpty, !isDrainingDeferred else { return }
+        isDrainingDeferred = true
+        Task { [weak self] in
+            await self?.drainDeferred(context: context)
         }
+    }
+
+    private func drainDeferred(context: ModelContext) async {
+        defer { isDrainingDeferred = false }
+        while !isEditorBusy, let artwork = nextDeferred(context: context) {
+            let id = artwork.id
+            deferredIDs.remove(id)
+            guard processTasks[id] == nil, needsRender(artwork) else { continue }
+            startProcessing(artwork, context: context)
+            if let task = processTasks[id] { await task.value }
+        }
+    }
+
+    /// The oldest held-back artwork that still exists (ids of deleted ones are dropped).
+    private func nextDeferred(context: ModelContext) -> Artwork? {
+        var alive: [Artwork] = []
+        for id in deferredIDs {
+            if let artwork = fetchArtwork(id, context: context), Self.isAlive(artwork) {
+                alive.append(artwork)
+            } else {
+                deferredIDs.remove(id)
+            }
+        }
+        return alive.min { $0.createdAt < $1.createdAt }
+    }
+
+    private func fetchArtwork(_ id: UUID, context: ModelContext) -> Artwork? {
+        try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.id == id })).first
     }
 
     /// At launch: artworks whose processing never finished (app closed mid-render, or while an editor was open).
@@ -301,8 +370,10 @@ final class AppModel {
         guard admit(artwork, action: .keep) else { return false }
         markKept(artwork, context: context)
         let count = sessionArtworkIDs.count
-        show(count > 1 ? String(localized: "這是第 \(count) 張，按快門拍下一張。") : String(localized: "按快門，再拍下一張。"),
-             style: .hung(count: count), headline: String(localized: "已掛上冰箱！"), seconds: 3.2)
+        let left = isWalkingPending ? pendingArtworks(context: context).count : 0
+        let text = left > 0 ? String(localized: "還有 \(left) 張，接著看下一張。")
+            : count > 1 ? String(localized: "這是第 \(count) 張，按快門拍下一張。") : String(localized: "按快門，再拍下一張。")
+        show(text, style: .hung(count: count), headline: String(localized: "已掛上冰箱！"), seconds: 3.2)
         return true
     }
 
@@ -314,7 +385,8 @@ final class AppModel {
         return false
     }
 
-    private func markKept(_ artwork: Artwork, context: ModelContext) {
+    /// `addToSession: false` — 全部存到照片 on old museum artworks doesn't put them on 這次收的作品.
+    private func markKept(_ artwork: Artwork, context: ModelContext, addToSession: Bool = true) {
         if !artwork.isKept, !artwork.isSample {
             store.recordKeep(kind: artwork.kind, artworkID: artwork.id)
         }
@@ -322,7 +394,7 @@ final class AppModel {
             artwork.isKept = true
             artwork.keptAt = Date()
         }
-        if !sessionArtworkIDs.contains(artwork.id) { sessionArtworkIDs.append(artwork.id) }
+        if addToSession, !sessionArtworkIDs.contains(artwork.id) { sessionArtworkIDs.append(artwork.id) }
         try? context.save()
     }
 
@@ -349,6 +421,14 @@ final class AppModel {
         photosPrimer = nil
         if !albums { UserDefaults.standard.set(false, forKey: Keys.useAlbums) }
         let id = primer.artworkID
+        let resume = saveAllResume
+        saveAllResume = nil
+        // A 全部存到照片 was waiting on this answer: carry on with this artwork and the rest.
+        if let resume, resume.ids.first == id {
+            let rest = resume.ids.compactMap { fetchArtwork($0, context: context) }
+            Task { await saveAll(rest, context: context, primed: true, addsToSession: resume.addsToSession) }
+            return
+        }
         guard let artwork = try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.id == id })).first else { return }
         let wasPending = !artwork.isKept
         Task {
@@ -424,7 +504,9 @@ final class AppModel {
     }
 
     /// Saves to Photos (per-child album when full access is granted). Counts as keeping the artwork.
-    func saveToPhotos(_ artwork: Artwork, context: ModelContext, quiet: Bool = false, primed: Bool = false) async -> Bool {
+    func saveToPhotos(_ artwork: Artwork, context: ModelContext, quiet: Bool = false, primed: Bool = false,
+                      addsToSession: Bool = true) async -> Bool {
+        lastSaveDenied = false
         guard admit(artwork, action: .save) else { return false }
         // First album save: explain why full Photos access is useful before iOS asks (PhotosPrimerAlert).
         if !primed, UserDefaults.standard.bool(forKey: Keys.useAlbums), PhotoLibrarySaver.needsAlbumPrimer {
@@ -440,7 +522,7 @@ final class AppModel {
         do {
             let outcome = try await photos.save(jpeg: jpeg, albumTitle: album, creationDate: artwork.capturedAt)
             artwork.lastSavedToPhotosAt = Date()
-            markKept(artwork, context: context)
+            markKept(artwork, context: context, addToSession: addsToSession)
             if !quiet {
                 let albumName = album ?? ""
                 let detail = outcome.savedToAlbum && !albumName.isEmpty
@@ -450,6 +532,7 @@ final class AppModel {
             }
             return true
         } catch PhotoSaveError.denied {
+            lastSaveDenied = true
             if UserDefaults.standard.bool(forKey: Keys.photosDeniedExplained) {
                 show(String(localized: "沒有照片權限，請到「設定 › 冰箱美術館」開啟"), style: .problem, seconds: 4)
             } else {
@@ -463,17 +546,89 @@ final class AppModel {
         }
     }
 
-    /// Saves several artworks; stops at the first one the free quota blocks (the paywall shows once).
-    func saveAll(_ artworks: [Artwork], context: ModelContext) async {
+    /// Saves several artworks, one at a time; stops at the first one the free quota blocks (the paywall shows once)
+    /// or when Photos access is missing. If the album explanation comes up, the rest continue once it's answered
+    /// (continueSave). `primed`: the explanation was already answered. Progress is in `saveAllProgress`.
+    func saveAll(_ artworks: [Artwork], context: ModelContext, primed: Bool = false, addsToSession: Bool = true) async {
+        guard saveAllProgress == nil else { return }
+        saveAllResume = nil
+        let list = artworks.filter { Self.isAlive($0) }
+        guard !list.isEmpty else { return }
+        saveAllProgress = SaveAllProgress(done: 0, total: list.count)
         var ok = 0
-        for a in artworks where Self.isAlive(a) {
-            if await saveToPhotos(a, context: context, quiet: true) {
+        for (index, a) in list.enumerated() where Self.isAlive(a) {
+            if await saveToPhotos(a, context: context, quiet: true, primed: primed, addsToSession: addsToSession) {
                 ok += 1
-            } else if paywall != nil || photosDeniedAlert || photosPrimer != nil {
+                saveAllProgress = SaveAllProgress(done: ok, total: list.count)
+            } else if photosPrimer != nil {
+                saveAllResume = (ids: list[index...].map(\.id), addsToSession: addsToSession)
+                break
+            } else if paywall != nil || photosDeniedAlert || lastSaveDenied {
                 break
             }
         }
+        saveAllProgress = nil
         if ok > 0 { show(String(localized: "已存 \(ok) 張到照片")) }
+    }
+
+    // MARK: 備份提醒 (artworks only in the app)
+
+    /// Museum artworks never saved to Photos, oldest first.
+    func unsavedMuseumArtworks(context: ModelContext) -> [Artwork] {
+        let kept = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.isKept && !$0.isSample }))) ?? []
+        return kept.filter { Self.isAlive($0) && BackupReminder.needsBackup($0) }
+            .sorted { ($0.keptAt ?? $0.createdAt) < ($1.keptAt ?? $1.createdAt) }
+    }
+
+    /// 全部存到照片 (home backup card, Settings): every museum artwork not yet in Photos, through the usual save path
+    /// (album explanation, Photos access). They stay off 這次收的作品.
+    func backUpAll(context: ModelContext) async {
+        let list = unsavedMuseumArtworks(context: context)
+        guard !list.isEmpty else { return }
+        await saveAll(list, context: context, addsToSession: false)
+    }
+
+    /// 之後再說: hides the backup card for two weeks.
+    func snoozeBackupReminder(now: Date = Date()) {
+        let until = BackupReminder.snoozeEnd(from: now)
+        backupSnoozedUntil = until
+        guard !DemoMode.isActive else { return }
+        UserDefaults.standard.set(until, forKey: Keys.backupSnoozedUntil)
+    }
+
+    // MARK: 繼續 — step through pending captures (e.g. after 連拍)
+
+    /// The capture 繼續 opens: the oldest pending one (a burst is gone through in the order it was shot). With more
+    /// than one pending, each 收進這次 / 存到手機 / 不要這張 in the editor moves on to the next (continuePendingWalk).
+    func startPendingWalk(context: ModelContext) -> UUID? {
+        let pending = pendingArtworks(context: context)
+        let first = Self.nextPending(in: pending, excluding: nil)
+        isWalkingPending = pending.count > 1
+        return first?.id
+    }
+
+    /// The oldest pending capture other than `excluding`.
+    static func nextPending(in pending: [Artwork], excluding id: UUID?) -> Artwork? {
+        pending.filter { $0.id != id && !$0.isKept && !$0.isSample }.min { $0.createdAt < $1.createdAt }
+    }
+
+    /// The editor for `id` closed after keeping, saving or discarding it: open the next pending capture (claimed
+    /// before the editor closes, so held exports don't start in between). Returns false when the walk is over.
+    @discardableResult
+    func continuePendingWalk(after id: UUID, context: ModelContext) -> Bool {
+        guard isWalkingPending else { return false }
+        guard let next = Self.nextPending(in: pendingArtworks(context: context), excluding: id) else {
+            isWalkingPending = false
+            return false
+        }
+        claimEditor(next.id, context: context)
+        pendingRoute = .edit(next.id)
+        return true
+    }
+
+    /// The editor closed some other way (back, 重拍, the paywall's pop): stop stepping.
+    func endPendingWalk() {
+        isWalkingPending = false
     }
 
     /// `save: false` lets a batch delete (美術館「選取」) save once at the end.

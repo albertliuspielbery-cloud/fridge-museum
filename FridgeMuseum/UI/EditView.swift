@@ -59,6 +59,8 @@ struct EditView: View {
     /// 重拍 reopens the camera after discarding; 不要這張 just goes back.
     @State private var retakeAfterDiscard = false
     @State private var confirmDiscard = false
+    /// Closed by 收進這次 / 存到手機 / 不要這張: when stepping through pending captures (繼續), the next one opens.
+    @State private var advancesPendingWalk = false
     /// 這張好像收過了: a kept artwork that looks like this capture (checked when the preview is ready, once per kind).
     @State private var duplicate: Artwork?
     @State private var duplicateCheckedKind: ArtworkKind?
@@ -123,6 +125,7 @@ struct EditView: View {
             Button(role: .destructive) {
                 retakeAfterDiscard = false
                 discardOnDisappear = true
+                advancesPendingWalk = true
                 dismiss()
             } label: {
                 Text("不要這張")
@@ -158,6 +161,12 @@ struct EditView: View {
         .onDisappear {
             // Capture everything now: environment values must not be read after the view is gone.
             let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
+            // Before endEditing: the next capture is claimed first, so held exports don't start in between.
+            if advancesPendingWalk {
+                app.continuePendingWalk(after: artwork.id, context: context)
+            } else {
+                app.endPendingWalk()
+            }
             app.endEditing(artwork.id, context: context)
             if discardOnDisappear {
                 app.delete(artwork, context: context)
@@ -672,7 +681,10 @@ struct EditView: View {
     private func keep() {
         let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
         Task { await Self.commit(model: model, artwork: artwork, app: app, context: context) }
-        if app.keep(artwork, context: context) { dismiss() }
+        if app.keep(artwork, context: context) {
+            advancesPendingWalk = true
+            dismiss()
+        }
     }
 
     private func save() {
@@ -688,7 +700,10 @@ struct EditView: View {
             }
             let ok = await app.saveToPhotos(artwork, context: context)
             isSaving = false
-            if ok && wasPending { dismiss() }
+            if ok && wasPending {
+                advancesPendingWalk = true
+                dismiss()
+            }
         }
     }
 

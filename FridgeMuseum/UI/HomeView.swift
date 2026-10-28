@@ -18,6 +18,10 @@ struct HomeView: View {
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var openAfterCamera: UUID?
     @State private var confirmDiscardPending = false
+    /// Empty fridge: where the 看範例 tiles end and the counter starts (global), to scroll them into view once.
+    @State private var samplesBottom: CGFloat = 0
+    @State private var counterTop: CGFloat = 0
+    @State private var revealedSamples = false
 
     private var museum: [Artwork] {
         artworks.filter(\.isInMuseum).sorted { ($0.keptAt ?? $0.createdAt) > ($1.keptAt ?? $1.createdAt) }
@@ -25,11 +29,43 @@ struct HomeView: View {
 
     private var pending: [Artwork] { artworks.filter { !$0.isKept && !$0.isSample } }
 
+    /// Museum artworks not saved to Photos yet (備份提醒).
+    private var unsaved: [Artwork] { museum.filter(BackupReminder.needsBackup) }
+
+    /// The backup card: never with the sticky note (that comes first), never in demo screenshots; stays up while
+    /// 全部存到照片 runs so its progress shows.
+    private var showsBackupCard: Bool {
+        guard pending.isEmpty, !DemoMode.isActive else { return false }
+        if app.saveAllProgress != nil { return !unsaved.isEmpty }
+        return BackupReminder.shouldShow(unsavedKeptDates: unsaved.map { $0.keptAt ?? $0.createdAt }, now: Date(),
+                                         launchedAt: app.launchedAt, snoozedUntil: app.backupSnoozedUntil)
+    }
+
     private var session: [Artwork] {
         app.sessionArtworkIDs.reversed().compactMap { id in artworks.first { $0.id == id && $0.isKept } }
     }
 
     var body: some View {
+        ScrollViewReader { proxy in
+            content
+                .onChange(of: samplesBottom) { revealSamplesIfHidden(proxy) }
+                .onChange(of: counterTop) { revealSamplesIfHidden(proxy) }
+        }
+    }
+
+    /// Small phones: the empty fridge's 看範例 tiles can start under the counter. Scroll them into view once (on
+    /// first layout only, so it never fights the parent's own scrolling).
+    private func revealSamplesIfHidden(_ proxy: ScrollViewProxy) {
+        guard !revealedSamples, museum.isEmpty, samplesBottom > 0, counterTop > 0 else { return }
+        revealedSamples = true
+        if samplesBottom > counterTop - 4 {
+            proxy.scrollTo(Self.samplesAnchor, anchor: .bottom)
+        }
+    }
+
+    private static let samplesAnchor = "home-samples"
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
@@ -55,6 +91,7 @@ struct HomeView: View {
                 onShutter: { showCamera = true },
                 onMuseum: { open(.museum) }
             )
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { counterTop = $0 }
         }
         .toolbar(.hidden, for: .navigationBar)
         .onChange(of: app.captureKind) { app.persistPreferences() }
@@ -184,9 +221,15 @@ struct HomeView: View {
 
     private var mainDoor: some View {
         VStack(alignment: .leading, spacing: 22) {
-            if let p = pending.first {
-                PendingCard(artwork: p, extra: pending.count - 1, resume: { open(.edit(p.id)) },
+            // The oldest pending capture: 繼續 steps through them in the order they were taken (連拍).
+            if let p = pending.last {
+                PendingCard(artwork: p, extra: pending.count - 1, resume: resumePending,
                             discard: { confirmDiscardPending = true }, keepAll: keepAllPending)
+            } else if showsBackupCard {
+                BackupCard(count: unsaved.count, progress: app.saveAllProgress,
+                           saveAll: { Task { await app.backUpAll(context: modelContext) } },
+                           later: { withAnimation { app.snoozeBackupReminder() } })
+                    .transition(.opacity)
             }
             if !session.isEmpty {
                 workWall(title: String(localized: "這次收的作品"), items: Array(session.prefix(6)), count: session.count)
@@ -242,33 +285,45 @@ struct HomeView: View {
         }
     }
 
+    /// Headline, then the 看範例 tiles (so they sit above the counter on small phones), then the how-to with Bibi.
     private var emptyFridge: some View {
-        VStack(spacing: 10) {
-            Image(colorScheme == .dark ? "bibi-sleep" : "bibi-empty")
-                .resizable().scaledToFit().frame(height: 96)
-                .accessibilityHidden(true)
+        VStack(spacing: 12) {
             Text("冰箱還空空的，拍第一張作品掛上來吧")
                 .font(.fmDisplay(19, relativeTo: .headline))
                 .foregroundStyle(Palette.doorInk)
                 .multilineTextAlignment(.center)
-            Text("按下方快門拍一張。整理好按「收進這次」，作品就會掛在這裡。")
-                .font(.fm(14.5))
-                .foregroundStyle(Palette.doorMuted)
-                .multilineTextAlignment(.center)
-            HStack(spacing: 12) {
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .top, spacing: 12) {
                 SampleTile(kind: .flat) { openSample(.flat) }
                 SampleTile(kind: .craft) { openSample(.craft) }
             }
-            .padding(.top, 6)
+            .padding(.top, 10)
+            .id(Self.samplesAnchor)
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { samplesBottom = $0 }
+            HStack(alignment: .center, spacing: 10) {
+                Image(colorScheme == .dark ? "bibi-sleep" : "bibi-empty")
+                    .resizable().scaledToFit().frame(height: 64)
+                    .accessibilityHidden(true)
+                Text("按下方快門拍一張。整理好按「收進這次」，作品就會掛在這裡。")
+                    .font(.fm(14.5))
+                    .foregroundStyle(Palette.doorMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 6)
     }
 
     // MARK: Actions
 
     private func openSample(_ kind: ArtworkKind) {
         if let a = app.openSample(kind, context: modelContext) { open(.edit(a.id)) }
+    }
+
+    /// 繼續: opens the oldest pending capture; with several, the editor steps on to the next after each one.
+    private func resumePending() {
+        if let id = app.startPendingWalk(context: modelContext) { open(.edit(id)) }
     }
 
     /// 全部收進: keeps every pending capture (unassigned ones go to the current capture child); stops at the paywall.
@@ -448,6 +503,100 @@ struct PendingCard: View {
                 .padding(.horizontal, 14)
                 .frame(height: 38)
                 .overlay(Capsule().strokeBorder(Palette.noteInk.opacity(0.5), lineWidth: 1.5))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// 備份提醒 — a cream card: 還有 N 張只在 App 裡, with 全部存到照片 / 之後再說. Shows progress while saving.
+struct BackupCard: View {
+    let count: Int
+    var progress: AppModel.SaveAllProgress?
+    let saveAll: () -> Void
+    let later: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Image("bibi-think").resizable().scaledToFit().frame(width: 46, height: 46)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("還有 \(count) 張只在 App 裡")
+                        .font(.fm(17, bold: true, relativeTo: .headline))
+                        .foregroundStyle(Palette.cardInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("存到照片，手機換了也不怕")
+                        .font(.fm(14, relativeTo: .subheadline))
+                        .foregroundStyle(Palette.cardMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            if let progress {
+                HStack(spacing: 10) {
+                    ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1)))
+                        .tint(Palette.teal)
+                    Text("正在存到照片… \(progress.done)／\(progress.total)")
+                        .font(.fm(13.5, bold: true, relativeTo: .footnote))
+                        .foregroundStyle(Palette.cardMuted)
+                        .monospacedDigit()
+                        .fixedSize()
+                }
+                .accessibilityElement(children: .combine)
+            } else {
+                // Side by side when they fit; stacked on narrow phones / large text.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        saveButton
+                        laterButton
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        saveButton
+                        laterButton
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.card))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Palette.cardLine, lineWidth: 2))
+        .shadow(color: Palette.shadow, radius: 3, y: 2)
+        .overlay(alignment: .topTrailing) { Tape(style: .mint, width: 74, angle: 5).offset(x: -24, y: -10) }
+        .environment(\.colorScheme, .light)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("備份提醒"))
+    }
+
+    private var saveButton: some View {
+        Button(action: saveAll) {
+            Label {
+                Text("全部存到照片").lineLimit(1)
+            } icon: {
+                Image(systemName: "square.and.arrow.down")
+            }
+            .labelStyle(TightLabelStyle())
+            .font(.fm(15, bold: true))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 38)
+            .background(Capsule().fill(Color(0x1F6E60, 0x1B5E52)))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(Text("存到照片，手機換了也不怕"))
+    }
+
+    private var laterButton: some View {
+        Button(action: later) {
+            Text("之後再說")
+                .font(.fm(15, bold: true))
+                .foregroundStyle(Palette.cardInk)
+                .lineLimit(1)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 38)
+                .overlay(Capsule().strokeBorder(Palette.cardInk.opacity(0.4), lineWidth: 1.5))
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)

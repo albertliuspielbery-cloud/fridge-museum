@@ -9,6 +9,8 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Query(sort: \Child.createdAt) private var children: [Child]
+    /// Museum artworks (kept, not samples), for 已存到照片 X／Y 件.
+    @Query(filter: #Predicate<Artwork> { $0.isKept && !$0.isSample }) private var museum: [Artwork]
     @AppStorage(AppModel.Keys.useAlbums) private var useAlbums = true
     @State private var editingChild: Child?
     @State private var showNewChild = false
@@ -112,6 +114,8 @@ struct SettingsView: View {
                     Text("需要「完整照片取用權限」才能建立「冰箱美術館 – 小明」這樣的相簿；只允許加入照片時，會存到「最近項目」。")
                 }
 
+                backupSection
+
                 Section {
                     LabeledContent {
                         Text(verbatim: AppLanguage.isChinese ? "繁體中文" : "English")
@@ -166,6 +170,45 @@ struct SettingsView: View {
             .sheet(item: $editingChild) { ChildEditorView(child: $0) }
             .sheet(isPresented: $showNewChild) { ChildEditorView(child: nil) }
             .overlay(alignment: .topLeading) { if DemoMode.scene("settings") { ReadyMarker() } }
+        }
+    }
+
+    /// 備份到照片: how many museum artworks are already in Photos, and 全部存到照片 for the rest.
+    private var backupSection: some View {
+        let total = museum.count
+        let saved = museum.filter { $0.lastSavedToPhotosAt != nil }.count
+        return Section {
+            LabeledContent {
+                if let progress = app.saveAllProgress {
+                    Text("正在存到照片… \(progress.done)／\(progress.total)").monospacedDigit()
+                }
+            } label: {
+                Text("已存到照片 \(saved)／\(total) 件").monospacedDigit()
+            }
+            if total > 0 && saved >= total {
+                Label {
+                    Text("全部都存到照片了")
+                } icon: {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.green)
+                }
+            } else if total > 0 {
+                Button {
+                    // The album explanation, Photos alerts and the paywall live on the root view: close Settings first.
+                    let app = self.app, context = modelContext
+                    dismiss()
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(350))
+                        await app.backUpAll(context: context)
+                    }
+                } label: {
+                    Label("全部存到照片", systemImage: "square.and.arrow.down")
+                }
+                .disabled(app.saveAllProgress != nil)
+            }
+        } header: {
+            Text("備份到照片")
+        } footer: {
+            Text("作品只存在這支手機裡。存到照片，手機換了也不怕。")
         }
     }
 

@@ -391,6 +391,41 @@ EN_BATCH = {
 EN.update(EN_BATCH)
 # ---- end feat/batch
 
+# ---- feat/burst: 連拍, 繼續 stepping, 備份提醒, empty-fridge sample tiles. New strings only, kept apart for merging.
+EN_BURST = {
+    # Camera: burst
+    "連拍": "Burst",
+    "開": "On",
+    "關": "Off",
+    "連續拍很多張，回到廚房再一張張整理": "Take several in a row, then sort them back in the kitchen",
+    "連拍：一張拍完換下一張，最後按「完成」": "Burst: snap one after another, then tap Done",
+    "已拍 %lld 張，換下一張": {"one": "1 taken. On to the next!", "other": "%lld taken. On to the next!"},
+    "完成，已拍 %lld 張": {"one": "Done, 1 photo taken", "other": "Done, %lld photos taken"},
+    "拍好 %lld 張了，在便利貼上一張張整理。": {
+        "one": "1 photo taken. Sort it from the sticky note.",
+        "other": "%lld photos taken. Sort them one by one from the sticky note."},
+    # Editor: stepping through pending captures (繼續)
+    "還有 %lld 張，接著看下一張。": {"one": "1 more to go. Here’s the next one.",
+                                 "other": "%lld more to go. Here’s the next one."},
+    # Backup reminder (home card + Settings)
+    "還有 %lld 張只在 App 裡": {"one": "1 artwork is only in the app", "other": "%lld artworks are only in the app"},
+    "存到照片，手機換了也不怕": "Save them to Photos so they’re safe, even on a new phone.",
+    "全部存到照片": "Save All to Photos",
+    "之後再說": "Not Now",
+    "正在存到照片… %lld／%lld": "Saving to Photos… %1$lld of %2$lld",
+    "備份提醒": "Backup reminder",
+    "備份到照片": "Back Up to Photos",
+    "已存到照片 %lld／%lld 件": "%1$lld of %2$lld saved to Photos",
+    "全部都存到照片了": "Everything is saved to Photos",
+    "作品只存在這支手機裡。存到照片，手機換了也不怕。":
+        "Artworks live only on this phone. Save them to Photos so they’re safe, even on a new phone.",
+    # Empty fridge sample tiles: shorter English so the tiles stay short on small phones (overrides the table above).
+    "找出紙張四角，拉正、修平光線": "Straightens the page and evens the light",
+    "AI 去掉桌面，換上乾淨背景和陰影": "AI swaps the table for a clean background",
+}
+EN.update(EN_BURST)
+# ---- end feat/burst
+
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),
     "CFBundleName": ("冰箱美術館", "My Fridge Museum"),
