@@ -93,6 +93,8 @@ final class AppModel {
     @ObservationIgnored private var saveAllResume: (ids: [UUID], addsToSession: Bool)?
     /// The last saveToPhotos failed for lack of Photos access (saveAll stops instead of rendering the rest for nothing).
     @ObservationIgnored private var lastSaveDenied = false
+    /// A save-all item is being exported and saved right now (a single save waits for it).
+    @ObservationIgnored private var isSavingBatchItem = false
 
     /// When this launch started (備份提醒 never nags about artworks kept during the very first visit).
     let launchedAt = Date()
@@ -228,7 +230,22 @@ final class AppModel {
     func endEditing(_ id: UUID, context: ModelContext) {
         editingIDs.remove(id)
         claimedIDs.remove(id)
-        deferredIDs.remove(id)
+        // A render owed from an earlier step (renderLater) stays queued: this editor only renders if it was edited.
+        if !staleIDs.contains(id) { deferredIDs.remove(id) }
+        runDeferred(context: context)
+    }
+
+    /// Edited while stepping through pending captures; their full-size render waits in the queue (renderLater).
+    @ObservationIgnored private var staleIDs: Set<UUID> = []
+
+    /// Stepping through pending captures (繼續): the closed editor's full-size render waits in the queue — it runs
+    /// once no editor is open — instead of alongside the next editor's previews. `stale`: the recipe was edited, so
+    /// it renders even if an (outdated) render exists. Until then the fridge shows its spinner / old thumbnail.
+    func renderLater(_ artwork: Artwork, context: ModelContext, stale: Bool) {
+        guard Self.isAlive(artwork) else { return }
+        if stale { staleIDs.insert(artwork.id) }
+        guard stale || needsRender(artwork) else { return }
+        deferredIDs.insert(artwork.id)
         runDeferred(context: context)
     }
 
@@ -256,7 +273,10 @@ final class AppModel {
         while !isEditorBusy, let artwork = nextDeferred(context: context) {
             let id = artwork.id
             deferredIDs.remove(id)
-            guard processTasks[id] == nil, needsRender(artwork) else { continue }
+            let due = staleIDs.contains(id)
+                ? Self.isAlive(artwork) && !processingIDs.contains(id) && !renderingIDs.contains(id)
+                : needsRender(artwork)
+            guard processTasks[id] == nil, due else { continue }
             startProcessing(artwork, context: context)
             if let task = processTasks[id] { await task.value }
         }
@@ -285,9 +305,13 @@ final class AppModel {
         let done = ProcessingState.done.rawValue
         let failed = ProcessingState.failed.rawValue
         let descriptor = FetchDescriptor<Artwork>(predicate: #Predicate { $0.processingStateRaw != done && $0.processingStateRaw != failed })
+        // Through the same queue as held exports (oldest first, one at a time, paused while an editor is open): a
+        // burst cut short by the app closing can leave dozens, and starting them all at once heats the phone.
+        // Corners are found in the queue too, right before each export.
         for artwork in (try? context.fetch(descriptor)) ?? [] where processTasks[artwork.id] == nil && needsRender(artwork) {
-            startProcessing(artwork, context: context)
+            deferredIDs.insert(artwork.id)
         }
+        runDeferred(context: context)
         Task { [weak self] in await self?.backfillFingerprints(context: context) }
     }
 
@@ -340,6 +364,8 @@ final class AppModel {
         let recipe = artwork.recipe
         renderingIDs.insert(id)
         defer { renderingIDs.remove(id) }
+        // This render uses the current recipe, so a render owed by renderLater is paid.
+        staleIDs.remove(id)
         do {
             let out = try await processor.export(id: id, originalData: data, recipe: recipe)
             let thumbnail = out.thumbnailData
@@ -504,14 +530,20 @@ final class AppModel {
     }
 
     /// Saves to Photos (per-child album when full access is granted). Counts as keeping the artwork.
+    /// `batch`: called by saveAll for one of its items. A single save (存到手機 in the editor or the detail view) waits
+    /// for a save-all item that is exporting right now, so two 4096 px exports never run at once.
     func saveToPhotos(_ artwork: Artwork, context: ModelContext, quiet: Bool = false, primed: Bool = false,
-                      addsToSession: Bool = true) async -> Bool {
+                      addsToSession: Bool = true, batch: Bool = false) async -> Bool {
         lastSaveDenied = false
         guard admit(artwork, action: .save) else { return false }
         // First album save: explain why full Photos access is useful before iOS asks (PhotosPrimerAlert).
         if !primed, UserDefaults.standard.bool(forKey: Keys.useAlbums), PhotoLibrarySaver.needsAlbumPrimer {
             photosPrimer = PhotosPrimer(artworkID: artwork.id)
             return false
+        }
+        if !batch {
+            while isSavingBatchItem { try? await Task.sleep(for: .milliseconds(200)) }
+            guard Self.isAlive(artwork) else { return false }
         }
         guard let jpeg = await finalJPEG(for: artwork, context: context) else {
             if !quiet { show(String(localized: "處理失敗，請重試"), style: .problem) }
@@ -556,8 +588,15 @@ final class AppModel {
         guard !list.isEmpty else { return }
         saveAllProgress = SaveAllProgress(done: 0, total: list.count)
         var ok = 0
-        for (index, a) in list.enumerated() where Self.isAlive(a) {
-            if await saveToPhotos(a, context: context, quiet: true, primed: primed, addsToSession: addsToSession) {
+        for (index, a) in list.enumerated() {
+            // An open editor (or a burst / import) has the phone: the next 4096 px export waits until it's done.
+            while isEditorBusy && !Task.isCancelled { try? await Task.sleep(for: .milliseconds(400)) }
+            guard Self.isAlive(a) else { continue }
+            isSavingBatchItem = true
+            let saved = await saveToPhotos(a, context: context, quiet: true, primed: primed, addsToSession: addsToSession,
+                                           batch: true)
+            isSavingBatchItem = false
+            if saved {
                 ok += 1
                 saveAllProgress = SaveAllProgress(done: ok, total: list.count)
             } else if photosPrimer != nil {
@@ -636,6 +675,7 @@ final class AppModel {
         let id = artwork.id
         processTasks.removeValue(forKey: id)?.cancel()
         deferredIDs.remove(id)
+        staleIDs.remove(id)
         sessionArtworkIDs.removeAll { $0 == id }
         context.delete(artwork)
         if save { try? context.save() }

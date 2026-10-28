@@ -542,7 +542,8 @@ struct MuseumView: View {
         guard !list.isEmpty, !batchSaving else { return }
         batchSaving = true
         Task {
-            await app.saveAll(list, context: modelContext)
+            // Museum artworks are already hung: don't put them on 這次收的作品.
+            await app.saveAll(list, context: modelContext, addsToSession: false)
             batchSaving = false
         }
     }

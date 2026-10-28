@@ -78,7 +78,10 @@ struct CameraScreen: View {
 
     private var topBar: some View {
         HStack {
-            Button { dismiss() } label: {
+            Button {
+                // Closed mid-burst: same as 完成 (the shots wait on the sticky note).
+                if burstShots.isEmpty { dismiss() } else { finishBurst() }
+            } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.white)

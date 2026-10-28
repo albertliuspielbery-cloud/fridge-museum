@@ -475,7 +475,7 @@ struct PendingCard: View {
                 .foregroundStyle(Color.white)
                 .lineLimit(1)
                 .padding(.horizontal, 18)
-                .frame(height: 38)
+                .frame(minHeight: 38)
                 .background(Capsule().fill(Color(0x2B2E4A, 0x1E2340)))
         }
         .buttonStyle(.plain)
@@ -488,7 +488,7 @@ struct PendingCard: View {
                 .foregroundStyle(Color.white)
                 .lineLimit(1)
                 .padding(.horizontal, 16)
-                .frame(height: 38)
+                .frame(minHeight: 38)
                 .background(Capsule().fill(Color(0x1F6E60, 0x1B5E52)))
         }
         .buttonStyle(.plain)
@@ -501,7 +501,7 @@ struct PendingCard: View {
                 .foregroundStyle(Palette.noteInk)
                 .lineLimit(1)
                 .padding(.horizontal, 14)
-                .frame(height: 38)
+                .frame(minHeight: 38)
                 .overlay(Capsule().strokeBorder(Palette.noteInk.opacity(0.5), lineWidth: 1.5))
                 .contentShape(Capsule())
         }
