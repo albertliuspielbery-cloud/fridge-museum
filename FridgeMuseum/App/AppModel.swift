@@ -382,6 +382,11 @@ final class AppModel {
                 }
             }
         }
+        // The copy couldn't be stored (rare): render the working copy now rather than leave it until next launch.
+        if storeCopy, jpeg != nil, Self.isAlive(artwork), artwork.renderedImageData == nil {
+            renderingIDs.remove(id)
+            await rerender(artwork, context: context)
+        }
         if jpeg == nil {
             if artwork.renderedImageData == nil || artwork.processingState != .done {
                 await rerender(artwork, context: context)
