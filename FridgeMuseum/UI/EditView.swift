@@ -3,15 +3,23 @@ import SwiftUI
 import UIKit
 
 enum EditTool: String, CaseIterable, Identifiable {
-    case crop, adjust, brush, info
+    case crop, adjust, brush, label
 
     var id: String { rawValue }
-    var label: String {
+    var title: String {
         switch self {
-        case .crop: "裁切"
-        case .adjust: "調整"
-        case .brush: "筆刷"
-        case .info: "資料"
+        case .crop: String(localized: "裁切")
+        case .adjust: String(localized: "調整")
+        case .brush: String(localized: "筆刷")
+        case .label: String(localized: "說明牌")
+        }
+    }
+    var panelTitle: String {
+        switch self {
+        case .crop: String(localized: "裁切四角")
+        case .adjust: String(localized: "調整")
+        case .brush: String(localized: "筆刷")
+        case .label: String(localized: "作品說明牌")
         }
     }
     var systemImage: String {
@@ -19,27 +27,22 @@ enum EditTool: String, CaseIterable, Identifiable {
         case .crop: "crop"
         case .adjust: "slider.horizontal.3"
         case .brush: "paintbrush.pointed"
-        case .info: "tag"
-        }
-    }
-    var tint: Color {
-        switch self {
-        case .crop: Palette.blue
-        case .adjust: Palette.yellow
-        case .brush: Palette.pink
-        case .info: Palette.green
+        case .label: "text.below.photo"
         }
     }
 }
 
-/// Full-screen studio: stage + 4 tools (裁切 / 調整 / 筆刷 / 資料) + 分享 / 存到手機.
+/// The studio: the artwork on a mint stage, compare slider, tools (裁切 / 調整 / 筆刷 / 說明牌) and
+/// 收進這次 / 存到手機. The quota is only checked when keeping or saving — never mid-edit.
 struct EditView: View {
     @Bindable var artwork: Artwork
     @Environment(AppModel.self) private var app
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
 
     @State private var model: EditModel
     @State private var tool: EditTool?
+    @State private var showLabel = false
     @State private var brushMode: BrushStroke.Mode = .erase
     @State private var brushSize: Double = 3
     @State private var compare = false
@@ -47,6 +50,7 @@ struct EditView: View {
     @State private var liveStroke: [CGPoint] = []
     @State private var isSaving = false
     @State private var kindSelection: ArtworkKind
+    @State private var activeCorner: Int?
 
     init(artwork: Artwork) {
         _artwork = Bindable(artwork)
@@ -54,55 +58,53 @@ struct EditView: View {
         _kindSelection = State(initialValue: artwork.kind)
     }
 
+    private var tools: [EditTool] {
+        model.recipe.kind == .flat ? EditTool.allCases : [.adjust, .brush, .label]
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 10) {
             stage
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            Text(hintText)
-                .font(.footnote)
-                .foregroundStyle(Palette.muted)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 6)
-            if let tool {
+                .padding(.horizontal, Metrics.gutter)
+                .padding(.trailing, 8)
+            BibiHint(text: hintText)
+                .padding(.horizontal, Metrics.gutter + 4)
+                .animation(.easeInOut(duration: 0.2), value: hintText)
+            if let tool, tool != .label {
                 panel(for: tool)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
-                    .background(RoundedRectangle(cornerRadius: 18).fill(Palette.surface))
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, Metrics.gutter)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             toolBar
             actionBar
         }
-        .background(Palette.paper.ignoresSafeArea())
-        .navigationTitle(artwork.displayTitle)
+        .padding(.top, 4)
+        .background(Wallpaper())
+        .navigationTitle(Text(verbatim: artwork.placardTitle))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Picker("種類", selection: $kindSelection) {
-                    ForEach(ArtworkKind.allCases) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 140)
+                KindSwitch(kind: $kindSelection, long: false, compact: true)
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    artwork.isFavorite.toggle()
-                    try? modelContext.save()
-                } label: {
-                    Image(systemName: artwork.isFavorite ? "star.fill" : "star")
-                        .foregroundStyle(artwork.isFavorite ? Palette.yellow : Palette.muted)
-                }
-                .accessibilityLabel(artwork.isFavorite ? "取消最愛" : "加到最愛")
+                trailingButton
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: tool)
+        .animation(.spring(duration: 0.3), value: tool)
         .onChange(of: kindSelection) { _, newKind in
             if newKind == .craft, tool == .crop { tool = nil }
+            compare = false
             Task { await model.setKind(newKind) }
         }
-        .task { model.render() }
+        .task {
+            model.render()
+            if DemoMode.isActive { DemoMode.configure(editor: model, tool: $tool, compare: $compare, activeCorner: $activeCorner, showLabel: $showLabel) }
+        }
+        .sheet(isPresented: $showLabel) {
+            LabelSheet(artwork: artwork, model: model)
+        }
         .onDisappear {
             // Capture everything now: environment values must not be read after the view is gone.
             let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
@@ -111,41 +113,96 @@ struct EditView: View {
                 await model.evictCaches()
             }
         }
+        .overlay(alignment: .topLeading) {
+            if demoReady { ReadyMarker() }
+        }
+    }
+
+    private var demoReady: Bool {
+        if DemoMode.scene("edit-flat") { return compare && model.output != nil }
+        if DemoMode.scene("crop-loupe") { return activeCorner != nil && model.source != nil }
+        if DemoMode.scene("crop") { return tool == .crop && model.source != nil }
+        if DemoMode.scene("edit-craft", "adjust", "brush-craft") { return model.output != nil || model.failed }
+        return false
+    }
+
+    @ViewBuilder
+    private var trailingButton: some View {
+        if !artwork.isKept && !artwork.isSample {
+            Button {
+                let a = artwork
+                dismiss()
+                app.delete(a, context: modelContext)
+                app.cameraRequest += 1
+            } label: {
+                Label("重拍", systemImage: "camera")
+                    .labelStyle(.titleAndIcon)
+                    .font(.fm(16, bold: true))
+                    .foregroundStyle(Palette.ink)
+            }
+        } else if artwork.isKept {
+            Button {
+                artwork.isFavorite.toggle()
+                try? modelContext.save()
+            } label: {
+                Image(systemName: artwork.isFavorite ? "star.fill" : "star")
+                    .foregroundStyle(artwork.isFavorite ? Palette.yellow : Palette.ink)
+            }
+            .accessibilityLabel(artwork.isFavorite ? Text("取消最愛") : Text("加到最愛"))
+        }
     }
 
     // MARK: Stage
 
     private var stage: some View {
-        GeometryReader { geo in
+        let shape = RoundedRectangle(cornerRadius: 32, style: .continuous)
+        return GeometryReader { geo in
+            let inner = CGSize(width: max(1, geo.size.width - 40), height: max(1, geo.size.height - 72))
             ZStack {
                 if tool == .crop && model.recipe.kind == .flat {
-                    cropStage(size: geo.size)
+                    cropStage(size: inner)
                 } else {
-                    resultStage(size: geo.size)
-                }
-                if model.isRendering {
-                    ProgressView()
-                        .padding(10)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                        .padding(8)
+                    resultStage(size: inner)
                 }
             }
+            .frame(width: inner.width, height: inner.height)
+            .position(x: geo.size.width / 2, y: geo.size.height / 2)
         }
-        .padding(12)
-        .overlay(alignment: .bottomTrailing) {
-            if tool != .crop, model.before != nil {
+        .background {
+            ZStack {
+                shape.fill(Palette.doorLo).offset(x: 9, y: 5)
+                shape.fill(tool == .crop ? Color(0x4F8270, 0x22534D) : Palette.door)
+                Capsule().fill(Palette.doorHi.opacity(0.7)).frame(width: 12, height: 110)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.leading, 18).padding(.top, 60)
+            }
+        }
+        .overlay(alignment: .topLeading) {
+            if artwork.isSample {
+                Text("範例")
+                    .font(.fm(15, bold: true))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .frame(height: 36)
+                    .background(Capsule().fill(Palette.chip))
+                    .padding(12)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if tool != .crop, tool != .brush, model.before != nil {
                 Button {
-                    compare.toggle()
+                    withAnimation(.easeInOut(duration: 0.2)) { compare.toggle() }
                 } label: {
                     Label("對比", systemImage: "rectangle.split.2x1")
-                        .font(.footnote.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(compare ? Palette.blue : Palette.surface))
-                        .foregroundStyle(compare ? Color.white : Palette.ink)
+                        .font(.fm(15, bold: true))
+                        .foregroundStyle(compare ? Color.white : Palette.tealInk)
+                        .padding(.horizontal, 14)
+                        .frame(height: 38)
+                        .background(Capsule().fill(compare ? Palette.teal : Palette.surface))
+                        .overlay(Capsule().strokeBorder(Palette.teal, lineWidth: 2))
                 }
-                .padding(20)
+                .buttonStyle(.plain)
+                .padding(12)
             }
         }
     }
@@ -158,9 +215,9 @@ struct EditView: View {
                 Image(uiImage: out)
                     .resizable()
                     .frame(width: rect.width, height: rect.height)
+                    .shadow(color: Palette.printShadow, radius: 8, y: 4)
                     .offset(x: rect.minX, y: rect.minY)
-                    .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
-                if compare, tool != .brush, let before = model.before {
+                if compare, let before = model.before {
                     Image(uiImage: before)
                         .resizable()
                         .frame(width: rect.width, height: rect.height)
@@ -168,11 +225,17 @@ struct EditView: View {
                             Rectangle().frame(width: rect.width * split)
                         }
                         .offset(x: rect.minX, y: rect.minY)
-                    Rectangle()
-                        .fill(.white)
-                        .frame(width: 3, height: rect.height)
-                        .shadow(radius: 2)
-                        .offset(x: rect.minX + rect.width * split - 1.5, y: rect.minY)
+                    CompareDivider(height: rect.height)
+                        .offset(x: rect.minX + rect.width * split - 22, y: rect.minY)
+                    HStack {
+                        StageChip(text: String(localized: "原圖"))
+                        Spacer()
+                        StageChip(text: String(localized: "處理後"))
+                    }
+                    .padding(10)
+                    .frame(width: rect.width)
+                    .offset(x: rect.minX, y: rect.maxY - 52)
+                    .allowsHitTesting(false)
                 }
                 if !liveStroke.isEmpty {
                     Path { p in p.addLines(liveStroke) }
@@ -183,17 +246,48 @@ struct EditView: View {
             .frame(width: size.width, height: size.height, alignment: .topLeading)
             .contentShape(Rectangle())
             .gesture(stageGesture(rect: rect))
+            .overlay {
+                if model.isRendering {
+                    ProgressView()
+                        .padding(10)
+                        .background(Circle().fill(Palette.surface))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                        .allowsHitTesting(false)
+                }
+            }
         } else if model.failed {
-            ContentUnavailableView("處理失敗", systemImage: "exclamationmark.triangle", description: Text("可以試試切換畫作／勞作"))
+            VStack(spacing: 12) {
+                Image("bibi-oops").resizable().scaledToFit().frame(height: 150)
+                Text("這張照片處理不了").font(.fmDisplay(20)).foregroundStyle(Palette.doorInk)
+                Text(model.recipe.kind == .flat ? "可以試試「裁切」對準紙張四角，或改成勞作。" as LocalizedStringKey : "可以試試改成畫作，或重拍一張。")
+                    .font(.fm(14.5)).foregroundStyle(Palette.doorMuted).multilineTextAlignment(.center)
+                Button { model.render() } label: {
+                    Label("再試一次", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(SecondaryCapsuleStyle())
+                .frame(width: 200)
+            }
+            .frame(width: size.width, height: size.height)
         } else {
-            ProgressView("處理中…")
-                .frame(width: size.width, height: size.height)
+            VStack(spacing: 14) {
+                Image("bibi-think").resizable().scaledToFit().frame(height: 160)
+                HStack(spacing: 10) {
+                    ProgressView().tint(Palette.teal)
+                    Text(model.recipe.kind == .craft ? "AI 去背中…" as LocalizedStringKey : "處理中…")
+                        .font(.fm(17, bold: true))
+                        .foregroundStyle(Palette.ink)
+                }
+                .padding(.horizontal, 22)
+                .frame(height: 50)
+                .background(Capsule().fill(Palette.surface).shadow(color: Palette.shadow, radius: 5, y: 3))
+            }
+            .frame(width: size.width, height: size.height)
         }
     }
 
     private var liveStrokeColor: Color {
         if model.recipe.kind == .flat { return .white.opacity(0.9) }
-        return brushMode == .restore ? Palette.green.opacity(0.5) : Palette.coral.opacity(0.5)
+        return brushMode == .restore ? Palette.green.opacity(0.5) : Palette.red.opacity(0.5)
     }
 
     /// Brush radius in view points for the live stroke preview.
@@ -245,42 +339,62 @@ struct EditView: View {
                     .resizable()
                     .frame(width: rect.width, height: rect.height)
                     .offset(x: rect.minX, y: rect.minY)
-                Path { p in
-                    p.addLines(pts)
-                    p.closeSubpath()
-                }
-                .fill(Palette.blue.opacity(0.15))
-                Path { p in
-                    p.addLines(pts)
-                    p.closeSubpath()
-                }
-                .stroke(.white, lineWidth: 2)
+                QuadOutline(points: pts)
                 ForEach(0..<4, id: \.self) { i in
-                    Circle()
-                        .fill(.white)
-                        .frame(width: 24, height: 24)
-                        .overlay(Circle().stroke(Palette.blue, lineWidth: 3))
-                        .frame(width: 48, height: 48)
-                        .contentShape(Circle())
+                    CornerHandle(active: activeCorner == i)
                         .position(pts[i])
                         .gesture(
                             DragGesture(minimumDistance: 0, coordinateSpace: .named("cropStage"))
                                 .onChanged { value in
+                                    activeCorner = i
                                     var q = model.recipe.corners ?? .full
                                     q[i] = NormPoint(x: Double((value.location.x - rect.minX) / rect.width),
                                                      y: Double((value.location.y - rect.minY) / rect.height)).clampedToUnit()
                                     model.recipe.corners = q
                                 }
-                                .onEnded { _ in model.cornersChanged() }
+                                .onEnded { _ in
+                                    activeCorner = nil
+                                    model.cornersChanged()
+                                }
                         )
+                        .accessibilityElement()
+                        .accessibilityLabel(Text(cornerName(i)))
+                        .accessibilityAdjustableAction { direction in
+                            var q = model.recipe.corners ?? .full
+                            let d = direction == .increment ? 0.01 : -0.01
+                            q[i] = NormPoint(x: q[i].x + (i == 0 || i == 3 ? d : -d), y: q[i].y + (i < 2 ? d : -d)).clampedToUnit()
+                            model.recipe.corners = q
+                            model.cornersChanged()
+                        }
+                }
+                if let i = activeCorner {
+                    let focus = pts[i]
+                    let loupeSize: CGFloat = 124
+                    let onRight = focus.x < size.width / 2
+                    let atBottom = focus.y < loupeSize + 30
+                    Loupe(image: src, imageRect: rect, focus: focus, quad: pts, size: loupeSize)
+                        .position(x: onRight ? size.width - loupeSize / 2 - 6 : loupeSize / 2 + 6,
+                                  y: atBottom ? size.height - loupeSize / 2 - 6 : loupeSize / 2 + 6)
+                        .allowsHitTesting(false)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
                 }
             }
             .frame(width: size.width, height: size.height, alignment: .topLeading)
             .coordinateSpace(.named("cropStage"))
+            .animation(.easeOut(duration: 0.15), value: activeCorner)
         } else {
             ProgressView()
                 .frame(width: size.width, height: size.height)
                 .task { await model.loadSource() }
+        }
+    }
+
+    private func cornerName(_ i: Int) -> String {
+        switch i {
+        case 0: String(localized: "左上角")
+        case 1: String(localized: "右上角")
+        case 2: String(localized: "右下角")
+        default: String(localized: "左下角")
         }
     }
 
@@ -294,75 +408,83 @@ struct EditView: View {
         let flat = model.recipe.kind == .flat
         var t: String
         switch tool {
-        case .crop: t = flat ? "拖曳四個白點對準紙張四角，放開後會自動重新處理。" : "勞作會自動裁切到作品周圍。"
+        case .crop: t = String(localized: "拖曳四個白點對準紙張四角，放開後會自動重新處理。")
         case .brush:
-            if flat { t = "在髒點上塗抹，會塗成白色。只建議用在空白紙面。" }
-            else { t = brushMode == .restore ? "塗抹被誤刪的作品部分，把它補回來。" : "塗抹要去掉的背景部分。" }
-        default: t = compare ? "左右拖曳白線，比較前後" : "看起來可以了，就存到手機。"
+            if flat { t = String(localized: "在髒點上塗抹，會塗成白色。只建議用在空白紙面。") }
+            else if brushMode == .restore { t = String(localized: "塗抹被誤刪的作品部分，把它補回來。") }
+            else { t = String(localized: "塗抹要去掉的背景部分。") }
+        default:
+            if model.output == nil { t = String(localized: "冰冰正在整理這張作品，請稍等一下。") }
+            else if compare { t = String(localized: "左右拖曳白線，比較前後") }
+            else if artwork.isKept && !artwork.isSample { t = String(localized: "改好了就存到手機或分享。修改會自動保存。") }
+            else { t = String(localized: "看起來可以了，就存到手機或收進這次。") }
         }
-        if flat, tool != .crop, model.recipe.removeSpecks, model.specksRemoved > 0 {
-            t += " · 已自動清掉 \(model.specksRemoved) 個小黑點"
+        if flat, tool != .crop, model.recipe.removeSpecks, model.specksRemoved > 0, model.output != nil {
+            t += AppLanguage.isChinese ? " · " : " "
+            t += String(localized: "已自動清掉 \(model.specksRemoved) 個小黑點")
         }
         return t
     }
 
     private var toolBar: some View {
-        HStack {
-            ForEach(EditTool.allCases) { t in
-                let disabled = t == .crop && model.recipe.kind == .craft
+        HStack(alignment: .top) {
+            ForEach(tools) { t in
                 Button {
+                    if t == .label {
+                        showLabel = true
+                        return
+                    }
                     tool = (tool == t) ? nil : t
-                    if tool == .crop { Task { await model.loadSource() } }
+                    if tool == .crop { compare = false; Task { await model.loadSource() } }
+                    if tool == .brush { compare = false }
                 } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: t.systemImage)
-                            .font(.title3)
-                            .frame(width: 46, height: 36)
-                            .background(RoundedRectangle(cornerRadius: 12).fill(tool == t ? t.tint : t.tint.opacity(0.15)))
-                            .foregroundStyle(tool == t ? Color.white : Palette.ink)
-                        Text(t.label).font(.caption)
+                    VStack(spacing: 6) {
+                        RoundKnob(systemImage: t.systemImage, selected: tool == t, size: 54)
+                        Text(verbatim: t.title)
+                            .font(.fm(13.5, bold: true))
+                            .foregroundStyle(tool == t ? Palette.tealInk : Palette.muted)
                     }
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
-                .disabled(disabled)
-                .opacity(disabled ? 0.35 : 1)
+                .accessibilityAddTraits(tool == t ? .isSelected : [])
             }
         }
         .padding(.horizontal, 12)
-        .padding(.top, 10)
     }
 
     private var actionBar: some View {
         HStack(spacing: 12) {
-            ShareLink(item: shareItem, preview: SharePreview(artwork.displayTitle, image: Image(systemName: "photo"))) {
-                Label("分享", systemImage: "square.and.arrow.up")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-
-            Button {
-                isSaving = true
-                let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
-                Task {
-                    await Self.commit(model: model, artwork: artwork, app: app, context: context)
-                    _ = await app.saveToPhotos(artwork, context: context)
-                    isSaving = false
+            if artwork.isKept && !artwork.isSample {
+                ShareLink(item: shareItem, preview: SharePreview(artwork.placardTitle, image: shareImage)) {
+                    Label("分享", systemImage: "square.and.arrow.up")
                 }
-            } label: {
-                HStack {
-                    if isSaving { ProgressView().tint(.white) }
-                    Label("存到手機", systemImage: "square.and.arrow.down")
+                .buttonStyle(SecondaryCapsuleStyle())
+                .frame(maxWidth: 150)
+            } else {
+                Button(action: keep) {
+                    Label("收進這次", systemImage: "plus")
                 }
-                .frame(maxWidth: .infinity)
+                .buttonStyle(SecondaryCapsuleStyle())
+                .frame(maxWidth: 160)
+                .disabled(model.output == nil || isSaving)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(isSaving)
+            Button(action: save) {
+                HStack(spacing: 8) {
+                    if isSaving { ProgressView().tint(Palette.primaryInk) } else { Image(systemName: "square.and.arrow.down") }
+                    Text("存到手機")
+                }
+            }
+            .buttonStyle(PrimaryCapsuleStyle())
+            .disabled(isSaving || model.output == nil)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, Metrics.gutter)
+        .padding(.bottom, 6)
+    }
+
+    private var shareImage: Image {
+        if let out = model.output { return Image(uiImage: out) }
+        return Image("bibi-idle")
     }
 
     private var shareItem: ShareableArtwork {
@@ -371,22 +493,153 @@ struct EditView: View {
                          captionBackground: app.captionBackground(model.recipe))
     }
 
+    private func keep() {
+        let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
+        Task { await Self.commit(model: model, artwork: artwork, app: app, context: context) }
+        if app.keep(artwork, context: context) { dismiss() }
+    }
+
+    private func save() {
+        isSaving = true
+        let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
+        let wasPending = !artwork.isKept
+        Task {
+            await Self.commit(model: model, artwork: artwork, app: app, context: context)
+            let ok = await app.saveToPhotos(artwork, context: context)
+            isSaving = false
+            if ok && wasPending { dismiss() }
+        }
+    }
+
     @ViewBuilder
     private func panel(for tool: EditTool) -> some View {
-        switch tool {
-        case .crop: CropPanel(model: model)
-        case .adjust: AdjustPanel(model: model)
-        case .brush: BrushPanel(model: model, brushMode: $brushMode, brushSize: $brushSize)
-        case .info: InfoPanel(artwork: artwork, model: model)
+        PanelCard(title: tool.panelTitle, onDone: { self.tool = nil }) {
+            switch tool {
+            case .crop: CropPanel(model: model)
+            case .adjust: AdjustPanel(model: model)
+            case .brush: BrushPanel(model: model, brushMode: $brushMode, brushSize: $brushSize)
+            case .label: EmptyView()
+            }
         }
     }
 
     /// Writes the recipe back and re-renders the full-size output if anything changed.
-    private static func commit(model: EditModel, artwork: Artwork, app: AppModel, context: ModelContext) async {
+    static func commit(model: EditModel, artwork: Artwork, app: AppModel, context: ModelContext) async {
         guard model.isDirty else { return }
         artwork.recipe = model.recipe
         artwork.kind = model.recipe.kind
         model.markSaved()
         await app.rerender(artwork, context: context)
+    }
+}
+
+// MARK: Stage pieces
+
+struct StageChip: View {
+    var text: String
+
+    var body: some View {
+        Text(verbatim: text)
+            .font(.fm(14, bold: true))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .frame(height: 32)
+            .background(Capsule().fill(Palette.chip))
+    }
+}
+
+/// White split line with a round ‹ › knob.
+struct CompareDivider: View {
+    var height: CGFloat
+
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.white).frame(width: 3, height: height).shadow(color: .black.opacity(0.3), radius: 2)
+            Circle().fill(.white).frame(width: 44, height: 44)
+                .overlay(Circle().strokeBorder(Color(0x2B2E4A, 0x2B2E4A), lineWidth: 2))
+                .overlay(
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(Color(0x2B2E4A, 0x2B2E4A))
+                )
+                .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+        }
+        .frame(width: 44, height: height)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The paper outline in crop mode: yellow marker line with a dark edge so it shows on any table.
+struct QuadOutline: View {
+    var points: [CGPoint]
+
+    var body: some View {
+        let path = Path { p in
+            p.addLines(points)
+            p.closeSubpath()
+        }
+        ZStack {
+            path.fill(Palette.mark.opacity(0.08))
+            path.stroke(Palette.markEdge, style: StrokeStyle(lineWidth: 5.5, lineJoin: .round))
+            path.stroke(Palette.mark, style: StrokeStyle(lineWidth: 3, lineJoin: .round))
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+struct CornerHandle: View {
+    var active = false
+
+    var body: some View {
+        Circle()
+            .fill(.white)
+            .frame(width: active ? 30 : 26, height: active ? 30 : 26)
+            .overlay(Circle().strokeBorder(Palette.mark, lineWidth: 5))
+            .overlay(Circle().strokeBorder(Palette.markEdge, lineWidth: 1).padding(-1))
+            .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
+            .frame(width: 52, height: 52)
+            .contentShape(Circle())
+    }
+}
+
+/// Magnifier shown while a corner is dragged, so the finger doesn't hide the paper edge.
+struct Loupe: View {
+    let image: UIImage
+    let imageRect: CGRect
+    let focus: CGPoint
+    let quad: [CGPoint]
+    var size: CGFloat = 124
+    var zoom: CGFloat = 2.6
+
+    var body: some View {
+        let c = CGPoint(x: size / 2, y: size / 2)
+        func map(_ p: CGPoint) -> CGPoint { CGPoint(x: c.x + (p.x - focus.x) * zoom, y: c.y + (p.y - focus.y) * zoom) }
+        let outline = Path { p in
+            p.addLines(quad.map(map))
+            p.closeSubpath()
+        }
+        return ZStack(alignment: .topLeading) {
+            Color(0x2B2E4A, 0x14131C)
+            Image(uiImage: image)
+                .resizable()
+                .frame(width: imageRect.width * zoom, height: imageRect.height * zoom)
+                .position(map(CGPoint(x: imageRect.midX, y: imageRect.midY)))
+            outline.stroke(Palette.markEdge, lineWidth: 4)
+            outline.stroke(Palette.mark, lineWidth: 2.2)
+            Path { p in
+                p.move(to: CGPoint(x: c.x - 11, y: c.y)); p.addLine(to: CGPoint(x: c.x + 11, y: c.y))
+                p.move(to: CGPoint(x: c.x, y: c.y - 11)); p.addLine(to: CGPoint(x: c.x, y: c.y + 11))
+            }
+            .stroke(.white, lineWidth: 1.6)
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .overlay(Circle().strokeBorder(.white, lineWidth: 4))
+        .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+        .accessibilityHidden(true)
     }
 }

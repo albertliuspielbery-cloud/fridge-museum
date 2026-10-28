@@ -18,7 +18,7 @@ settings:
     # the classic Swift 6 rules (explicit @MainActor), so pin them; older Xcode ignores these keys.
     SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
     SWIFT_APPROACHABLE_CONCURRENCY: NO
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
     # Overridden by CI (APPLE_TEAM_ID). Leave empty for simulator builds.
     DEVELOPMENT_TEAM: ""
@@ -42,8 +42,16 @@ targets:
     info:
       path: FridgeMuseum/Info.plist
       properties:
+        # Localized in FridgeMuseum/Resources/InfoPlist.xcstrings (zh-Hant 冰箱美術館 / en My Fridge Museum).
         CFBundleDisplayName: 冰箱美術館
         CFBundleDevelopmentRegion: zh-Hant
+        CFBundleLocalizations:
+          - zh-Hant
+          - en
+        UIAppFonts:
+          - Huninn-Regular.ttf
+          - ChironGoRoundTC-Regular.ttf
+          - ChironGoRoundTC-Bold.ttf
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.photography
@@ -68,6 +76,9 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
+        # String Catalogs: Localizable.xcstrings + InfoPlist.xcstrings (zh-Hant source, en).
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
         # Core Image kernels written in Metal (ProcessingKit/Kernels.metal).
         MTL_COMPILER_FLAGS: -fcikernel
         MTLLINKER_FLAGS: -cikernel
@@ -88,7 +99,33 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).tests
         CODE_SIGN_STYLE: Automatic
 
+  # Screenshot tests (scheme FridgeMuseumShots, workflow .github/workflows/ios-shots.yml): renders key screens in
+  # zh/en × light/dark and writes PNGs that CI pushes to the `ci-shots` branch.
+  FridgeMuseumUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: FridgeMuseumUITests
+    dependencies:
+      - target: FridgeMuseum
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).uitests
+        CODE_SIGN_STYLE: Automatic
+        TEST_TARGET_NAME: FridgeMuseum
+
 schemes:
+  FridgeMuseumShots:
+    build:
+      targets:
+        FridgeMuseum: all
+        FridgeMuseumUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - FridgeMuseumUITests
   FridgeMuseum:
     build:
       targets:

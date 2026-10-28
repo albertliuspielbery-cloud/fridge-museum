@@ -28,25 +28,38 @@ struct ChildEditorView: View {
         NavigationStack {
             Form {
                 Section {
+                    HStack {
+                        Spacer()
+                        AvatarDot(hex: colorHex, name: name.isEmpty ? "?" : name, size: 72)
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
+                }
+                Section {
                     TextField("名字或暱稱（例：小明）", text: $name)
                     Toggle("填生日（算出作品當時幾歲）", isOn: $hasBirthday)
                     if hasBirthday {
                         DatePicker("生日", selection: $birthday, in: ...Date(), displayedComponents: .date)
-                            .environment(\.locale, Locale(identifier: "zh-Hant-TW"))
                     }
                 }
-                Section("代表色") {
-                    HStack(spacing: 10) {
+                Section {
+                    HStack(spacing: 8) {
                         ForEach(Palette.avatarHexes, id: \.self) { hex in
                             Button { colorHex = hex } label: {
                                 Circle()
                                     .fill(Color(hex: hex))
-                                    .frame(width: 30, height: 30)
-                                    .overlay(Circle().stroke(Palette.ink, lineWidth: colorHex == hex ? 3 : 0))
+                                    .frame(width: 28, height: 28)
+                                    .overlay(Circle().strokeBorder(.white, lineWidth: colorHex == hex ? 3 : 0))
+                                    .overlay(Circle().stroke(Palette.ink, lineWidth: colorHex == hex ? 2 : 0).padding(-2))
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(Text("代表色"))
+                            .accessibilityAddTraits(colorHex == hex ? .isSelected : [])
                         }
                     }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("代表色")
                 }
                 if child != nil {
                     Section {
@@ -56,7 +69,11 @@ struct ChildEditorView: View {
                     }
                 }
             }
-            .navigationTitle(child == nil ? "新增小朋友" : "編輯小朋友")
+            .font(.fm(16))
+            .tint(Palette.teal)
+            .scrollContentBackground(.hidden)
+            .background(Palette.wall)
+            .navigationTitle(child == nil ? Text("新增小朋友") : Text("編輯小朋友"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
@@ -65,7 +82,7 @@ struct ChildEditorView: View {
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
-            .confirmationDialog("確定刪除？", isPresented: $confirmDelete, titleVisibility: .visible) {
+            .confirmationDialog(Text("確定刪除？"), isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("刪除", role: .destructive) {
                     if let child { modelContext.delete(child); try? modelContext.save() }
                     dismiss()

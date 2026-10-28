@@ -19,7 +19,7 @@ final class VoiceNoteRecorder {
     func start() async {
         guard !isRecording else { return }
         guard await AVAudioApplication.requestRecordPermission() else {
-            message = "沒有麥克風權限，請到「設定」開啟"
+            message = String(localized: "沒有麥克風權限，請到「設定」開啟")
             return
         }
         do {
@@ -35,7 +35,7 @@ final class VoiceNoteRecorder {
             ]
             let r = try AVAudioRecorder(url: url, settings: settings)
             guard r.record(forDuration: 120) else {
-                message = "無法開始錄音"
+                message = String(localized: "無法開始錄音")
                 return
             }
             recorder = r
@@ -43,7 +43,7 @@ final class VoiceNoteRecorder {
             isRecording = true
             message = nil
         } catch {
-            message = "無法開始錄音"
+            message = String(localized: "無法開始錄音")
         }
     }
 
@@ -67,7 +67,7 @@ final class VoiceNoteRecorder {
             player = p
             isPlaying = p.play()
         } catch {
-            message = "無法播放"
+            message = String(localized: "無法播放")
         }
     }
 
@@ -84,14 +84,14 @@ final class VoiceNoteRecorder {
         do { try data.write(to: url) } catch { return nil }
         defer { try? FileManager.default.removeItem(at: url) }
         let text = await SpeechTranscriber.transcribe(fileURL: url)
-        if text == nil { message = "這台手機無法離線辨識語音，已保留錄音" }
+        if text == nil { message = String(localized: "這台手機無法離線辨識語音，已保留錄音") }
         return text
     }
 }
 
 /// On-device only speech recognition (no audio leaves the phone). Returns nil if on-device recognition is unavailable.
 enum SpeechTranscriber {
-    static func transcribe(fileURL: URL, locale: Locale = Locale(identifier: "zh-TW")) async -> String? {
+    static func transcribe(fileURL: URL, locale: Locale = Locale(identifier: AppLanguage.isChinese ? "zh-TW" : "en-US")) async -> String? {
         let status = await withCheckedContinuation { (c: CheckedContinuation<SFSpeechRecognizerAuthorizationStatus, Never>) in
             SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0) }
         }

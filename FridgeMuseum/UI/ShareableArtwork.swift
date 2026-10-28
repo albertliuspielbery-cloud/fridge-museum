@@ -15,7 +15,7 @@ struct ShareableArtwork: Transferable, Sendable {
         DataRepresentation(exportedContentType: .jpeg) { item in
             try await item.jpeg()
         }
-        .suggestedFileName("冰箱美術館.jpg")
+        .suggestedFileName(String(localized: "冰箱美術館") + ".jpg")
     }
 
     func jpeg() async throws -> Data {

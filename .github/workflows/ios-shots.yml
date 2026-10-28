@@ -1,0 +1,102 @@
+# 截圖：在雲端模擬器把主要畫面（中／英 × 淺色／深色）各拍一張，推到 ci-shots 分支（單一 commit，強制覆蓋）。
+# 看圖：git fetch origin ci-shots && git checkout origin/ci-shots -- .   （或直接在 GitHub 上瀏覽 ci-shots 分支）
+name: iOS Screenshots
+on:
+  # Dispatch only works once this file is on main; until then every push to the UI branch takes screenshots.
+  push:
+    branches: [feat/ui-bibi]
+    paths-ignore: ['**.md', 'docs/**']
+  workflow_dispatch:
+    inputs:
+      only:
+        description: '只拍這些畫面（逗號分隔，空白 = 全部）'
+        default: ''
+      langs:
+        description: '語言（zh,en）'
+        default: 'zh,en'
+      looks:
+        description: '外觀（light,dark）'
+        default: 'light,dark'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-shots
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    name: 模擬器截圖
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - name: 用 Xcode 26
+        run: ci/select_xcode.sh
+      - name: 產生 Xcode 專案（XcodeGen）
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: 挑一台 iPhone 模擬器並固定狀態列
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 ci/pick_simulator.py)
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --dataNetwork wifi --wifiMode active --wifiBars 3 \
+            --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100 || true
+      - name: 拍截圖（UI 測試）
+        env:
+          TEST_RUNNER_SHOTS_DIR: ${{ github.workspace }}/shots
+          TEST_RUNNER_SHOTS_ONLY: ${{ inputs.only }}
+          TEST_RUNNER_SHOTS_LANGS: ${{ inputs.langs }}
+          TEST_RUNNER_SHOTS_LOOKS: ${{ inputs.looks }}
+        run: |
+          mkdir -p build shots
+          set +e
+          xcodebuild test -project FridgeMuseum.xcodeproj -scheme FridgeMuseumShots -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath build/DerivedData \
+            -resultBundlePath build/Shots.xcresult CODE_SIGNING_ALLOWED=NO \
+            > build/shots.log 2>&1
+          status=$?
+          set -e
+          ci/summarize_log.sh build/shots.log "$status" 截圖
+      - name: 從結果包補收截圖
+        if: always()
+        run: |
+          if [ -z "$(ls shots/*.png 2>/dev/null)" ] && [ -d build/Shots.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/Shots.xcresult --output-path build/attachments || true
+            python3 ci/collect_shots.py build/attachments shots || true
+          fi
+          ls shots | head -100
+      - name: 推到 ci-shots 分支
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd shots
+          [ -n "$(ls *.png 2>/dev/null)" ] || { echo "::warning::沒有截圖"; exit 0; }
+          {
+            echo "# Screenshots"
+            echo
+            echo "- commit: ${GITHUB_SHA} (${GITHUB_REF_NAME})"
+            echo "- run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "- simulator: $(xcrun simctl list devices | grep '${{ steps.sim.outputs.udid }}' | sed 's/^ *//')"
+            echo
+            for f in *.png; do echo "- [$f]($f)"; done
+          } > README.md
+          git init -q
+          git checkout -q -b ci-shots
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "Screenshots for ${GITHUB_SHA::7} (run ${GITHUB_RUN_ID})"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-shots
+      - name: 保存紀錄
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: shots-logs
+          path: build/shots.log
+          if-no-files-found: ignore

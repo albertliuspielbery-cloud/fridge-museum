@@ -1,26 +1,28 @@
 import SwiftUI
 import UIKit
 
-/// Five-crayon palette from the web prototype: blue = 平面畫作, coral = 立體勞作,
-/// and each edit tool owns a crayon (裁切 blue, 調整 yellow, 筆刷 pink, 資料 green).
-enum Palette {
-    static let paper = Color(red: 0xFB / 255, green: 0xF8 / 255, blue: 0xF3 / 255)
-    static let surface = Color.white
-    static let ink = Color(red: 0x1D / 255, green: 0x21 / 255, blue: 0x40 / 255)
-    static let muted = Color(red: 0x59 / 255, green: 0x5E / 255, blue: 0x78 / 255)
-    static let line = Color(red: 0xE6 / 255, green: 0xE1 / 255, blue: 0xD8 / 255)
-    static let blue = Color(red: 0x2F / 255, green: 0x5B / 255, blue: 1)
-    static let coral = Color(red: 1, green: 0x5B / 255, blue: 0x3A / 255)
-    static let yellow = Color(red: 1, green: 0xC9 / 255, blue: 0x29 / 255)
-    static let green = Color(red: 0x13 / 255, green: 0xA6 / 255, blue: 0x74 / 255)
-    static let pink = Color(red: 1, green: 0x7F / 255, blue: 0xB1 / 255)
+// 暖暖廚房 × 冰冰 — the kitchen palette from the web prototype v0.9.0 (CSS custom properties),
+// light = warm kitchen, dark = night kitchen. Every token resolves per trait collection.
 
-    static func color(for kind: ArtworkKind) -> Color { kind == .flat ? blue : coral }
+extension UIColor {
+    convenience init(rgb: UInt32, alpha: CGFloat = 1) {
+        self.init(red: CGFloat((rgb >> 16) & 0xFF) / 255, green: CGFloat((rgb >> 8) & 0xFF) / 255,
+                  blue: CGFloat(rgb & 0xFF) / 255, alpha: alpha)
+    }
 
-    static let avatarHexes = ["#2F5BFF", "#FF5B3A", "#FFC929", "#13A674", "#FF7FB1", "#8E5CF7", "#00A7C4", "#7A5A3A"]
+    static func dynamic(_ light: UInt32, _ dark: UInt32, alpha: CGFloat = 1, darkAlpha: CGFloat? = nil) -> UIColor {
+        let la = alpha, da = darkAlpha ?? alpha
+        return UIColor { traits in
+            traits.userInterfaceStyle == .dark ? UIColor(rgb: dark, alpha: da) : UIColor(rgb: light, alpha: la)
+        }
+    }
 }
 
 extension Color {
+    init(_ light: UInt32, _ dark: UInt32, alpha: CGFloat = 1, darkAlpha: CGFloat? = nil) {
+        self.init(uiColor: .dynamic(light, dark, alpha: alpha, darkAlpha: darkAlpha))
+    }
+
     init(_ c: RGBColor) {
         self.init(red: c.r, green: c.g, blue: c.b)
     }
@@ -28,6 +30,107 @@ extension Color {
     init(hex: String) {
         self.init(RGBColor(hex: hex) ?? RGBColor(r: 0.5, g: 0.5, b: 0.5))
     }
+}
+
+enum Palette {
+    // Kitchen wall + fridge
+    static let wall = Color(0xFCEBD2, 0x1E2340)
+    static let wallMotif = Color(0xF3D6AB, 0x283058)
+    static let title = Color(0x4A2F24, 0xF6EFE4)
+    static let door = Color(0x8ED3C0, 0x33766F)
+    static let doorHi = Color(0xB9E7DA, 0x4F9890)
+    static let doorLo = Color(0x5DB4A0, 0x24585A)
+    static let doorSeam = Color(0x6CC0AC, 0x2A625D)
+    static let doorInk = Color(0x173A31, 0xFFFFFF)
+    static let doorMuted = Color(0x22564A, 0xE2F6F1)
+
+    // Surfaces + text
+    static let surface = Color(0xFFFBF4, 0x272C4E)
+    static let surface2 = Color(0xF6E8D3, 0x323862)
+    static let ink = Color(0x4A2F24, 0xF4EEE4)
+    static let muted = Color(0x7A5A48, 0xC9C1D9)
+    static let faint = Color(0xA08470, 0x9C95B5)
+    static let line = Color(0xEBD7BB, 0x3B426E)
+
+    // Placards / notes / bubbles stay creamy at night
+    static let card = Color(0xFFF8EA, 0xEFE4CF)
+    static let cardInk = Color(0x3B2A20, 0x2E2118)
+    static let cardMuted = Color(0x7A5A48, 0x6B5444)
+    static let cardLine = Color(0xEFDDBF, 0xD8C9AE)
+    static let note = Color(0xFFE8A3, 0xE6D17E)
+    static let noteInk = Color(0x4A3A10, 0x2C2711)
+    static let bubble = Color(0xFFFDF8, 0xF6EFE4)
+    static let bubbleInk = Color(0x4A2F24, 0x2E2118)
+
+    // Crayons
+    static let red = Color(0xE5543C, 0xFF7A62)
+    static let orange = Color(0xF08A3C, 0xFF9C4A)
+    static let yellow = Color(0xF8C14A, 0xFFD45A)
+    static let blue = Color(0x3F6FD6, 0x8AA8FF)
+    static let green = Color(0x2E9C6A, 0x4FD39A)
+    static let pink = Color(0xEC7FA2, 0xFF9CC0)
+    static let purple = Color(0x8E5CC7, 0xB99AF2)
+    static let placardRed = Color(0xC9432D, 0xB8361F)
+
+    // Controls
+    static let primary = Color(0xC9432D, 0xF07A62)
+    static let primaryInk = Color(0xFFFFFF, 0x2A0F08)
+    static let primaryDeep = Color(0xA8341F, 0xC4563F)
+    static let track = Color(0x2E9C86, 0x4FC3A8)
+    static let teal = Color(0x227F6E, 0x4FC3A8)
+    static let tealInk = Color(0x1F6E60, 0x8FE3CF)
+    static let tealSoft = Color(0xD5EFE7, 0x234A48)
+    static let switchOff = Color(0xE6D6BF, 0x444A7A)
+    static let warn = Color(0xB8361F, 0xFFAB8A)
+
+    // Counter dock
+    static let counter = Color(0xFFF4E4, 0x262B4E)
+    static let counter2 = Color(0xF3E1C8, 0x1D2240)
+    static let wood = Color(0xEDB985, 0x6E4C36)
+    static let woodDeep = Color(0xC98A52, 0x4E3424)
+    static let dockRaise = Color(0xFFFFFF, 0x363C6A)
+
+    // Misc
+    static let chip = Color(0x3A241A, 0x0E1022, alpha: 0.78)
+    static let print = Color.white
+    static let shadow = Color(0x5A3214, 0x000000, alpha: 0.16, darkAlpha: 0.4)
+    static let printShadow = Color(0x3C2814, 0x000000, alpha: 0.32, darkAlpha: 0.6)
+    static let mark = Color(red: 1, green: 0xD6 / 255, blue: 0x0A / 255)
+    static let markEdge = Color(0x141630, 0x00000A, alpha: 0.6, darkAlpha: 0.7)
+
+    static func color(for kind: ArtworkKind) -> Color { kind == .flat ? blue : red }
+
+    /// Child profile colours (crayon box).
+    static let avatarHexes = ["#3F6FD6", "#E5543C", "#F8C14A", "#2E9C6A", "#EC7FA2", "#8E5CC7", "#00A7C4", "#F08A3C"]
+
+    // Back-compat names used by older views.
+    static let paper = wall
+    static let coral = red
+}
+
+// MARK: Fonts — Huninn (display) + Chiron GoRound TC (body), both bundled under the OFL.
+
+enum FMFont {
+    static let display = "Huninn-Regular"
+    static let regular = "ChironGoRoundTC-Regular"
+    static let bold = "ChironGoRoundTC-Bold"
+}
+
+extension Font {
+    /// Huninn — headlines, placard titles, crayon headers.
+    static func fmDisplay(_ size: CGFloat, relativeTo style: Font.TextStyle = .title2) -> Font {
+        .custom(FMFont.display, size: size, relativeTo: style)
+    }
+
+    /// Chiron GoRound TC — everything else.
+    static func fm(_ size: CGFloat, bold: Bool = false, relativeTo style: Font.TextStyle = .body) -> Font {
+        .custom(bold ? FMFont.bold : FMFont.regular, size: size, relativeTo: style)
+    }
+}
+
+enum Metrics {
+    static let gutter: CGFloat = 16
+    static let doorRadius: CGFloat = 34
 }
 
 /// Centered aspect-fit rect of an image inside a box.
@@ -38,87 +141,11 @@ func fitRect(_ image: CGSize, in box: CGSize) -> CGRect {
     return CGRect(x: (box.width - w) / 2, y: (box.height - h) / 2, width: w, height: h)
 }
 
-struct AvatarDot: View {
-    var hex: String
-    var name: String
-    var size: CGFloat = 26
-
-    var body: some View {
-        Circle()
-            .fill(Color(hex: hex))
-            .frame(width: size, height: size)
-            .overlay(
-                Text(String(name.prefix(1)))
-                    .font(.system(size: size * 0.5, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-            )
+/// Stable small pseudo-random number in -1...1 from an id (so prints hang slightly crooked, but always the same way).
+func wobble(_ id: UUID, salt: Int = 0) -> Double {
+    var h: UInt64 = 1469598103934665603
+    for b in withUnsafeBytes(of: id.uuid, Array.init) + [UInt8(truncatingIfNeeded: salt)] {
+        h = (h ^ UInt64(b)) &* 1099511628211
     }
-}
-
-struct Chip: View {
-    var title: String
-    var systemImage: String?
-    var selected: Bool
-    var tint: Color = Palette.blue
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                if let systemImage { Image(systemName: systemImage) }
-                Text(title)
-            }
-            .font(.subheadline.weight(.medium))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .foregroundStyle(selected ? Color.white : Palette.ink)
-            .background(Capsule().fill(selected ? tint : Palette.surface))
-            .overlay(Capsule().stroke(selected ? Color.clear : Palette.line, lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-/// Thumbnail tile with status, favorite and kind badges.
-struct ArtworkThumb: View {
-    let artwork: Artwork
-    var processing: Bool = false
-
-    var body: some View {
-        let image = ThumbnailCache.shared.image(for: artwork)
-        RoundedRectangle(cornerRadius: 10)
-            .fill(Palette.surface)
-            .aspectRatio(1, contentMode: .fit)
-            .overlay {
-                // Overlay on a fixed square so a scaledToFill image can't change the cell size.
-                if let image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else if artwork.processingState == .failed {
-                    Image(systemName: "exclamationmark.triangle").foregroundStyle(Palette.coral)
-                } else {
-                    ProgressView()
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Palette.line, lineWidth: 1))
-        .overlay(alignment: .topTrailing) {
-            if artwork.isFavorite {
-                Image(systemName: "star.fill")
-                    .font(.caption)
-                    .foregroundStyle(Palette.yellow)
-                    .padding(5)
-                    .shadow(radius: 1)
-            }
-        }
-        .overlay(alignment: .bottomLeading) {
-            HStack(spacing: 4) {
-                Circle().fill(Palette.color(for: artwork.kind)).frame(width: 7, height: 7)
-                if processing && image != nil { ProgressView().controlSize(.mini) }
-            }
-            .padding(6)
-        }
-        .accessibilityLabel("\(artwork.displayTitle)，\(artwork.kind.longLabel)")
-    }
+    return Double(h % 2001) / 1000 - 1
 }

@@ -1,0 +1,496 @@
+import SwiftData
+import SwiftUI
+
+/// 美術館 — every kept artwork, per child or all, filterable by 畫作/勞作, school year & semester, age, tags and ⭐,
+/// grouped into semester sections with crayon headers.
+struct MuseumView: View {
+    enum ChildFilter: Hashable {
+        case all
+        case unassigned
+        case child(UUID)
+    }
+
+    enum Grouping: String, CaseIterable, Identifiable {
+        case term, age, year, none
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .term: String(localized: "依學期")
+            case .age: String(localized: "依年齡")
+            case .year: String(localized: "依年份")
+            case .none: String(localized: "不分組")
+            }
+        }
+    }
+
+    struct Section: Identifiable {
+        let id: String
+        let title: String
+        var subtitle: String?
+        var sortKey: Int
+        var items: [Artwork]
+    }
+
+    let open: (Route) -> Void
+    let showSettings: () -> Void
+
+    @Environment(AppModel.self) private var app
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Artwork.capturedAt, order: .reverse) private var allArtworks: [Artwork]
+    @Query(sort: \Child.createdAt) private var children: [Child]
+
+    @State private var childFilter: ChildFilter = .all
+    @State private var kindFilter: ArtworkKind?
+    @State private var favoritesOnly = false
+    @State private var termFilter: SchoolTerm?
+    @State private var ageFilter: Int?
+    @State private var tagFilter: String?
+    @AppStorage("museumGrouping") private var groupingRaw = Grouping.term.rawValue
+    @AppStorage("museumNewestFirst") private var newestFirst = true
+    @State private var editingChild: Child?
+    @State private var showNewChild = false
+
+    private var grouping: Grouping { Grouping(rawValue: groupingRaw) ?? .term }
+    private var artworks: [Artwork] { allArtworks.filter(\.isInMuseum) }
+
+    /// Artworks matching the child filter only (drives the other menus' options).
+    private var childScoped: [Artwork] {
+        artworks.filter { a in
+            switch childFilter {
+            case .all: true
+            case .unassigned: a.child == nil
+            case .child(let id): a.child?.id == id
+            }
+        }
+    }
+
+    private var filtered: [Artwork] {
+        var list = childScoped.filter { a in
+            if let k = kindFilter, a.kind != k { return false }
+            if favoritesOnly && !a.isFavorite { return false }
+            if let t = termFilter, a.schoolTerm != t { return false }
+            if let y = ageFilter, a.ageAtCreation?.years != y { return false }
+            if let t = tagFilter, !a.tags.contains(t) { return false }
+            return true
+        }
+        if !newestFirst { list.reverse() }
+        return list
+    }
+
+    private var hasFilters: Bool {
+        kindFilter != nil || favoritesOnly || termFilter != nil || ageFilter != nil || tagFilter != nil
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                childShelf
+                filterBar
+                let list = filtered
+                if artworks.isEmpty {
+                    emptyMuseum
+                } else if list.isEmpty {
+                    noMatches
+                } else {
+                    HStack {
+                        Text("共 \(list.count) 件").font(.fm(14, bold: true)).foregroundStyle(Palette.muted)
+                        Spacer()
+                        sortMenu
+                    }
+                    .padding(.horizontal, Metrics.gutter + 4)
+                    ForEach(sections(list)) { section in
+                        sectionView(section)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.bottom, 24)
+        }
+        .scrollIndicators(.hidden)
+        .background(Wallpaper())
+        .navigationTitle(Text("美術館"))
+        .toolbarBackground(Palette.wall, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: showSettings) { Image(systemName: "gearshape") }
+                    .accessibilityLabel(Text("設定"))
+            }
+        }
+        .sheet(item: $editingChild) { child in
+            ChildEditorView(child: child)
+        }
+        .sheet(isPresented: $showNewChild) {
+            ChildEditorView(child: nil)
+        }
+        .task {
+            if let preset = DemoMode.museumPreset(children: children) {
+                childFilter = preset.child.map { .child($0) } ?? .all
+                kindFilter = preset.kind
+                favoritesOnly = preset.favorites
+            }
+        }
+        .overlay(alignment: .topLeading) {
+            if DemoMode.scene("museum", "museum-filter"), artworks.count >= 6, artworks.allSatisfy({ $0.thumbnailData != nil }) { ReadyMarker() }
+        }
+    }
+
+    // MARK: Child shelf
+
+    private var childShelf: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 14) {
+                shelfItem(selected: childFilter == .all, title: String(localized: "全部"), count: artworks.count) {
+                    Image("bibi-head").resizable().scaledToFit().frame(width: 40)
+                        .frame(width: 58, height: 58)
+                        .background(Circle().fill(Palette.door))
+                } action: {
+                    childFilter = .all
+                }
+                ForEach(children) { c in
+                    shelfItem(selected: childFilter == .child(c.id), title: c.displayName,
+                              count: artworks.filter { $0.child?.id == c.id }.count) {
+                        AvatarDot(hex: c.avatarColorHex, name: c.displayName, size: 58)
+                    } action: {
+                        childFilter = .child(c.id)
+                    }
+                    .contextMenu {
+                        Button { editingChild = c } label: { Label("編輯 \(c.displayName)", systemImage: "pencil") }
+                    }
+                }
+                if artworks.contains(where: { $0.child == nil }) {
+                    shelfItem(selected: childFilter == .unassigned, title: String(localized: "未分類"),
+                              count: artworks.filter { $0.child == nil }.count) {
+                        Image(systemName: "questionmark")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(Palette.muted)
+                            .frame(width: 58, height: 58)
+                            .background(Circle().fill(Palette.surface2))
+                    } action: {
+                        childFilter = .unassigned
+                    }
+                }
+                shelfItem(selected: false, title: String(localized: "新增"), count: nil) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(Palette.teal)
+                        .frame(width: 58, height: 58)
+                        .background(Circle().strokeBorder(Palette.teal, style: StrokeStyle(lineWidth: 2, dash: [5, 4])))
+                } action: {
+                    showNewChild = true
+                }
+            }
+            .padding(.horizontal, Metrics.gutter + 4)
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func shelfItem<Avatar: View>(selected: Bool, title: String, count: Int?, @ViewBuilder avatar: () -> Avatar,
+                                         action: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation(.spring(duration: 0.25)) { action() }
+            termFilter = nil
+            ageFilter = nil
+        } label: {
+            VStack(spacing: 5) {
+                avatar()
+                    .padding(3)
+                    .overlay(Circle().strokeBorder(selected ? Palette.teal : Color.clear, lineWidth: 3))
+                    .shadow(color: Palette.shadow, radius: selected ? 4 : 2, y: 2)
+                Text(verbatim: title)
+                    .font(.fm(13.5, bold: selected))
+                    .foregroundStyle(selected ? Palette.ink : Palette.muted)
+                    .lineLimit(1)
+                if let count {
+                    Text("\(count) 件").font(.fm(11.5)).foregroundStyle(Palette.faint)
+                }
+            }
+            .frame(width: 72)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    // MARK: Filters
+
+    private var terms: [SchoolTerm] {
+        Array(Set(childScoped.map(\.schoolTerm))).sorted(by: >)
+    }
+
+    private var ages: [Int] {
+        Array(Set(childScoped.compactMap { $0.ageAtCreation?.years })).sorted()
+    }
+
+    private var tags: [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        for a in childScoped {
+            for t in a.tags where !seen.contains(t) {
+                seen.insert(t)
+                out.append(t)
+            }
+        }
+        return out.sorted()
+    }
+
+    private var filterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(ArtworkKind.allCases) { k in
+                    Chip(title: k.title, systemImage: nil, selected: kindFilter == k, tint: Palette.color(for: k)) {
+                        kindFilter = kindFilter == k ? nil : k
+                    }
+                }
+                Chip(title: String(localized: "最愛"), systemImage: "star.fill", selected: favoritesOnly, tint: Color(0xD99A14, 0xC98A10)) {
+                    favoritesOnly.toggle()
+                }
+                Menu {
+                    Button { termFilter = nil } label: { Text("全部學期") }
+                    ForEach(terms, id: \.self) { t in
+                        Button { termFilter = t } label: {
+                            if termFilter == t { Label(t.localizedLabel, systemImage: "checkmark") } else { Text(verbatim: t.localizedLabel) }
+                        }
+                    }
+                } label: {
+                    ChipLabel(title: termFilter?.localizedLabel ?? String(localized: "學期"), systemImage: "calendar",
+                              selected: termFilter != nil, tint: Palette.blue, showsMenuIndicator: true)
+                }
+                .disabled(terms.isEmpty)
+                if !ages.isEmpty {
+                    Menu {
+                        Button { ageFilter = nil } label: { Text("全部年齡") }
+                        ForEach(ages, id: \.self) { y in
+                            let label = ChildAge(years: y, months: 0).localizedYearLabel
+                            Button { ageFilter = y } label: {
+                                if ageFilter == y { Label(label, systemImage: "checkmark") } else { Text(verbatim: label) }
+                            }
+                        }
+                    } label: {
+                        ChipLabel(title: ageFilter.map { ChildAge(years: $0, months: 0).localizedYearLabel } ?? String(localized: "年齡"),
+                                  systemImage: "birthday.cake", selected: ageFilter != nil, tint: Palette.pink, showsMenuIndicator: true)
+                    }
+                }
+                if !tags.isEmpty {
+                    Menu {
+                        Button { tagFilter = nil } label: { Text("全部標籤") }
+                        ForEach(tags, id: \.self) { t in
+                            Button { tagFilter = t } label: {
+                                if tagFilter == t { Label(String("#\(t)"), systemImage: "checkmark") } else { Text(verbatim: "#\(t)") }
+                            }
+                        }
+                    } label: {
+                        ChipLabel(title: tagFilter.map { "#\($0)" } ?? String(localized: "標籤"), systemImage: "tag",
+                                  selected: tagFilter != nil, tint: Palette.green, showsMenuIndicator: true)
+                    }
+                }
+                if hasFilters {
+                    Button {
+                        withAnimation {
+                            kindFilter = nil; favoritesOnly = false; termFilter = nil; ageFilter = nil; tagFilter = nil
+                        }
+                    } label: {
+                        Label("清除", systemImage: "xmark.circle.fill")
+                            .font(.fm(14.5, bold: true))
+                            .foregroundStyle(Palette.muted)
+                            .padding(.horizontal, 8)
+                            .frame(height: 36)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, Metrics.gutter + 4)
+            .padding(.vertical, 2)
+        }
+    }
+
+    private var sortMenu: some View {
+        Menu {
+            Picker(selection: $newestFirst) {
+                Text("新的在前").tag(true)
+                Text("舊的在前").tag(false)
+            } label: {
+                Text("排序")
+            }
+            Picker(selection: $groupingRaw) {
+                ForEach(Grouping.allCases) { Text(verbatim: $0.title).tag($0.rawValue) }
+            } label: {
+                Text("分組")
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.up.arrow.down")
+                Text(newestFirst ? "新的在前" as LocalizedStringKey : "舊的在前")
+            }
+            .font(.fm(14, bold: true))
+            .foregroundStyle(Palette.tealInk)
+        }
+    }
+
+    // MARK: Sections
+
+    private func sections(_ list: [Artwork]) -> [Section] {
+        var out: [Section] = []
+        var index: [String: Int] = [:]
+        let singleChild: Child? = {
+            if case .child(let id) = childFilter { return children.first { $0.id == id } }
+            return nil
+        }()
+        for a in list {
+            let (key, title, subtitle, sortKey) = groupKey(a, singleChild: singleChild)
+            if let i = index[key] {
+                out[i].items.append(a)
+            } else {
+                index[key] = out.count
+                out.append(Section(id: key, title: title, subtitle: subtitle, sortKey: sortKey, items: [a]))
+            }
+        }
+        if grouping != .none {
+            out.sort { newestFirst ? $0.sortKey > $1.sortKey : $0.sortKey < $1.sortKey }
+        }
+        return out
+    }
+
+    private func groupKey(_ a: Artwork, singleChild: Child?) -> (String, String, String?, Int) {
+        let year = Calendar.current.component(.year, from: a.capturedAt)
+        switch grouping {
+        case .term:
+            let term = a.schoolTerm
+            var subtitle: String?
+            if let b = singleChild?.birthday, let g = term.localizedGrade(birthday: b) {
+                subtitle = AppLanguage.isChinese ? "\(singleChild?.displayName ?? "")・\(g)" : "\(singleChild?.displayName ?? "") · \(g)"
+            } else if AppLanguage.isChinese {
+                subtitle = term.half == .first ? String(localized: "8 月 – 1 月") : String(localized: "2 月 – 7 月")
+            } else {
+                subtitle = term.localizedYear
+            }
+            return ("term-\(term.sortKey)", term.localizedLabel, subtitle, term.sortKey)
+        case .age:
+            if let age = a.ageAtCreation {
+                let name = singleChild == nil ? (a.child?.displayName ?? "") : nil
+                return ("age-\(a.child?.id.uuidString ?? "")-\(age.years)", age.localizedYearLabel, name, year * 100 + age.years)
+            }
+            return ("year-none-\(year)", String(localized: "\(String(year)) 年"), String(localized: "還沒填生日"), year * 100)
+        case .year:
+            return ("year-\(year)", String(localized: "\(String(year)) 年"), nil, year)
+        case .none:
+            return ("all", String(localized: "全部作品"), nil, 0)
+        }
+    }
+
+    private func sectionView(_ section: Section) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            CrayonHeader(title: section.title, subtitle: section.subtitle, count: section.items.count,
+                         ink: Palette.title)
+                .padding(.horizontal, Metrics.gutter + 4)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)],
+                      alignment: .leading, spacing: 28) {
+                ForEach(section.items) { a in
+                    Button { open(.detail(a.id)) } label: {
+                        MuseumTile(artwork: a, processing: app.processingIDs.contains(a.id), showChild: childFilter == .all)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button {
+                            a.isFavorite.toggle()
+                            try? modelContext.save()
+                        } label: {
+                            Label(a.isFavorite ? "取消最愛" as LocalizedStringKey : "加到最愛", systemImage: a.isFavorite ? "star.slash" : "star")
+                        }
+                        Button { open(.edit(a.id)) } label: { Label("編輯", systemImage: "slider.horizontal.3") }
+                        Button {
+                            Task { _ = await app.saveToPhotos(a, context: modelContext) }
+                        } label: {
+                            Label("存到手機", systemImage: "square.and.arrow.down")
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, Metrics.gutter + 6)
+        }
+        .padding(.top, 8)
+    }
+
+    // MARK: Empty states
+
+    private var emptyMuseum: some View {
+        VStack(spacing: 12) {
+            Image("bibi-empty").resizable().scaledToFit().frame(height: 160)
+            Text("美術館還是空的").font(.fmDisplay(22)).foregroundStyle(Palette.title)
+            Text("回到廚房拍下第一張作品，按「收進這次」就會掛到這裡。")
+                .font(.fm(15)).foregroundStyle(Palette.muted).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 30)
+        .padding(.top, 40)
+    }
+
+    private var noMatches: some View {
+        VStack(spacing: 12) {
+            Image("bibi-think").resizable().scaledToFit().frame(height: 150)
+            Text("沒有符合的作品").font(.fmDisplay(21)).foregroundStyle(Palette.title)
+            Button {
+                withAnimation {
+                    kindFilter = nil; favoritesOnly = false; termFilter = nil; ageFilter = nil; tagFilter = nil
+                }
+            } label: {
+                Text("清除篩選")
+            }
+            .buttonStyle(SecondaryCapsuleStyle())
+            .frame(width: 200)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 30)
+    }
+}
+
+/// A print on the museum wall: taped/magnet print, crayon title, child + date.
+struct MuseumTile: View {
+    let artwork: Artwork
+    var processing = false
+    var showChild = true
+
+    private var magnet: String? {
+        let w = wobble(artwork.id, salt: 11)
+        if w > 0.45 { return ["mag-tomato", "mag-lemon", "mag-berry", "mag-cloud"][Int((w - 0.45) / 0.55 * 3.99)] }
+        return nil
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HungPrint(id: artwork.id, tilt: 2, magnet: magnet, padding: 6) {
+                ArtworkImage(artwork: artwork)
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(artwork.aspectRatio, contentMode: .fit)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                HStack(spacing: 4) {
+                    if processing { ProgressView().controlSize(.small) }
+                    if artwork.isFavorite {
+                        Image(systemName: "star.fill").font(.system(size: 13, weight: .bold)).foregroundStyle(Palette.yellow)
+                            .padding(5).background(Circle().fill(.white)).shadow(radius: 1)
+                    }
+                }
+                .padding(8)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: artwork.placardTitle)
+                    .font(.fmDisplay(16, relativeTo: .headline))
+                    .foregroundStyle(Palette.title)
+                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    Circle().fill(Palette.color(for: artwork.kind)).frame(width: 7, height: 7)
+                    Text(verbatim: subtitle).font(.fm(12.5)).foregroundStyle(Palette.muted).lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 2)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(verbatim: "\(artwork.placardTitle), \(artwork.placardArtist), \(artwork.kind.title)"))
+    }
+
+    private var subtitle: String {
+        var parts: [String] = []
+        if showChild, let c = artwork.child { parts.append(c.displayName) }
+        if let age = artwork.ageAtCreation { parts.append(age.localizedLabel) } else { parts.append(AppLanguage.placardDate(artwork.capturedAt)) }
+        return parts.joined(separator: " · ")
+    }
+}

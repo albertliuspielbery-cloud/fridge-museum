@@ -2,60 +2,158 @@ import SwiftData
 import SwiftUI
 
 enum Route: Hashable {
-    case gallery
-    case artwork(UUID)
+    case museum
+    case detail(UUID)
+    case edit(UUID)
 }
 
 struct RootView: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.modelContext) private var modelContext
     @State private var path = NavigationPath()
+    @State private var showSettings = false
 
     var body: some View {
+        @Bindable var app = app
         NavigationStack(path: $path) {
-            CaptureView(
-                openGallery: { path.append(Route.gallery) },
-                openArtwork: { path.append(Route.artwork($0)) }
-            )
-            .navigationDestination(for: Route.self) { route in
-                switch route {
-                case .gallery:
-                    GalleryView(openArtwork: { path.append(Route.artwork($0)) })
-                case .artwork(let id):
-                    ArtworkEditLoader(id: id)
+            HomeView(open: open, showSettings: { showSettings = true })
+                .navigationDestination(for: Route.self) { route in
+                    switch route {
+                    case .museum:
+                        MuseumView(open: open, showSettings: { showSettings = true })
+                    case .detail(let id):
+                        ArtworkLoader(id: id) { ArtworkDetailView(artwork: $0, open: open) }
+                    case .edit(let id):
+                        ArtworkLoader(id: id) { EditView(artwork: $0) }
+                    }
                 }
-            }
         }
         .overlay(alignment: .top) {
             if let toast = app.toast {
-                Text(toast.text)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Capsule().fill(Palette.ink.opacity(0.92)))
-                    .padding(.top, 8)
+                ToastBanner(toast: toast)
+                    .padding(.horizontal, 14)
+                    .padding(.top, 4)
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .id(toast.id)
+                    .onTapGesture { app.toast = nil }
             }
         }
-        .animation(.spring(duration: 0.3), value: app.toast)
+        .animation(.spring(duration: 0.35, bounce: 0.3), value: app.toast)
+        .sensoryFeedback(trigger: app.toast) { _, new in
+            guard let new else { return nil }
+            switch new.style {
+            case .hung: return .impact(weight: .light)
+            case .problem: return .warning
+            case .info: return nil
+            }
+        }
+        .sheet(item: $app.paywall) { request in
+            PaywallSheet(request: request)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
+        .onChange(of: app.pendingRoute) { _, route in
+            guard let route else { return }
+            app.pendingRoute = nil
+            path.append(route)
+        }
+        .onChange(of: app.popToRoot) {
+            path = NavigationPath()
+        }
+        .task {
+            await app.store.load()
+            await DemoMode.prepare(app: app, context: modelContext, path: $path, showSettings: $showSettings)
+        }
+    }
+
+    private func open(_ route: Route) {
+        path.append(route)
     }
 }
 
-/// Resolves an artwork id to the model and opens the editor.
-struct ArtworkEditLoader: View {
+/// Resolves an artwork id to the model.
+struct ArtworkLoader<Content: View>: View {
     @Query private var matches: [Artwork]
+    let content: (Artwork) -> Content
 
-    init(id: UUID) {
+    init(id: UUID, @ViewBuilder content: @escaping (Artwork) -> Content) {
         let target = id
         _matches = Query(filter: #Predicate<Artwork> { $0.id == target })
+        self.content = content
     }
 
     var body: some View {
         if let artwork = matches.first {
-            EditView(artwork: artwork)
+            content(artwork)
         } else {
-            ContentUnavailableView("找不到這件作品", systemImage: "photo")
+            ContentUnavailableView {
+                Label("找不到這件作品", systemImage: "photo")
+            }
+            .background(Wallpaper())
         }
+    }
+}
+
+/// Top banner. Celebrations get Bibi cheering + crayon lettering (已掛上冰箱！).
+struct ToastBanner: View {
+    let toast: ToastMessage
+
+    var body: some View {
+        HStack(spacing: 12) {
+            switch toast.style {
+            case .hung:
+                Image("bibi-cheer").resizable().scaledToFit().frame(width: 74, height: 74)
+                VStack(alignment: .leading, spacing: 4) {
+                    if let headline = toast.headline {
+                        CrayonText(text: headline, size: 30)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    }
+                    Text(verbatim: toast.text)
+                        .font(.fm(14.5))
+                        .foregroundStyle(Palette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            case .problem:
+                Image("bibi-oops").resizable().scaledToFit().frame(width: 52, height: 52)
+                Text(verbatim: toast.text).font(.fm(16)).foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            case .info:
+                Image("bibi-head").resizable().scaledToFit().frame(width: 34, height: 26)
+                Text(verbatim: toast.text).font(.fm(16)).foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, toast.isCelebration ? 12 : 12)
+        .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(Palette.surface))
+        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(Palette.line, lineWidth: 1.5))
+        .shadow(color: Palette.shadow, radius: 12, y: 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isStaticText)
+    }
+}
+
+/// Wraps the Store team's PaywallView and resumes the pending keep/save after a successful unlock.
+struct PaywallSheet: View {
+    let request: PaywallRequest
+    @Environment(AppModel.self) private var app
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        PaywallView(kind: request.kind, purchases: app.store.purchases) { unlocked in
+            dismiss()
+            if unlocked {
+                app.resumeAfterUnlock(request, context: modelContext)
+            }
+        }
+        .overlay(alignment: .topLeading) { if DemoMode.scene("paywall") { ReadyMarker() } }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Palette.surface)
+        .presentationCornerRadius(32)
     }
 }

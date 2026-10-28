@@ -29,8 +29,8 @@ final class Child {
         self.createdAt = Date()
     }
 
-    var displayName: String { name.isEmpty ? "小朋友" : name }
-    var albumTitle: String { "冰箱美術館 – \(displayName)" }
+    var displayName: String { name.isEmpty ? String(localized: "小朋友") : name }
+    var albumTitle: String { String(localized: "冰箱美術館 – \(displayName)") }
 }
 
 @Model
@@ -54,6 +54,16 @@ final class Artwork {
     // Categorization
     var tags: [String] = []
     var isFavorite: Bool = false
+    /// 用什麼做的 (placard "medium"), e.g. 蠟筆、紙. Empty = default for the kind.
+    var medium: String = ""
+
+    // Lifecycle
+    /// false while the artwork is still in the editor after capture (「上一張還沒收進」); true once hung on the fridge
+    /// (收進這次) or saved to Photos. Defaults to true so artworks from older builds stay in the museum.
+    var isKept: Bool = true
+    var keptAt: Date?
+    /// One of the bundled sample photos (看範例). Never counts toward the free quota and never shows in the museum.
+    var isSample: Bool = false
 
     // Files
     @Attribute(.externalStorage) var originalImageData: Data?
@@ -108,6 +118,9 @@ final class Artwork {
     }
 
     var displayTitle: String { title.isEmpty ? "我的作品" : title }
+
+    /// Shown in the museum (kept, not a sample).
+    var isInMuseum: Bool { isKept && !isSample }
 }
 
 enum TagSuggestions {
