@@ -377,6 +377,7 @@ struct KindSwitch: View {
                         Text(verbatim: long ? k.longTitle : k.title)
                             .font(.fm(compact ? 15.5 : 17, bold: true))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     .foregroundStyle(selected ? Palette.ink : Palette.muted)
                     .padding(.horizontal, compact ? 12 : 16)

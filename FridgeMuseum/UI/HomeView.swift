@@ -40,8 +40,7 @@ struct HomeView: View {
                 .padding(.horizontal, Metrics.gutter)
             }
             .padding(.top, 8)
-            // The cat and crayon cup stand ~34 pt above the counter: keep that much clear below the content.
-            .padding(.bottom, 44)
+            .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
         .background(Wallpaper())
@@ -111,25 +110,21 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             // Window art + Settings stacked in their own column, so the art can never sit on top of the button.
-            VStack(alignment: .trailing, spacing: 8) {
-                Image("kitchen-window").resizable().scaledToFit().frame(width: 88)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
+            HStack(alignment: .top, spacing: 8) {
                 Button(action: showSettings) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "gearshape")
-                        Text("設定")
-                    }
-                    .font(.fm(15, bold: true))
-                    .foregroundStyle(Palette.ink)
-                    .padding(.horizontal, 14)
-                    .frame(height: 38)
-                    .background(Capsule().fill(Palette.surface))
-                    .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 1.5))
-                    .contentShape(Capsule())
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Palette.ink)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Palette.surface))
+                        .overlay(Circle().strokeBorder(Palette.line, lineWidth: 1.5))
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .fixedSize()
+                .accessibilityLabel(Text("設定"))
+                Image("kitchen-window").resizable().scaledToFit().frame(width: 84)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
         }
         .padding(.top, 6)
@@ -484,18 +479,19 @@ struct CounterDock: View {
                 Rectangle().fill(Palette.wood).frame(height: 9)
                 Rectangle().fill(Palette.woodDeep).frame(height: 3)
             }
-            .overlay(alignment: .bottomLeading) {
-                Image("cat-peek").resizable().scaledToFit().frame(width: 64, height: 40)
-                    .alignmentGuide(.bottom) { d in d[.bottom] + 6 }
-                    .padding(.leading, 26).allowsHitTesting(false).accessibilityHidden(true)
-            }
-            .overlay(alignment: .bottomTrailing) {
-                Image("prop-crayons").resizable().scaledToFit().frame(width: 28, height: 44)
-                    .alignmentGuide(.bottom) { d in d[.bottom] + 6 }
-                    .padding(.trailing, 30).allowsHitTesting(false).accessibilityHidden(true)
-            }
             VStack(spacing: 10) {
-                KindSwitch(kind: $kind)
+                // The cat and the crayon cup live on the counter itself, beside the switch — never over the fridge
+                // door, so they can't cover artworks or placards.
+                HStack(alignment: .bottom, spacing: 0) {
+                    Image("cat-peek").resizable().scaledToFit().frame(width: 52, height: 34)
+                        .allowsHitTesting(false).accessibilityHidden(true)
+                    Spacer(minLength: 4)
+                    KindSwitch(kind: $kind)
+                    Spacer(minLength: 4)
+                    Image("prop-crayons").resizable().scaledToFit().frame(width: 22, height: 36)
+                        .allowsHitTesting(false).accessibilityHidden(true)
+                        .padding(.trailing, 8)
+                }
                 HStack(alignment: .center) {
                     SideButton(title: String(localized: "相簿"), action: onPhotos) {
                         Image(systemName: "photo.on.rectangle").font(.system(size: 21, weight: .semibold))
