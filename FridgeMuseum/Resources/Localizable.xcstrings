@@ -1912,6 +1912,28 @@
         }
       }
     },
+    "已經在美術館裡了。兩張都想留，就按「收進這次」。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This one is already in your museum. Want to keep both? Just tap “Hang It Up.”"
+          }
+        }
+      }
+    },
+    "已經收過的作品" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already in Your Museum"
+          }
+        }
+      }
+    },
     "已自動清掉 %lld 個小黑點" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2861,6 +2883,17 @@
         }
       }
     },
+    "看一下" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take a Look"
+          }
+        }
+      }
+    },
     "看範例勞作" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3353,6 +3386,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The camera isn’t available on this device.\nGo back and tap “Photos” to pick from your library."
+          }
+        }
+      }
+    },
+    "這張好像收過了" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looks like you kept this one already"
           }
         }
       }

@@ -219,6 +219,7 @@ final class AppModel {
         for artwork in (try? context.fetch(descriptor)) ?? [] where processTasks[artwork.id] == nil && needsRender(artwork) {
             startProcessing(artwork, context: context)
         }
+        Task { [weak self] in await self?.backfillFingerprints(context: context) }
     }
 
     /// Opens one of the bundled sample photos (看範例) in the editor. Samples never count toward the quota.
@@ -272,10 +273,15 @@ final class AppModel {
         defer { renderingIDs.remove(id) }
         do {
             let out = try await processor.export(id: id, originalData: data, recipe: recipe)
+            let thumbnail = out.thumbnailData
+            let fingerprint = await Task.detached(priority: .utility) {
+                ArtFingerprint.make(fromImageData: thumbnail)?.encoded
+            }.value
             // The artwork may have been deleted (重拍) while the render ran: never write to a deleted model.
             guard !Task.isCancelled, Self.isAlive(artwork) else { return }
             artwork.renderedImageData = out.imageData
             artwork.thumbnailData = out.thumbnailData
+            artwork.fingerprintData = fingerprint
             artwork.pixelWidth = out.pixelWidth
             artwork.pixelHeight = out.pixelHeight
             artwork.renderVersion += 1
@@ -374,6 +380,7 @@ final class AppModel {
                 if let copy, Self.isAlive(artwork), artwork.renderedImageData == nil, artwork.recipe == recipe {
                     artwork.renderedImageData = copy.imageData
                     artwork.thumbnailData = copy.thumbnailData
+                    artwork.fingerprintData = copy.fingerprintData
                     artwork.pixelWidth = copy.pixelWidth
                     artwork.pixelHeight = copy.pixelHeight
                     artwork.renderVersion += 1
@@ -486,6 +493,52 @@ final class AppModel {
         return all.filter { Self.isAlive($0) }
     }
 
+    // MARK: 這張好像收過了 (likely duplicates)
+
+    /// A kept museum artwork (not a sample) of the same kind that looks like the same physical piece, or nil.
+    /// A match by the same child wins over another child's. Only reads the stored fingerprints (< 1 KB each).
+    func likelyDuplicate(of fingerprint: ArtFingerprint, kind: ArtworkKind, childID: UUID?, excluding id: UUID,
+                         context: ModelContext) -> Artwork? {
+        let kept = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.isKept && !$0.isSample }))) ?? []
+        let sameKind = kept.filter { $0.id != id && $0.kind == kind && Self.isAlive($0) }
+        let candidates = sameKind.compactMap { a -> DuplicateFinder.Candidate? in
+            guard let fp = ArtFingerprint(data: a.fingerprintData) else { return nil }
+            return DuplicateFinder.Candidate(id: a.id, childID: a.child?.id, fingerprint: fp)
+        }
+        guard let match = DuplicateFinder.bestMatch(for: fingerprint, childID: childID, among: candidates) else { return nil }
+        return sameKind.first { $0.id == match }
+    }
+
+    @ObservationIgnored private var isBackfillingFingerprints = false
+
+    /// Artworks rendered before fingerprints existed get one from their stored thumbnail (decoded at ≤ 128 px, off
+    /// the main actor), one at a time. Run at launch (processUnfinished). Pending captures are included: one rendered
+    /// by an older build and kept later would otherwise wait for the next launch.
+    /// `.utility`, not `.background`: background-priority jobs only run when the cooperative pool has nothing else
+    /// queued, so during renders (or a busy test run) they could be starved for many seconds.
+    func backfillFingerprints(context: ModelContext) async {
+        guard !isBackfillingFingerprints else { return }
+        let all = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { !$0.isSample }))) ?? []
+        let missing = all.filter { ArtFingerprint(data: $0.fingerprintData) == nil }
+        guard !missing.isEmpty else { return }
+        isBackfillingFingerprints = true
+        defer { isBackfillingFingerprints = false }
+        var changed = 0
+        for artwork in missing {
+            guard Self.isAlive(artwork), let thumbnail = artwork.thumbnailData else { continue }
+            let version = artwork.renderVersion
+            let fingerprint = await Task.detached(priority: .utility) {
+                ArtFingerprint.make(fromImageData: thumbnail)?.encoded
+            }.value
+            // Skip it if it was deleted or re-rendered meanwhile (the render stored a fresh fingerprint).
+            guard let fingerprint, Self.isAlive(artwork), artwork.renderVersion == version else { continue }
+            artwork.fingerprintData = fingerprint
+            changed += 1
+            if changed % 25 == 0 { try? context.save() }
+        }
+        if changed > 0 { try? context.save() }
+    }
+
     /// 不要了 / 全部不要: deletes every pending (captured, never kept) artwork. Returns how many were deleted.
     @discardableResult
     func discardPending(context: ModelContext) -> Int {
@@ -530,6 +583,8 @@ struct StoredRenderCopy: Sendable {
     var thumbnailData: Data
     var pixelWidth: Int
     var pixelHeight: Int
+    /// ArtFingerprint of the thumbnail (這張好像收過了).
+    var fingerprintData: Data?
 
     static func make(fromFinalJPEG jpeg: Data) -> StoredRenderCopy? {
         guard let image = ImageMetadata.uprightThumbnail(of: jpeg, maxPixelSize: ImageProcessor.exportMaxEdge),
@@ -537,6 +592,7 @@ struct StoredRenderCopy: Sendable {
               let thumb = ImageMetadata.uprightThumbnail(of: jpeg, maxPixelSize: ImageProcessor.thumbnailMaxEdge),
               let thumbnailData = ImageEncoding.jpegData(thumb, quality: 0.8) else { return nil }
         return StoredRenderCopy(imageData: imageData, thumbnailData: thumbnailData,
-                                pixelWidth: image.width, pixelHeight: image.height)
+                                pixelWidth: image.width, pixelHeight: image.height,
+                                fingerprintData: ArtFingerprint.make(cgImage: thumb)?.encoded)
     }
 }

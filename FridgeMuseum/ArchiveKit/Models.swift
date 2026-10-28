@@ -71,6 +71,9 @@ final class Artwork {
     @Attribute(.externalStorage) var originalImageData: Data?
     @Attribute(.externalStorage) var renderedImageData: Data?
     @Attribute(.externalStorage) var thumbnailData: Data?
+    /// Perceptual fingerprint of the finished image (`ArtFingerprint.encoded`, under 1 KB) for 這張好像收過了.
+    /// Set with every render; artworks from 1.0.1 and earlier get one from their thumbnail at the next launch.
+    var fingerprintData: Data?
 
     // Voice note
     @Attribute(.externalStorage) var voiceNoteData: Data?
