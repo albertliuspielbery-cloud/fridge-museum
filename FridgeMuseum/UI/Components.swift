@@ -400,22 +400,49 @@ struct KindSwitch: View {
     }
 }
 
+/// A child's avatar: the photo avatar if there is one, else the colour circle with the initial.
+/// Every place that shows a child uses this, so they all stay in step.
+struct ChildAvatar: View {
+    var child: Child
+    var size: CGFloat = 26
+
+    var body: some View {
+        AvatarDot(hex: child.avatarColorHex, name: child.displayName, size: size,
+                  image: AvatarImageCache.shared.image(for: child))
+    }
+}
+
+/// Decorative (hidden from VoiceOver): the child's name is always shown next to it.
 struct AvatarDot: View {
     var hex: String
     var name: String
     var size: CGFloat = 26
+    var image: UIImage? = nil
 
     var body: some View {
-        Circle()
-            .fill(Color(hex: hex))
-            .frame(width: size, height: size)
-            .overlay(
-                Text(verbatim: Self.initial(of: name))
-                    .font(.fm(size * 0.48, bold: true))
-                    .foregroundStyle(.white)
-            )
-            .overlay(Circle().strokeBorder(.white.opacity(0.7), lineWidth: size > 30 ? 2.5 : 1.5))
-            .accessibilityHidden(true)
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+            } else {
+                Circle()
+                    .fill(Color(hex: hex))
+                    .frame(width: size, height: size)
+                    .overlay(
+                        Text(verbatim: Self.initial(of: name))
+                            .font(.fm(size * 0.48, bold: true))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.4)
+                            .padding(size * 0.08)
+                    )
+            }
+        }
+        .overlay(Circle().strokeBorder(.white.opacity(0.7), lineWidth: size > 30 ? 2.5 : 1.5))
+        .accessibilityHidden(true)
     }
 
     /// Latin names → first letter; Chinese names → the last character (小明 → 明, the way kids are called).

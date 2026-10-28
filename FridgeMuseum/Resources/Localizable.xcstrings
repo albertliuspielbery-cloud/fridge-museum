@@ -535,6 +535,17 @@
         }
       }
     },
+    "作品" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artwork"
+          }
+        }
+      }
+    },
     "作品不會被刪除，會移到「未分類」。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -608,6 +619,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Artwork type"
+          }
+        }
+      }
+    },
+    "使用" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use"
           }
         }
       }
@@ -1684,6 +1706,17 @@
         }
       }
     },
+    "從照片選" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose from Photos"
+          }
+        }
+      }
+    },
     "復原一筆" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1889,6 +1922,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Drag the four white dots to the paper’s corners. It updates when you let go."
+          }
+        }
+      }
+    },
+    "拖曳移動，兩指縮放" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag to move, pinch to zoom"
           }
         }
       }
@@ -2399,6 +2443,17 @@
         }
       }
     },
+    "用他的作品" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Their Artwork"
+          }
+        }
+      }
+    },
     "用整張照片" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2406,6 +2461,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use Whole Photo"
+          }
+        }
+      }
+    },
+    "用顏色" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use a Color"
           }
         }
       }
@@ -2604,6 +2670,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Edit Label"
+          }
+        }
+      }
+    },
+    "縮放" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom"
           }
         }
       }
@@ -2828,6 +2905,17 @@
         }
       }
     },
+    "調整頭像" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adjust Avatar"
+          }
+        }
+      }
+    },
     "這 %lld 張會從 App 裡刪掉，不會存到手機。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2969,6 +3057,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "On the Fridge"
+          }
+        }
+      }
+    },
+    "選一件作品" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose an Artwork"
           }
         }
       }
@@ -3124,6 +3223,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Camera access is needed to photograph artwork"
+          }
+        }
+      }
+    },
+    "頭像" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avatar"
+          }
+        }
+      }
+    },
+    "頭像只存在這支手機裡。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The avatar stays on this phone."
           }
         }
       }
