@@ -6,6 +6,8 @@ import CoreImage
 struct ProcessingKernels {
     let flattenDivide: CIColorKernel
     let whiten: CIColorKernel
+    /// Divide with cast-shadow layers (1.0.1); nil if missing from the library (falls back to `flattenDivide`).
+    let flattenDivideShadow: CIColorKernel?
 
     static func load(bundle: Bundle = .main) -> ProcessingKernels? {
         guard let url = bundle.url(forResource: "default", withExtension: "metallib"),
@@ -13,7 +15,8 @@ struct ProcessingKernels {
         do {
             let divide = try CIColorKernel(functionName: "fmFlattenDivide", fromMetalLibraryData: data)
             let whiten = try CIColorKernel(functionName: "fmWhiten", fromMetalLibraryData: data)
-            return ProcessingKernels(flattenDivide: divide, whiten: whiten)
+            let shadow = try? CIColorKernel(functionName: "fmFlattenDivideShadow", fromMetalLibraryData: data)
+            return ProcessingKernels(flattenDivide: divide, whiten: whiten, flattenDivideShadow: shadow)
         } catch {
             return nil
         }

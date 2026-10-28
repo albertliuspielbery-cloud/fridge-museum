@@ -271,7 +271,9 @@ actor ImageProcessor {
             entry = cached
         } else {
             let warpedRGBA = renderRGBA8(warped, width: W, height: H)
-            let model = IlluminationEstimator.model(warpedRGBA)
+            // Cast-shadow removal only on a found / user-set sheet: with the whole photo, table or wall would look
+            // like a shadow.
+            let model = IlluminationEstimator.model(warpedRGBA, shadows: quad != .full)
             let fill = (try? smallImage(id: id, data: data)).flatMap { EdgeFill.detect(warped: warpedRGBA, small: $0, quad: quad) }
             entry = FlatEntry(model: model, fill: fill)
             flatCache[cacheKey] = entry
@@ -280,7 +282,8 @@ actor ImageProcessor {
         }
         let model = entry.model
         let background = lightMap(model, extent: warped.extent)
-        let flattened = divide(warped, by: background, gain: model.gain)
+        let flattened = model.shadow.flatMap { divideShadow(warped, light: background, layers: $0, model: model) }
+            ?? divide(warped, by: background, gain: model.gain)
         let whitened = whiten(flattened, recipe: recipe, push: model.mode != .colored)
 
         var rgba = renderRGBA8(whitened, width: W, height: H)
@@ -349,8 +352,13 @@ actor ImageProcessor {
 
     /// The low-res light map upsampled (cell centres at (i + ½)·k, top rows aligned with the image's top).
     private func lightMap(_ m: FlattenModel, extent: CGRect) -> CIImage {
+        lightMap(m.map, model: m, extent: extent)
+    }
+
+    /// Any RGBA-float grid laid out like `FlattenModel.map`, upsampled the same way.
+    private func lightMap(_ grid: [Float], model m: FlattenModel, extent: CGRect) -> CIImage {
         let sw = m.width, sh = m.height, k = CGFloat(m.blockSize)
-        let mapData = m.map.withUnsafeBytes { Data($0) }
+        let mapData = grid.withUnsafeBytes { Data($0) }
         let mapImage = CIImage(bitmapData: mapData, bytesPerRow: sw * 16,
                                size: CGSize(width: sw, height: sh), format: .RGBAf, colorSpace: srgb)
         let topOffset = extent.height - CGFloat(sh) * k
@@ -358,6 +366,26 @@ actor ImageProcessor {
             .samplingLinear()
             .transformed(by: CGAffineTransform(scaleX: k, y: k).concatenating(CGAffineTransform(translationX: 0, y: topOffset)))
             .cropped(to: extent)
+    }
+
+    /// Divide with cast-shadow layers (`fmFlattenDivideShadow`). The guide is a small morphological closing of the
+    /// image (max then min), which removes thin ink lines but keeps the shadow's edge. nil without the kernel; the
+    /// caller then divides by `light` (the shadow-aware map), which only leaves a narrow band at hard edges.
+    private func divideShadow(_ image: CIImage, light: CIImage, layers: ShadowLayers, model: FlattenModel) -> CIImage? {
+        guard let k = kernels?.flattenDivideShadow else { return nil }
+        let extent = image.extent
+        let radius = Float(max(2, (4 * Double(max(extent.width, extent.height)) / 1600).rounded()))
+        let dilate = CIFilter.morphologyMaximum()
+        dilate.inputImage = image.clampedToExtent()
+        dilate.radius = radius
+        let erode = CIFilter.morphologyMinimum()
+        erode.inputImage = dilate.outputImage
+        erode.radius = radius
+        guard let closedOut = erode.outputImage else { return nil }
+        let closed = closedOut.cropped(to: extent)
+        let high = lightMap(layers.high, model: model, extent: extent)
+        let low = lightMap(layers.low, model: model, extent: extent)
+        return k.apply(extent: extent, arguments: [image, closed, light, high, low, model.gain])
     }
 
     private func divide(_ image: CIImage, by background: CIImage, gain: Float) -> CIImage {

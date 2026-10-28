@@ -16,6 +16,9 @@ struct FlattenModel: Sendable, Equatable {
     var paper: SIMD3<Float>
     /// 0.97 for white / paint-covered paper (prototype), 1 for coloured paper.
     var gain: Float
+    /// Cast-shadow layers (1.0.1), nil when no shadow was found or detection was off. When set, `map` is the
+    /// shadow-aware light (`shadow.light`), so a plain divide by `map` is already a reasonable fallback.
+    var shadow: ShadowLayers? = nil
 }
 
 /// Port of the prototype's light estimate.
@@ -53,9 +56,67 @@ enum IlluminationEstimator {
         return (R, G, B, Q, sw, sh, k)
     }
 
-    static func model(_ img: RGBA8Image) -> FlattenModel {
+    /// - Parameter shadows: also look for cast shadows (phone / hand). Only pass true when the paper was found or the
+    ///   user set the corners, so that table or wall around the sheet is not mistaken for a shadow.
+    static func model(_ img: RGBA8Image, shadows: Bool = false) -> FlattenModel {
         let s = blockStats(img)
-        return estimate(R: s.R, G: s.G, B: s.B, Q: s.Q, width: s.sw, height: s.sh, blockSize: s.k)
+        var m = estimate(R: s.R, G: s.G, B: s.B, Q: s.Q, width: s.sw, height: s.sh, blockSize: s.k)
+        guard shadows, m.mode != .paintCovered else { return m }
+        let a = analyze(R: s.R, G: s.G, B: s.B, Q: s.Q, width: s.sw, height: s.sh)
+        if let layers = ShadowEstimator.layers(a, Q: s.Q, width: s.sw, height: s.sh,
+                                               bright: { brightStats(img, blockSize: s.k, width: s.sw, height: s.sh) }) {
+            m.shadow = layers
+            m.map = layers.light
+        }
+        return m
+    }
+
+    /// Per block: mean R, G, B (0...1) of the pixels at or above the block's 90th luminance percentile (64-bin
+    /// histogram) – the paper showing between crayon strokes or next to ink.
+    static func brightStats(_ img: RGBA8Image, blockSize k: Int, width sw: Int, height sh: Int)
+        -> (R: [Float], G: [Float], B: [Float]) {
+        let W = img.width, H = img.height, n = sw * sh, bins = 64
+        var hist = [UInt32](repeating: 0, count: n * bins)
+        var count = [Int](repeating: 0, count: n)
+        img.pixels.withUnsafeBufferPointer { d in
+            for y in 0..<H {
+                let sy = (y / k) * sw
+                for x in 0..<W {
+                    let si = sy + x / k, i = (y * W + x) * 4
+                    let l: Float = 0.299 * Float(d[i]) + 0.587 * Float(d[i + 1]) + 0.114 * Float(d[i + 2])
+                    hist[si * bins + min(bins - 1, Int(l) >> 2)] += 1
+                    count[si] += 1
+                }
+            }
+        }
+        var lowBin = [Int](repeating: 0, count: n)
+        for c in 0..<n {
+            let need = max(1, Int((Double(count[c]) * 0.1).rounded(.up)))
+            var acc = 0, b = bins - 1
+            while b > 0 {
+                acc += Int(hist[c * bins + b])
+                if acc >= need { break }
+                b -= 1
+            }
+            lowBin[c] = b
+        }
+        var R = [Float](repeating: 0, count: n), G = R, B = R, C = R
+        img.pixels.withUnsafeBufferPointer { d in
+            for y in 0..<H {
+                let sy = (y / k) * sw
+                for x in 0..<W {
+                    let si = sy + x / k, i = (y * W + x) * 4
+                    let r = Float(d[i]), g = Float(d[i + 1]), b = Float(d[i + 2])
+                    let l: Float = 0.299 * r + 0.587 * g + 0.114 * b
+                    if min(bins - 1, Int(l) >> 2) >= lowBin[si] { R[si] += r; G[si] += g; B[si] += b; C[si] += 1 }
+                }
+            }
+        }
+        for i in 0..<n {
+            let c = max(C[i], 1) * 255
+            R[i] /= c; G[i] /= c; B[i] /= c
+        }
+        return (R, G, B)
     }
 
     /// Old entry point: map from block-averaged RGBA float (no texture information).
@@ -67,7 +128,21 @@ enum IlluminationEstimator {
         return estimate(R: R, G: G, B: B, Q: [Float](repeating: 0, count: n), width: sw, height: sh, blockSize: 1).map
     }
 
-    static func estimate(R inR: [Float], G inG: [Float], B inB: [Float], Q: [Float], width sw: Int, height sh: Int, blockSize k: Int) -> FlattenModel {
+    /// Intermediate results of the light estimate that the shadow step reuses.
+    struct Analysis {
+        var R: [Float]
+        var G: [Float]
+        var B: [Float]
+        var L: [Float]
+        /// 1 = paper-like cell (the v0.9 rules).
+        var M: [Float]
+        var P: SIMD3<Float>
+        var PL: Float
+        var cover: Double
+        var mode: PaperMode
+    }
+
+    static func analyze(R inR: [Float], G inG: [Float], B inB: [Float], Q: [Float], width sw: Int, height sh: Int) -> Analysis {
         let n = sw * sh
         let R = inR.map { $0.clamped(0, 1) }, G = inG.map { $0.clamped(0, 1) }, B = inB.map { $0.clamped(0, 1) }
         var L = [Float](repeating: 0, count: n)
@@ -116,6 +191,13 @@ enum IlluminationEstimator {
         // how much tint can the light explain? warm lamp light (r > g > b) quite a lot, cool or other tints little
         let lightTint: Float = (ga >= -0.02 && gb >= -0.02) ? 0.3 : (ga <= 0.02 && gb <= 0.02) ? 0.15 : 0.1
         let mode: PaperMode = (PL < 0.42 || Pc > lightTint) ? .colored : cover < 0.2 ? .paintCovered : .white
+        return Analysis(R: R, G: G, B: B, L: L, M: M, P: P, PL: PL, cover: cover, mode: mode)
+    }
+
+    static func estimate(R inR: [Float], G inG: [Float], B inB: [Float], Q: [Float], width sw: Int, height sh: Int, blockSize k: Int) -> FlattenModel {
+        let n = sw * sh
+        let a = analyze(R: inR, G: inG, B: inB, Q: Q, width: sw, height: sh)
+        let R = a.R, G = a.G, B = a.B, M = a.M, P = a.P, PL = a.PL, cover = a.cover, mode = a.mode
 
         func nconv(_ r: Int) -> (r: [Float], g: [Float], b: [Float], m: [Float]) {
             var mr = [Float](repeating: 0, count: n), mg = mr, mb = mr
