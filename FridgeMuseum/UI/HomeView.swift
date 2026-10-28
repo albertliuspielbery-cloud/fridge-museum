@@ -139,6 +139,8 @@ struct HomeView: View {
             .foregroundStyle(Palette.muted)
             .labelStyle(TightLabelStyle())
             .fixedSize(horizontal: false, vertical: true)
+            // Which child new captures go to (hidden until a child profile exists).
+            CaptureChildMenu(style: .home)
         }
         .padding(.top, 6)
         .padding(.horizontal, Metrics.gutter + 4)
@@ -184,7 +186,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 22) {
             if let p = pending.first {
                 PendingCard(artwork: p, extra: pending.count - 1, resume: { open(.edit(p.id)) },
-                            discard: { confirmDiscardPending = true })
+                            discard: { confirmDiscardPending = true }, keepAll: keepAllPending)
             }
             if !session.isEmpty {
                 workWall(title: String(localized: "這次收的作品"), items: Array(session.prefix(6)), count: session.count)
@@ -267,6 +269,12 @@ struct HomeView: View {
 
     private func openSample(_ kind: ArtworkKind) {
         if let a = app.openSample(kind, context: modelContext) { open(.edit(a.id)) }
+    }
+
+    /// 全部收進: keeps every pending capture (unassigned ones go to the current capture child); stops at the paywall.
+    private func keepAllPending() {
+        let child = app.currentChildID.flatMap { id in try? modelContext.fetch(FetchDescriptor<Child>(predicate: #Predicate { $0.id == id })).first }
+        app.keepAllPending(child: child, context: modelContext)
     }
 
     private func importItems(_ items: [PhotosPickerItem]) async {
@@ -359,6 +367,8 @@ struct PendingCard: View {
     let resume: () -> Void
     /// 不要了 / 全部不要 (HomeView asks first).
     let discard: () -> Void
+    /// 全部收進 (shown when more than one capture is pending).
+    let keepAll: () -> Void
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
@@ -381,10 +391,12 @@ struct PendingCard: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
                         resumeButton
+                        if extra > 0 { keepAllButton }
                         discardButton
                     }
                     VStack(alignment: .leading, spacing: 8) {
                         resumeButton
+                        if extra > 0 { keepAllButton }
                         discardButton
                     }
                 }
@@ -410,6 +422,19 @@ struct PendingCard: View {
                 .padding(.horizontal, 18)
                 .frame(height: 38)
                 .background(Capsule().fill(Color(0x2B2E4A, 0x1E2340)))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var keepAllButton: some View {
+        Button(action: keepAll) {
+            Text("全部收進")
+                .font(.fm(15, bold: true))
+                .foregroundStyle(Color.white)
+                .lineLimit(1)
+                .padding(.horizontal, 16)
+                .frame(height: 38)
+                .background(Capsule().fill(Color(0x1F6E60, 0x1B5E52)))
         }
         .buttonStyle(.plain)
     }

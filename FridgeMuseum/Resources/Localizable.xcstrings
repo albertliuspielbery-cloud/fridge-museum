@@ -755,6 +755,28 @@
         }
       }
     },
+    "全不選" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deselect All"
+          }
+        }
+      }
+    },
+    "全選" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select All"
+          }
+        }
+      }
+    },
     "全部" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -817,6 +839,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "All Ages"
+          }
+        }
+      }
+    },
+    "全部收進" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hang Up All"
           }
         }
       }
@@ -954,6 +987,52 @@
         }
       }
     },
+    "刪除 %lld 件" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete 1 Artwork"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Artworks"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "刪除這 %lld 件作品？" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete this artwork?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete these %lld artworks?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "刪除這件作品？" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1021,6 +1100,17 @@
         }
       }
     },
+    "加入標籤 %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add tag %@"
+          }
+        }
+      }
+    },
     "加到最愛" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1028,6 +1118,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add to Favorites"
+          }
+        }
+      }
+    },
+    "加標籤" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Tags"
           }
         }
       }
@@ -1319,6 +1420,17 @@
         }
       }
     },
+    "套用" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply"
+          }
+        }
+      }
+    },
     "好" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1528,6 +1640,29 @@
         }
       }
     },
+    "已刪除 %lld 件作品" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Deleted 1 artwork"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Deleted %lld artworks"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "已存 %lld 張到照片" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1584,6 +1719,29 @@
         }
       }
     },
+    "已幫 %lld 件作品加上標籤" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Tagged 1 artwork"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Tagged %lld artworks"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "已恢復完整版" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1595,6 +1753,109 @@
         }
       }
     },
+    "已把 %lld 件作品加到最愛" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Added 1 artwork to Favorites"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Added %lld artworks to Favorites"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "已把 %lld 件作品取消最愛" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Removed 1 artwork from Favorites"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Removed %lld artworks from Favorites"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "已把 %lld 件作品設為「%@」" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artist set to %2$@ (%1$lld)"
+          }
+        }
+      }
+    },
+    "已把 %lld 件作品設為未分類" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Moved 1 artwork to Unsorted"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Moved %lld artworks to Unsorted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "已把 %lld 張掛上冰箱。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "1 artwork is on the fridge."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld artworks are on the fridge."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "已掛上冰箱！" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1602,6 +1863,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hung on the fridge!"
+          }
+        }
+      }
+    },
+    "已改 %lld 件作品的日期，學期和年齡也更新了" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Changed the date of 1 artwork. Semester and age updated too."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Changed the date of %lld artworks. Semester and age updated too."
+                }
+              }
+            }
           }
         }
       }
@@ -1647,6 +1931,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rotated. Tap “Crop” again to get the corners back."
+          }
+        }
+      }
+    },
+    "已選 %lld 件" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "1 Selected"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Selected"
+                }
+              }
+            }
           }
         }
       }
@@ -1882,6 +2189,17 @@
         }
       }
     },
+    "拍給：%@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artist: %@"
+          }
+        }
+      }
+    },
     "拖曳四個白點對準紙張四角，放開後會自動重新處理。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2003,6 +2321,17 @@
         }
       }
     },
+    "新作品的小朋友" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artist for new photos"
+          }
+        }
+      }
+    },
     "新增" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2058,6 +2387,17 @@
         }
       }
     },
+    "日期" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date"
+          }
+        }
+      }
+    },
     "暖白" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2109,6 +2449,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Recently Hung"
+          }
+        }
+      }
+    },
+    "會加到選取的 %lld 件作品，原本的標籤會保留。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Adds to the selected artwork. Its current tags stay."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Adds to the %lld selected artworks. Their current tags stay."
+                }
+              }
+            }
           }
         }
       }
@@ -2630,6 +2993,17 @@
         }
       }
     },
+    "美術館裡的標籤" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tags in Your Museum"
+          }
+        }
+      }
+    },
     "美術館還是空的" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2791,6 +3165,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Settings"
+          }
+        }
+      }
+    },
+    "設定孩子" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artist"
           }
         }
       }
@@ -2969,6 +3354,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "On the Fridge"
+          }
+        }
+      }
+    },
+    "選取" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select"
+          }
+        }
+      }
+    },
+    "選取的 %lld 件會改成這天，學期和年齡也會跟著改（%@）。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected: %1$lld. Their semester and age will follow the new date (%2$@)."
           }
         }
       }

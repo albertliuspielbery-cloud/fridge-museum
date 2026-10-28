@@ -209,6 +209,7 @@ struct LabelSheet: View {
     @Bindable var model: EditModel
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var app
     @Query(sort: \Child.createdAt) private var children: [Child]
     @State private var showNewChild = false
 
@@ -337,6 +338,8 @@ struct LabelSheet: View {
     private func setChild(_ child: Child?) {
         artwork.child = child
         try? modelContext.save()
+        // Picked for a fresh capture: the next captures go to this child too (拍給 on the home screen and camera).
+        if !artwork.isKept, !artwork.isSample { app.setCaptureChild(child?.id) }
     }
 }
 
