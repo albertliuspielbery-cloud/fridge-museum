@@ -12,11 +12,36 @@ struct RenderedImage: @unchecked Sendable {
 
 struct PreviewResult: Sendable {
     var output: RenderedImage
-    /// "Before" image for the compare slider (flat: warped original; craft: same crop of the source).
+    /// "Before" image for the compare slider (flat: warped original; craft: same crop of the source), turned like the output.
     var before: RenderedImage?
     var specksRemoved: Int
-    /// Craft only: where the output sits inside the upright source (normalized), to map brush strokes back.
+    /// DEPRECATED (use `mapping`): craft only, where the output sits inside the upright source (normalized).
+    /// Only set when the result is not turned.
     var outputToSource: NormRect?
+    /// Craft: the significant parts of the cut-out (removed ones included, flagged). Empty for flat / fallback.
+    var parts: [CutoutPart] = []
+    /// What the automatic processing could not do well, most important first.
+    var notes: [ProcessingNote] = []
+    /// Flat only.
+    var paperMode: PaperMode?
+    var mapping: OutputMapping
+    /// Craft: coarse part labels for hit testing.
+    var partMap: PartMap?
+
+    /// Show the 點一下選主體 chip.
+    var canPickParts: Bool { parts.count >= 2 }
+
+    /// The (significant) part under a point given in output-normalized coordinates.
+    func partID(atOutputPoint p: CGPoint, toleranceCells: Int = 1) -> Int? {
+        partID(atOriginalPoint: mapping.toOriginal(p), toleranceCells: toleranceCells)
+    }
+
+    /// The (significant) part under a point given in original-normalized coordinates.
+    func partID(atOriginalPoint p: CGPoint, toleranceCells: Int = 1) -> Int? {
+        guard let partMap else { return nil }
+        let L = partMap.label(atOriginal: p, radius: max(0, toleranceCells))
+        return parts.contains(where: { $0.id == L }) ? L : nil
+    }
 }
 
 struct ExportResult: Sendable {
@@ -25,6 +50,15 @@ struct ExportResult: Sendable {
     var pixelWidth: Int
     var pixelHeight: Int
     var specksRemoved: Int
+    var notes: [ProcessingNote] = []
+}
+
+struct PaperDetection: Sendable, Hashable {
+    enum Method: String, Sendable { case vision, detector, none }
+    var quad: Quad
+    /// Nothing convincing was found; `quad` is the whole photo.
+    var isGuess: Bool
+    var method: Method
 }
 
 enum ProcessingError: Error {
@@ -38,25 +72,47 @@ actor ImageProcessor {
     static let shared = ImageProcessor()
 
     static let previewMaxEdge = 1600
-    static let exportMaxEdge = 3000
+    static let exportMaxEdge = 2400
+    /// Long edge of the decoded working copy (prototype MAX_SRC). Inputs of 12–48 MP are subsampled on decode.
+    static let sourceMaxEdge = 2400
     static let thumbnailMaxEdge = 480
+    /// Long edge of the copy used for paper detection and edge fill (prototype `smallOf`).
+    static let detectionEdge = 360
 
     private let context: CIContext
     private let srgb: CGColorSpace
     private let kernels: ProcessingKernels?
 
-    private struct MaskEntry {
-        var values: [UInt8]
+    /// Craft mask before part picking and brushes.
+    private struct CraftBase {
+        var raw: [UInt8]
         var width: Int
         var height: Int
         var fromVision: Bool
         var sensitivity: Double
+        var labels: [UInt8] = []
+        var labelWidth = 0
+        var labelHeight = 0
+        var fallback = false
+        var touchesEdge = false
     }
 
+    private struct FlatEntry {
+        var model: FlattenModel
+        var fill: EdgeFillMask?
+    }
+
+    private var decoded: [String: CIImage] = [:]
+    private var decodedOrder: [String] = []
+    private var focal: [String: Double] = [:]
     private var sourceCache: [String: CIImage] = [:]
     private var sourceOrder: [String] = []
-    private var illuminationCache: [String: CIImage] = [:]
-    private var maskCache: [String: MaskEntry] = [:]
+    private var flatCache: [String: FlatEntry] = [:]
+    private var flatOrder: [String] = []
+    private var maskCache: [String: CraftBase] = [:]
+    private var partsCache: [String: (sensitivity: Double, analysis: PartAnalysis?)] = [:]
+    private var detections: [String: PaperDetection] = [:]
+    private var smallCache: [String: RGBA8Image] = [:]
 
     init() {
         let space = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
@@ -72,19 +128,23 @@ actor ImageProcessor {
 
     // MARK: - Public API
 
-    /// Auto-detects paper corners: Vision document segmentation first, then the prototype's detector.
+    /// Auto-detects paper corners: Vision document segmentation first (refined to the strongest nearby edges),
+    /// then the prototype's multi-candidate detector.
     func detectCorners(id: UUID, originalData: Data) async -> Quad {
+        await detectPaper(id: id, originalData: originalData).quad
+    }
+
+    func detectPaper(id: UUID, originalData: Data) async -> PaperDetection {
         #if FM_SWIFT_VISION
-        if let q = await SwiftVisionPaths.detectDocument(in: originalData), q.isPlausible { return q }
-        #endif
-        guard let src = try? source(id: id, data: originalData, maxEdge: 1600) else { return .full }
-        if let cg = context.createCGImage(src, from: src.extent),
-           let q = VisionPaths.detectDocument(cgImage: cg), q.isPlausible {
-            return q
+        if detections[id.uuidString] == nil, let q = await SwiftVisionPaths.detectDocument(in: originalData), q.isPlausible {
+            let small = (try? smallImage(id: id, data: originalData))
+            let refined = small.map { PaperDetector.refine(q, in: $0).quad } ?? q
+            let d = PaperDetection(quad: refined, isGuess: false, method: .vision)
+            detections[id.uuidString] = d
+            return d
         }
-        let small = scaleToFit(src, maxEdge: 360)
-        let rgba = renderRGBA8(small)
-        return PaperDetector.detect(rgba)
+        #endif
+        return detectPaperSync(id: id, data: originalData)
     }
 
     /// Upright original (for the crop tool).
@@ -108,16 +168,76 @@ actor ImageProcessor {
         guard let thumbCG = context.createCGImage(thumbCI, from: thumbCI.extent, format: .RGBA8, colorSpace: srgb),
               let thumb = ImageEncoding.jpegData(thumbCG, quality: 0.8) else { throw ProcessingError.encodeFailed }
         return ExportResult(imageData: jpeg, thumbnailData: thumb, pixelWidth: r.output.width,
-                            pixelHeight: r.output.height, specksRemoved: r.specksRemoved)
+                            pixelHeight: r.output.height, specksRemoved: r.specksRemoved, notes: r.notes)
+    }
+
+    /// The part under a tap (output-normalized point), or nil.
+    nonisolated func partID(atOutputPoint p: CGPoint, in result: PreviewResult) -> Int? {
+        result.partID(atOutputPoint: p)
+    }
+
+    /// Output-normalized point → original-normalized point (a seed), respecting turning, crop and warp.
+    nonisolated func originalPoint(fromOutputPoint p: CGPoint, in result: PreviewResult) -> CGPoint {
+        result.mapping.toOriginal(p)
     }
 
     /// Drops cached intermediates for an artwork (call when leaving the editor).
     func evict(id: UUID) {
         let prefix = id.uuidString
+        decoded = decoded.filter { !$0.key.hasPrefix(prefix) }
+        decodedOrder.removeAll { $0.hasPrefix(prefix) }
         sourceCache = sourceCache.filter { !$0.key.hasPrefix(prefix) }
         sourceOrder.removeAll { $0.hasPrefix(prefix) }
-        illuminationCache = illuminationCache.filter { !$0.key.hasPrefix(prefix) }
+        flatCache = flatCache.filter { !$0.key.hasPrefix(prefix) }
+        flatOrder.removeAll { $0.hasPrefix(prefix) }
         maskCache = maskCache.filter { !$0.key.hasPrefix(prefix) }
+        partsCache = partsCache.filter { !$0.key.hasPrefix(prefix) }
+        detections = detections.filter { !$0.key.hasPrefix(prefix) }
+        smallCache = smallCache.filter { !$0.key.hasPrefix(prefix) }
+        focal = focal.filter { !$0.key.hasPrefix(prefix) }
+    }
+
+    // MARK: - Paper detection
+
+    private func detectPaperSync(id: UUID, data: Data) -> PaperDetection {
+        let key = id.uuidString
+        if let d = detections[key] { return d }
+        let none = PaperDetection(quad: .full, isGuess: true, method: .none)
+        guard let src = try? source(id: id, data: data, maxEdge: Self.previewMaxEdge),
+              let small = try? smallImage(id: id, data: data) else { return none }
+        var visionQuad: Quad?
+        if let cg = context.createCGImage(src, from: src.extent),
+           let q = VisionPaths.detectDocument(cgImage: cg), q.isPlausible {
+            visionQuad = q
+        }
+        let det = PaperDetector.detectFull(small)
+        let result: PaperDetection
+        if let vq = visionQuad {
+            let refined = PaperDetector.refine(vq, in: small)
+            // Vision's outline has almost no edge under it while the detector found a clean sheet: trust the detector.
+            if refined.contrast >= 0, refined.contrast < 8, !det.isGuess, det.score > 0.6 {
+                result = PaperDetection(quad: det.quad, isGuess: false, method: .detector)
+            } else {
+                result = PaperDetection(quad: refined.quad, isGuess: false, method: .vision)
+            }
+        } else if det.isGuess {
+            result = none
+        } else {
+            result = PaperDetection(quad: det.quad, isGuess: false, method: .detector)
+        }
+        detections[key] = result
+        return result
+    }
+
+    /// Small upright copy for paper detection and edge fill.
+    private func smallImage(id: UUID, data: Data) throws -> RGBA8Image {
+        let key = id.uuidString
+        if let s = smallCache[key] { return s }
+        let src = try source(id: id, data: data, maxEdge: Self.previewMaxEdge)
+        let s = renderRGBA8(scaleToFit(src, maxEdge: Self.detectionEdge))
+        smallCache = smallCache.filter { $0.key.hasPrefix(key) }
+        smallCache[key] = s
+        return s
     }
 
     // MARK: - Render
@@ -129,40 +249,77 @@ actor ImageProcessor {
         }
     }
 
-    // MARK: Flat pipeline: perspective → illumination flatten → chroma-protected whitening → specks → brush
+    // MARK: Flat pipeline: perspective (true aspect) → light flatten (paper mode) → whitening → edge fill → specks
+    //                      → brush → turn
 
     private func renderFlat(id: UUID, data: Data, recipe: ProcessingRecipe, maxEdge: Int, includeBefore: Bool) throws -> PreviewResult {
-        let src = try source(id: id, data: data, maxEdge: Int(Double(maxEdge) * 1.25))
-        let quad = (recipe.corners ?? .full).clampedToUnit()
-        let warped = perspectiveCorrect(src, quad: quad, maxEdge: maxEdge)
+        let src = try source(id: id, data: data, maxEdge: min(Self.sourceMaxEdge, Int(Double(maxEdge) * 1.25)))
+        let quad = (recipe.corners ?? detectPaperSync(id: id, data: data).quad).clampedToUnit()
+        let focalPx = focalPixels(id: id, data: data, width: Double(src.extent.width), height: Double(src.extent.height))
+        let warped = perspectiveCorrect(src, quad: quad, maxEdge: maxEdge, focalPixels: focalPx)
         let W = Int(warped.extent.width), H = Int(warped.extent.height)
 
         let cacheKey = "\(id.uuidString)|\(maxEdge)|\(quad.hashValue)"
-        let background: CIImage
-        if let cached = illuminationCache[cacheKey] {
-            background = cached
+        let entry: FlatEntry
+        if let cached = flatCache[cacheKey] {
+            entry = cached
         } else {
-            background = illuminationMap(for: warped)
-            illuminationCache[cacheKey] = background
+            let warpedRGBA = renderRGBA8(warped, width: W, height: H)
+            let model = IlluminationEstimator.model(warpedRGBA)
+            let fill = (try? smallImage(id: id, data: data)).flatMap { EdgeFill.detect(warped: warpedRGBA, small: $0, quad: quad) }
+            entry = FlatEntry(model: model, fill: fill)
+            flatCache[cacheKey] = entry
+            flatOrder.append(cacheKey)
+            while flatOrder.count > 3 { flatCache[flatOrder.removeFirst()] = nil }
         }
-        let flattened = divide(warped, by: background)
-        let whitened = whiten(flattened, recipe: recipe)
+        let model = entry.model
+        let background = lightMap(model, extent: warped.extent)
+        let flattened = divide(warped, by: background, gain: model.gain)
+        let whitened = whiten(flattened, recipe: recipe, push: model.mode != .colored)
 
         var rgba = renderRGBA8(whitened, width: W, height: H)
-        let specks = recipe.removeSpecks ? SpeckRemover.remove(in: &rgba) : 0
+        let paper255 = model.mode == .colored ? model.paper * 255 : SIMD3<Float>(255, 255, 255)
+        if let fill = entry.fill { EdgeFill.apply(fill, to: &rgba, rgb: paper255) }
+        var specks = 0, pattern = false
+        if recipe.removeSpecks && model.mode != .colored {
+            let o = SpeckRemover.clean(&rgba)
+            specks = o.removed
+            pattern = o.keptAsPattern
+        }
         guard let cg = makeCGImage(&rgba, whiteStrokes: recipe.activeStrokes) else { throw ProcessingError.renderFailed }
 
-        var before: RenderedImage?
-        if includeBefore, let b = context.createCGImage(warped, from: warped.extent, format: .RGBA8, colorSpace: srgb) {
-            before = RenderedImage(cgImage: b)
+        var notes: [ProcessingNote] = []
+        if let det = detections[id.uuidString], det.isGuess, quad == .full { notes.append(.paperNotFound) }
+        if model.mode == .colored { notes.append(.notWhitePaper) }
+        if pattern { notes.append(.dotsKeptAsPattern) }
+
+        let deg = recipe.turnDegrees
+        let paperColor = RGBColor(r: Double(paper255.x) / 255, g: Double(paper255.y) / 255, b: Double(paper255.z) / 255)
+        let turned = turn(CIImage(cgImage: cg), degrees: deg, fill: paperColor)
+        let output: CGImage
+        if deg == 0 {
+            output = cg
+        } else {
+            guard let t = context.createCGImage(turned.image, from: turned.image.extent, format: .RGBA8, colorSpace: srgb) else {
+                throw ProcessingError.renderFailed
+            }
+            output = t
         }
-        return PreviewResult(output: RenderedImage(cgImage: cg), before: before, specksRemoved: specks, outputToSource: nil)
+        var before: RenderedImage?
+        if includeBefore {
+            let b = turn(warped, degrees: deg, fill: Self.beforeGray).image
+            if let bcg = context.createCGImage(b, from: b.extent, format: .RGBA8, colorSpace: srgb) { before = RenderedImage(cgImage: bcg) }
+        }
+        let mapping = OutputMapping(outputWidth: output.width, outputHeight: output.height, baseWidth: W, baseHeight: H,
+                                    outputToBase: turned.outputToBase, quad: quad)
+        return PreviewResult(output: RenderedImage(cgImage: output), before: before, specksRemoved: specks, outputToSource: nil,
+                             parts: [], notes: notes, paperMode: model.mode, mapping: mapping, partMap: nil)
     }
 
-    private func perspectiveCorrect(_ src: CIImage, quad q: Quad, maxEdge: Int) -> CIImage {
+    private func perspectiveCorrect(_ src: CIImage, quad q: Quad, maxEdge: Int, focalPixels: Double?) -> CIImage {
         let w = src.extent.width, h = src.extent.height
         func ci(_ p: NormPoint) -> CGPoint { CGPoint(x: p.x * w, y: (1 - p.y) * h) }   // CI origin is lower-left
-        let size = q.outputSize(imageWidth: Double(w), imageHeight: Double(h), maxEdge: maxEdge)
+        let size = q.outputSize(imageWidth: Double(w), imageHeight: Double(h), maxEdge: maxEdge, focalPixels: focalPixels)
         var out: CIImage
         if q == .full {
             out = src
@@ -184,72 +341,63 @@ actor ImageProcessor {
         return out
     }
 
-    /// Low-res paper light estimate (CPU, IlluminationEstimator) upsampled back to full size.
-    private func illuminationMap(for warped: CIImage) -> CIImage {
-        let W = Int(warped.extent.width), H = Int(warped.extent.height)
-        let k = IlluminationEstimator.blockSize(width: W, height: H)
-        let sw = Int((Double(W) / Double(k)).rounded(.up)), sh = Int((Double(H) / Double(k)).rounded(.up))
-        let lanczos = CIFilter.lanczosScaleTransform()
-        lanczos.inputImage = warped.clampedToExtent()
-        lanczos.scale = Float(1.0 / Double(k))
-        lanczos.aspectRatio = 1
-        let small = (lanczos.outputImage ?? warped).cropped(to: CGRect(x: 0, y: 0, width: sw, height: sh))
-
-        var buf = [Float](repeating: 0, count: sw * sh * 4)
-        buf.withUnsafeMutableBytes { raw in
-            if let base = raw.baseAddress {
-                context.render(small, toBitmap: base, rowBytes: sw * 16,
-                               bounds: CGRect(x: 0, y: 0, width: sw, height: sh), format: .RGBAf, colorSpace: srgb)
-            }
-        }
-        let map = IlluminationEstimator.backgroundMap(rgba: buf, width: sw, height: sh)
-        let mapData = map.withUnsafeBytes { Data($0) }
+    /// The low-res light map upsampled (cell centres at (i + ½)·k, top rows aligned with the image's top).
+    private func lightMap(_ m: FlattenModel, extent: CGRect) -> CIImage {
+        let sw = m.width, sh = m.height, k = CGFloat(m.blockSize)
+        let mapData = m.map.withUnsafeBytes { Data($0) }
         let mapImage = CIImage(bitmapData: mapData, bytesPerRow: sw * 16,
                                size: CGSize(width: sw, height: sh), format: .RGBAf, colorSpace: srgb)
+        let topOffset = extent.height - CGFloat(sh) * k
         return mapImage.clampedToExtent()
             .samplingLinear()
-            .transformed(by: CGAffineTransform(scaleX: CGFloat(k), y: CGFloat(k)))
-            .cropped(to: warped.extent)
+            .transformed(by: CGAffineTransform(scaleX: k, y: k).concatenating(CGAffineTransform(translationX: 0, y: topOffset)))
+            .cropped(to: extent)
     }
 
-    private func divide(_ image: CIImage, by background: CIImage) -> CIImage {
+    private func divide(_ image: CIImage, by background: CIImage, gain: Float) -> CIImage {
         if let k = kernels?.flattenDivide,
-           let out = k.apply(extent: image.extent, arguments: [image, background]) {
+           let out = k.apply(extent: image.extent, arguments: [image, background, gain]) {
             return out
         }
-        // Fallback: built-in divide blend (result = background / input), then the prototype's 0.97 gain.
+        // Fallback: built-in divide blend (result = background / input), then the prototype's gain.
         let f = CIFilter.divideBlendMode()
         f.inputImage = background
         f.backgroundImage = image
+        let g = CGFloat(gain)
         let m = CIFilter.colorMatrix()
         m.inputImage = f.outputImage ?? image
-        m.rVector = CIVector(x: 0.97, y: 0, z: 0, w: 0)
-        m.gVector = CIVector(x: 0, y: 0.97, z: 0, w: 0)
-        m.bVector = CIVector(x: 0, y: 0, z: 0.97, w: 0)
+        m.rVector = CIVector(x: g, y: 0, z: 0, w: 0)
+        m.gVector = CIVector(x: 0, y: g, z: 0, w: 0)
+        m.bVector = CIVector(x: 0, y: 0, z: g, w: 0)
         return (m.outputImage ?? image).cropped(to: image.extent)
     }
 
-    private func whiten(_ image: CIImage, recipe p: ProcessingRecipe) -> CIImage {
-        let knee = 0.94 - 0.22 * p.strength
+    /// Chroma-protected whitening; `push == false` (coloured paper) keeps the paper's colour and only applies vivid.
+    private func whiten(_ image: CIImage, recipe p: ProcessingRecipe, push: Bool) -> CIImage {
+        let knee = push ? 0.94 - 0.22 * p.strength : 2.0
         if let k = kernels?.whiten,
            let out = k.apply(extent: image.extent,
                              arguments: [image, Float(knee), Float(p.protect), Float(p.vivid * 0.45)]) {
             return out
         }
         // Fallback approximation without chroma protection: highlight tone curve + saturation.
-        let curve = CIFilter.toneCurve()
-        curve.inputImage = image
-        curve.point0 = CGPoint(x: 0, y: 0)
-        curve.point1 = CGPoint(x: 0.3, y: 0.3)
-        curve.point2 = CGPoint(x: 0.6, y: 0.6)
-        curve.point3 = CGPoint(x: knee, y: min(1, knee + 0.04))
-        curve.point4 = CGPoint(x: min(1, knee + 0.07), y: 1)
+        var img = image
+        if push {
+            let curve = CIFilter.toneCurve()
+            curve.inputImage = image
+            curve.point0 = CGPoint(x: 0, y: 0)
+            curve.point1 = CGPoint(x: 0.3, y: 0.3)
+            curve.point2 = CGPoint(x: 0.6, y: 0.6)
+            curve.point3 = CGPoint(x: knee, y: min(1, knee + 0.04))
+            curve.point4 = CGPoint(x: min(1, knee + 0.07), y: 1)
+            img = curve.outputImage ?? image
+        }
         let sat = CIFilter.colorControls()
-        sat.inputImage = curve.outputImage ?? image
+        sat.inputImage = img
         sat.saturation = Float(1 + p.vivid * 0.45)
         sat.brightness = 0
         sat.contrast = 1
-        return (sat.outputImage ?? image).cropped(to: image.extent)
+        return (sat.outputImage ?? img).cropped(to: image.extent)
     }
 
     /// Makes the final CGImage from the RGBA buffer, painting flat-mode brush strokes white.
@@ -281,85 +429,244 @@ actor ImageProcessor {
         }
     }
 
-    // MARK: Craft pipeline: foreground mask → brush → crop with margin → background + soft shadow
+    // MARK: Craft pipeline: foreground mask (Vision instances → colour method → outline rescue → plain photo)
+    //                       → parts (tap-to-keep, auto drop) → brush → turn + crop with margin → background + shadow
 
     private func renderCraft(id: UUID, data: Data, recipe: ProcessingRecipe, maxEdge: Int, includeBefore: Bool) throws -> PreviewResult {
-        let src = try source(id: id, data: data, maxEdge: maxEdge)
+        let src = try source(id: id, data: data, maxEdge: min(Self.sourceMaxEdge, maxEdge))
         let W = Int(src.extent.width), H = Int(src.extent.height)
-        var alpha = baseAlpha(id: id, src: src, width: W, height: H, sensitivity: recipe.sensitivity, maxEdge: maxEdge)
-        AlphaBrush.apply(strokes: recipe.activeStrokes, to: &alpha, width: W, height: H)
+        let base = craftBase(id: id, src: src, width: W, height: H, sensitivity: recipe.sensitivity, maxEdge: maxEdge)
+        let strokes = recipe.activeStrokes
+        if base.fallback && strokes.isEmpty {
+            return try plainCraft(src: src, recipe: recipe, maxEdge: maxEdge, includeBefore: includeBefore)
+        }
+        var alpha = shapedAlpha(base, sensitivity: recipe.sensitivity)
 
+        // 點一下選主體 first, then the brushes
+        var analysis: PartAnalysis?
+        var drops = Set<Int>()
+        var autoApplied = false
+        if !base.fallback {
+            let key = "\(id.uuidString)|\(maxEdge)"
+            if let c = partsCache[key], c.sensitivity == recipe.sensitivity {
+                analysis = c.analysis
+            } else {
+                let instances: (labels: [UInt8], width: Int, height: Int)? = base.labels.isEmpty ? nil : (base.labels, base.labelWidth, base.labelHeight)
+                analysis = CutoutParts.analyze(alpha: alpha, width: W, height: H, instances: instances)
+                partsCache[key] = (recipe.sensitivity, analysis)
+            }
+            if let a = analysis {
+                var seeds = recipe.removedPartSeeds
+                var autoSeeds: [CGPoint] = []
+                if !recipe.partsEdited {
+                    autoSeeds = CutoutParts.autoDropSeeds(a)
+                    seeds += autoSeeds
+                }
+                drops = CutoutParts.drops(a, seeds: seeds)
+                autoApplied = !autoSeeds.isEmpty && !drops.isEmpty
+                CutoutParts.apply(drops: drops, a, to: &alpha, width: W, height: H)
+            }
+        }
+        AlphaBrush.apply(strokes: strokes, to: &alpha, width: W, height: H)
+
+        let composed = try composeCraft(src: src, alpha: alpha, width: W, height: H, recipe: recipe, maxEdge: maxEdge,
+                                        includeBefore: includeBefore, shadow: recipe.shadow && !base.fallback)
+        var parts: [CutoutPart] = []
+        var touches = base.touchesEdge
+        if let a = analysis {
+            touches = a.parts.contains { $0.significant && !drops.contains($0.id) && $0.edge >= 2 }
+            for p in a.parts where p.significant {
+                let ob = a.originalBounds(of: p)
+                parts.append(CutoutPart(id: p.id, bounds: outputBounds(ob, composed.mapping), seed: a.seed(of: p),
+                                        isRemoved: drops.contains(p.id), originalBounds: ob,
+                                        touchesEdge: p.touches, isMain: p.id == a.main))
+            }
+        }
+        var notes: [ProcessingNote] = []
+        if autoApplied { notes.append(.autoDroppedEdgeParts) }
+        if touches && !base.fallback { notes.append(.touchesEdge) }
+        return PreviewResult(output: composed.output, before: composed.before, specksRemoved: 0,
+                             outputToSource: composed.outputToSource, parts: parts, notes: notes, paperMode: nil,
+                             mapping: composed.mapping, partMap: analysis?.map)
+    }
+
+    private func outputBounds(_ r: CGRect, _ m: OutputMapping) -> CGRect {
+        let corners = [CGPoint(x: r.minX, y: r.minY), CGPoint(x: r.maxX, y: r.minY),
+                       CGPoint(x: r.maxX, y: r.maxY), CGPoint(x: r.minX, y: r.maxY)].compactMap { m.fromOriginal($0) }
+        guard let f = corners.first else { return .zero }
+        var x0 = f.x, y0 = f.y, x1 = f.x, y1 = f.y
+        for c in corners { x0 = min(x0, c.x); y0 = min(y0, c.y); x1 = max(x1, c.x); y1 = max(y1, c.y) }
+        return CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
+    }
+
+    private struct Composed {
+        var output: RenderedImage
+        var before: RenderedImage?
+        var mapping: OutputMapping
+        var outputToSource: NormRect?
+    }
+
+    /// Port of `composeCraft`: the object turned about the middle of its box; its turned extent sets the margins.
+    private func composeCraft(src: CIImage, alpha: [UInt8], width W: Int, height H: Int, recipe: ProcessingRecipe,
+                              maxEdge: Int, includeBefore: Bool, shadow: Bool) throws -> Composed {
         let box = AlphaBrush.boundingBox(alpha, width: W, height: H) ?? (0, 0, W - 1, H - 1)
-        let bw = box.x1 - box.x0 + 1, bh = box.y1 - box.y0 + 1
+        let deg = recipe.turnDegrees
+        let (co, si) = Turning.cosSin(deg)
+        let mx = Double(box.x0 + box.x1 + 1) / 2, my = Double(box.y0 + box.y1 + 1) / 2
+        var rx0 = Double(box.x0) - mx, rx1 = Double(box.x1 + 1) - mx
+        var ry0 = Double(box.y0) - my, ry1 = Double(box.y1 + 1) - my
+        if deg != 0 {
+            var a0 = Double.greatestFiniteMagnitude, a1 = -Double.greatestFiniteMagnitude, b0 = a0, b1 = a1
+            alpha.withUnsafeBufferPointer { al in
+                for y in stride(from: box.y0, through: box.y1, by: 2) {
+                    for x in stride(from: box.x0, through: box.x1, by: 2) where al[y * W + x] > 128 {
+                        let dx = Double(x) - mx, dy = Double(y) - my
+                        let u = dx * co - dy * si, v = dx * si + dy * co
+                        a0 = min(a0, u); a1 = max(a1, u); b0 = min(b0, v); b1 = max(b1, v)
+                    }
+                }
+            }
+            if a1 >= a0 { rx0 = a0; rx1 = a1; ry0 = b0; ry1 = b1 }
+        }
+        let bw = max(1, Int((rx1 - rx0).rounded(.up))), bh = max(1, Int((ry1 - ry0).rounded(.up)))
         let mg = Int((Double(max(bw, bh)) * 0.16).rounded())
-        let x0 = box.x0 - mg, y0 = box.y0 - mg
         let cw = bw + mg * 2, ch = bh + Int((Double(mg) * 2.3).rounded())
-        // Top-left pixel rect → Core Image (lower-left origin) rect.
-        let crop = CGRect(x: x0, y: H - (y0 + ch), width: cw, height: ch)
-        let objectBottom = CGFloat(H - (box.y1 + 1))
+        // photo pixel → layer pixel (top-left origin)
+        let place = Affine2D.translation(-mx, -my)
+            .then(.rotation(degrees: deg))
+            .then(.translation(Double(mg) - rx0, Double(mg) - ry0))
+        let ciPlace = cgTransform(place.coreImage(sourceHeight: Double(H), destinationHeight: Double(ch)))
+        let rect = CGRect(x: 0, y: 0, width: cw, height: ch)
 
-        let alphaData = Data(alpha)
-        let mask = CIImage(bitmapData: alphaData, bytesPerRow: W, size: CGSize(width: W, height: H), format: .L8, colorSpace: nil)
-
-        var bg = background(recipe.background, in: crop)
-        if recipe.shadow {
-            bg = addShadow(to: bg, mask: mask, bottom: objectBottom, cropWidth: CGFloat(cw), cropHeight: CGFloat(ch),
+        let mask = CIImage(bitmapData: Data(alpha), bytesPerRow: W, size: CGSize(width: W, height: H), format: .L8, colorSpace: nil)
+            .transformed(by: ciPlace)
+        let layer = src.transformed(by: ciPlace)
+        var bg = background(recipe.background, in: rect)
+        if shadow {
+            let bottom = CGFloat(ch - (mg + bh))
+            bg = addShadow(to: bg, mask: mask, bottom: bottom, cropWidth: CGFloat(cw), cropHeight: CGFloat(ch),
                            squash: 0.22, blur: 0.05, drop: 0.01, opacity: 0.28)
-            bg = addShadow(to: bg, mask: mask, bottom: objectBottom, cropWidth: CGFloat(cw), cropHeight: CGFloat(ch),
+            bg = addShadow(to: bg, mask: mask, bottom: bottom, cropWidth: CGFloat(cw), cropHeight: CGFloat(ch),
                            squash: 0.06, blur: 0.015, drop: 0.002, opacity: 0.55)
         }
         let blend = CIFilter.blendWithMask()
-        blend.inputImage = src
+        blend.inputImage = layer
         blend.backgroundImage = bg
         blend.maskImage = mask
-        let composed = (blend.outputImage ?? bg).cropped(to: crop)
+        let composed = (blend.outputImage ?? bg).cropped(to: rect)
 
         let scale = min(1, Double(maxEdge) / Double(max(cw, ch)))
-        let out = scaleToFit(composed.transformed(by: CGAffineTransform(translationX: -crop.minX, y: -crop.minY)),
-                             scale: scale)
+        let out = scaleToFit(composed, scale: scale)
         guard let cg = context.createCGImage(out, from: out.extent, format: .RGBA8, colorSpace: srgb) else {
             throw ProcessingError.renderFailed
         }
-
         var before: RenderedImage?
         if includeBefore {
-            let gray = CIImage(color: color(RGBColor(hex: "#8A8F98")!)).cropped(to: crop)
-            let b = src.composited(over: gray).cropped(to: crop)
-            let bs = scaleToFit(b.transformed(by: CGAffineTransform(translationX: -crop.minX, y: -crop.minY)), scale: scale)
+            let gray = CIImage(color: color(Self.beforeGray)).cropped(to: rect)
+            let b = layer.composited(over: gray).cropped(to: rect)
+            let bs = scaleToFit(b, scale: scale)
             if let bcg = context.createCGImage(bs, from: bs.extent, format: .RGBA8, colorSpace: srgb) {
                 before = RenderedImage(cgImage: bcg)
             }
         }
-        let rect = NormRect(x: Double(x0) / Double(W), y: Double(y0) / Double(H),
-                            width: Double(cw) / Double(W), height: Double(ch) / Double(H))
-        return PreviewResult(output: RenderedImage(cgImage: cg), before: before, specksRemoved: 0, outputToSource: rect)
+        let toBase = Affine2D.scale(1 / scale, 1 / scale).then(place.inverted ?? .identity)
+        let mapping = OutputMapping(outputWidth: cg.width, outputHeight: cg.height, baseWidth: W, baseHeight: H,
+                                    outputToBase: toBase, quad: nil)
+        var rectInSource: NormRect?
+        if deg == 0 {
+            rectInSource = NormRect(x: Double(box.x0 - mg) / Double(W), y: Double(box.y0 - mg) / Double(H),
+                                    width: Double(cw) / Double(W), height: Double(ch) / Double(H))
+        }
+        return Composed(output: RenderedImage(cgImage: cg), before: before, mapping: mapping, outputToSource: rectInSource)
     }
 
-    /// Mask before brush strokes: Vision subject lifting (shaped by the sensitivity slider), else the prototype's estimator.
-    private func baseAlpha(id: UUID, src: CIImage, width W: Int, height H: Int, sensitivity: Double, maxEdge: Int) -> [UInt8] {
-        let key = "\(id.uuidString)|\(maxEdge)"
-        var entry = maskCache[key]
-        if entry == nil || (entry?.fromVision == false && entry?.sensitivity != sensitivity) {
-            if entry == nil, let cg = context.createCGImage(src, from: src.extent),
-               let v = VisionPaths.foregroundMask(cgImage: cg, width: W, height: H) {
-                entry = MaskEntry(values: v, width: W, height: H, fromVision: true, sensitivity: sensitivity)
-            } else {
-                let small = renderRGBA8(scaleToFit(src, maxEdge: 256))
-                let m = CraftMaskEstimator.estimate(small, sensitivity: sensitivity)
-                let full = renderRGBA8(src, width: W, height: H)
-                entry = MaskEntry(values: CraftMaskEstimator.alpha(full: full, mask: m), width: W, height: H,
-                                  fromVision: false, sensitivity: sensitivity)
-            }
-            maskCache[key] = entry
+    /// Prototype `plainCraft`: when the object could not be separated, the photo itself, brightened a little if dim.
+    private func plainCraft(src: CIImage, recipe: ProcessingRecipe, maxEdge: Int, includeBefore: Bool) throws -> PreviewResult {
+        let W = Double(src.extent.width), H = Double(src.extent.height)
+        let sc = min(1, Double(maxEdge) / max(W, H))
+        let scaled = scaleToFit(src, scale: sc)
+        // 99th-percentile luminance → gain up to 1.3 so the brightest part reaches 245
+        let probe = renderRGBA8(scaleToFit(src, maxEdge: 256))
+        var hist = [Double](repeating: 0, count: 256)
+        var tot = 0.0
+        for i in 0..<(probe.width * probe.height) {
+            let pr = Double(probe.pixels[i * 4]), pg = Double(probe.pixels[i * 4 + 1]), pb = Double(probe.pixels[i * 4 + 2])
+            let l: Double = 0.299 * pr + 0.587 * pg + 0.114 * pb
+            hist[min(255, Int(l))] += 1
+            tot += 1
         }
-        guard let e = entry else { return [UInt8](repeating: 255, count: W * H) }
-        guard e.fromVision else { return e.values }
-        // Sensitivity 0.5 = Vision as-is; higher keeps more of the soft edge, lower trims it.
+        var acc = 0.0, hi = 255
+        for v in stride(from: 255, through: 0, by: -1) {
+            acc += hist[v]
+            if acc > tot * 0.01 { hi = v; break }
+        }
+        let g = (245 / Double(max(hi, 1))).clamped(1, 1.3)
+        var img = scaled
+        if g > 1.01 {
+            let m = CIFilter.colorMatrix()
+            m.inputImage = scaled
+            m.rVector = CIVector(x: g, y: 0, z: 0, w: 0)
+            m.gVector = CIVector(x: 0, y: g, z: 0, w: 0)
+            m.bVector = CIVector(x: 0, y: 0, z: g, w: 0)
+            img = (m.outputImage ?? scaled).cropped(to: scaled.extent)
+        }
+        let deg = recipe.turnDegrees
+        let fill = recipe.background == .gradient ? RGBColor(r: 1, g: 1, b: 1) : recipe.background.color
+        let turned = turn(img, degrees: deg, fill: fill)
+        guard let cg = context.createCGImage(turned.image, from: turned.image.extent, format: .RGBA8, colorSpace: srgb) else {
+            throw ProcessingError.renderFailed
+        }
+        var before: RenderedImage?
+        if includeBefore {
+            let b = turn(scaled, degrees: deg, fill: Self.beforeGray).image
+            if let bcg = context.createCGImage(b, from: b.extent, format: .RGBA8, colorSpace: srgb) { before = RenderedImage(cgImage: bcg) }
+        }
+        let toBase = turned.outputToBase.then(.scale(1 / sc, 1 / sc))
+        let mapping = OutputMapping(outputWidth: cg.width, outputHeight: cg.height, baseWidth: Int(W), baseHeight: Int(H),
+                                    outputToBase: toBase, quad: nil)
+        return PreviewResult(output: RenderedImage(cgImage: cg), before: before, specksRemoved: 0,
+                             outputToSource: deg == 0 ? NormRect(x: 0, y: 0, width: 1, height: 1) : nil,
+                             parts: [], notes: [.cutoutFallback], paperMode: nil, mapping: mapping, partMap: nil)
+    }
+
+    /// Mask before part picking and brushes: Vision foreground instances, else the prototype's colour method
+    /// (with its outline rescue); `fallback` when neither found anything believable.
+    private func craftBase(id: UUID, src: CIImage, width W: Int, height H: Int, sensitivity: Double, maxEdge: Int) -> CraftBase {
+        let key = "\(id.uuidString)|\(maxEdge)"
+        if let e = maskCache[key], e.fromVision || e.sensitivity == sensitivity { return e }
+        var entry: CraftBase?
+        if maskCache[key] == nil, let cg = context.createCGImage(src, from: src.extent),
+           let v = VisionPaths.foregroundInstances(cgImage: cg, width: W, height: H) {
+            var on = 0
+            for a in v.alpha where a > 128 { on += 1 }
+            if Double(on) > Double(W * H) * 0.003 {
+                entry = CraftBase(raw: v.alpha, width: W, height: H, fromVision: true, sensitivity: sensitivity,
+                                  labels: v.labels, labelWidth: v.labelWidth, labelHeight: v.labelHeight)
+            }
+        }
+        if entry == nil {
+            let small = renderRGBA8(scaleToFit(src, maxEdge: 256))
+            let m = CraftMaskEstimator.estimate(small, sensitivity: sensitivity)
+            let full = renderRGBA8(src, width: W, height: H)
+            entry = CraftBase(raw: CraftMaskEstimator.alpha(full: full, mask: m), width: W, height: H, fromVision: false,
+                              sensitivity: sensitivity, fallback: m.fallback, touchesEdge: m.touchesEdge)
+        }
+        let e = entry ?? CraftBase(raw: [UInt8](repeating: 255, count: W * H), width: W, height: H, fromVision: false,
+                                   sensitivity: sensitivity, fallback: true)
+        maskCache = maskCache.filter { $0.key.hasPrefix(id.uuidString) }
+        maskCache[key] = e
+        partsCache[key] = nil
+        return e
+    }
+
+    /// Vision masks are shaped by the sensitivity slider (0.5 = as-is; higher keeps more of the soft edge).
+    private func shapedAlpha(_ e: CraftBase, sensitivity: Double) -> [UInt8] {
+        guard e.fromVision else { return e.raw }
         let center = 0.5 - (sensitivity - 0.5) * 0.6
         let lo = (center - 0.15).clamped(0.01, 0.98), hi = (center + 0.15).clamped(lo + 0.01, 0.99)
         var lut = [UInt8](repeating: 0, count: 256)
         for i in 0..<256 { lut[i] = UInt8((smoothStep(lo, hi, Double(i) / 255) * 255).rounded()) }
-        return e.values.map { lut[Int($0)] }
+        return e.raw.map { lut[Int($0)] }
     }
 
     private func background(_ bg: CraftBackground, in rect: CGRect) -> CIImage {
@@ -397,15 +704,64 @@ actor ImageProcessor {
         return (f.outputImage ?? bg).cropped(to: bg.extent)
     }
 
+    // MARK: - Turning
+
+    static let beforeGray = RGBColor(r: 0x8A / 255.0, g: 0x8F / 255.0, b: 0x98 / 255.0)
+
+    /// Turns an origin-anchored image by `degrees` (clockwise) about its centre onto a `fill` background
+    /// (prototype rotCanvas). Returns the turned image (origin-anchored) and the output→input pixel map.
+    private func turn(_ image: CIImage, degrees: Double, fill: RGBColor) -> (image: CIImage, outputToBase: Affine2D) {
+        guard degrees != 0 else { return (image, .identity) }
+        let w = Double(image.extent.width), h = Double(image.extent.height)
+        let size = Turning.turnedSize(width: w, height: h, degrees: degrees)
+        let fwd = Turning.forward(width: w, height: h, degrees: degrees)
+        let rect = CGRect(x: 0, y: 0, width: size.width, height: size.height)
+        let t = image.transformed(by: cgTransform(fwd.coreImage(sourceHeight: h, destinationHeight: Double(size.height))))
+        let out = t.composited(over: CIImage(color: color(fill)).cropped(to: rect)).cropped(to: rect)
+        return (out, fwd.inverted ?? .identity)
+    }
+
+    private func cgTransform(_ t: Affine2D) -> CGAffineTransform {
+        CGAffineTransform(a: t.a, b: t.b, c: t.c, d: t.d, tx: t.tx, ty: t.ty)
+    }
+
     // MARK: - Helpers
+
+    private func focalPixels(id: UUID, data: Data, width: Double, height: Double) -> Double? {
+        let key = id.uuidString
+        let f35: Double
+        if let cached = focal[key] {
+            f35 = cached
+        } else {
+            f35 = ImageMetadata.focalLength35mm(of: data) ?? 0
+            focal[key] = f35
+        }
+        return PaperAspect.focalPixels(focal35mm: f35, imageWidth: width, imageHeight: height)
+    }
+
+    /// Upright working copy, decoded once per artwork with the long edge ≤ sourceMaxEdge.
+    private func decodedSource(id: UUID, data: Data) throws -> CIImage {
+        let key = id.uuidString
+        if let d = decoded[key] { return d }
+        let image: CIImage
+        if let cg = ImageMetadata.uprightThumbnail(of: data, maxPixelSize: Self.sourceMaxEdge) {
+            image = CIImage(cgImage: cg)
+        } else if let ci = CIImage(data: data, options: [.applyOrientationProperty: true]) {
+            image = scaleToFit(ci, maxEdge: Self.sourceMaxEdge)
+        } else {
+            throw ProcessingError.decodeFailed
+        }
+        let s = scaleToFit(image, maxEdge: Self.sourceMaxEdge)
+        decoded[key] = s
+        decodedOrder.append(key)
+        while decodedOrder.count > 2 { decoded[decodedOrder.removeFirst()] = nil }
+        return s
+    }
 
     private func source(id: UUID, data: Data, maxEdge: Int) throws -> CIImage {
         let key = "\(id.uuidString)|src|\(maxEdge)"
         if let s = sourceCache[key] { return s }
-        guard let decoded = CIImage(data: data, options: [.applyOrientationProperty: true]) else {
-            throw ProcessingError.decodeFailed
-        }
-        let s = scaleToFit(decoded, maxEdge: maxEdge)
+        let s = scaleToFit(try decodedSource(id: id, data: data), maxEdge: maxEdge)
         sourceCache[key] = s
         sourceOrder.append(key)
         while sourceOrder.count > 4 {

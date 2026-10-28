@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 enum ArtworkKind: String, Codable, Sendable, CaseIterable, Identifiable {
     case flat
@@ -99,6 +100,16 @@ struct ProcessingRecipe: Codable, Sendable, Hashable {
     var strokes: [BrushStroke] = []
     /// Add name / age / date band under the image on export.
     var caption: Bool = false
+    /// Quarter turns, clockwise, 0...3 (both kinds).
+    var quarterTurns: Int = 0
+    /// 拉直 −15...15 degrees, positive = clockwise (both kinds).
+    var straightenDegrees: Double = 0
+    /// Craft: parts the person removed, as points normalized in the ORIGINAL (upright) photo.
+    /// A part of the cut-out is removed when it contains a seed.
+    var removedPartSeeds: [CGPoint] = []
+    /// Craft: false while the person has not picked parts yet; the processor then also drops edge clutter
+    /// automatically (`ProcessingNote.autoDroppedEdgeParts`). `PartPicking` sets it.
+    var partsEdited: Bool = false
 
     init(kind: ArtworkKind = .flat) {
         self.kind = kind
@@ -108,6 +119,7 @@ struct ProcessingRecipe: Codable, Sendable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case version, kind, corners, strength, protect, vivid, removeSpecks, sensitivity, background, shadow, strokes, caption
+        case quarterTurns, straightenDegrees, removedPartSeeds, partsEdited
     }
 
     init(from decoder: Decoder) throws {
@@ -125,7 +137,20 @@ struct ProcessingRecipe: Codable, Sendable, Hashable {
         shadow = try c.decodeIfPresent(Bool.self, forKey: .shadow) ?? d.shadow
         strokes = try c.decodeIfPresent([BrushStroke].self, forKey: .strokes) ?? d.strokes
         caption = try c.decodeIfPresent(Bool.self, forKey: .caption) ?? d.caption
+        // Turning / parts fields are new in v0.9: tolerate missing or malformed values.
+        let turns: Int? = try? c.decodeIfPresent(Int.self, forKey: .quarterTurns)
+        quarterTurns = (((turns ?? d.quarterTurns) % 4) + 4) % 4
+        let tilt: Double = (try? c.decodeIfPresent(Double.self, forKey: .straightenDegrees)) ?? d.straightenDegrees
+        straightenDegrees = tilt.isFinite ? tilt.clamped(-15, 15) : 0
+        removedPartSeeds = (try? c.decodeIfPresent([CGPoint].self, forKey: .removedPartSeeds)) ?? d.removedPartSeeds
+        partsEdited = (try? c.decodeIfPresent(Bool.self, forKey: .partsEdited)) ?? d.partsEdited
     }
+
+    /// Total turn in degrees, clockwise.
+    var turnDegrees: Double { Double(quarterTurns) * 90 + straightenDegrees }
+
+    mutating func rotateClockwise() { quarterTurns = (quarterTurns + 1) % 4 }
+    mutating func rotateCounterClockwise() { quarterTurns = (quarterTurns + 3) % 4 }
 
     func encoded() throws -> Data {
         let e = JSONEncoder()
@@ -141,4 +166,28 @@ struct ProcessingRecipe: Codable, Sendable, Hashable {
     var activeStrokes: [BrushStroke] {
         strokes.filter { kind == .flat ? $0.mode == .paintWhite : $0.mode != .paintWhite }
     }
+}
+
+/// What the automatic processing could not do well on this photo (port of the prototype's processNote).
+/// `PreviewResult.notes` lists them most important first.
+enum ProcessingNote: String, Codable, Sendable, CaseIterable {
+    case paperNotFound
+    case notWhitePaper
+    case dotsKeptAsPattern
+    case touchesEdge
+    case autoDroppedEdgeParts
+    case cutoutFallback
+
+    /// String Catalog key (owned by the UI team): "processing.note.<case>".
+    var localizationKey: String { "processing.note.\(rawValue)" }
+}
+
+/// How the flat pipeline treated the paper (prototype flatten modes "white" / "keep" / "sparse").
+enum PaperMode: String, Codable, Sendable {
+    /// White paper: light evened out and paper pushed to white.
+    case white
+    /// Coloured or dark paper: only the light is evened out, the paper keeps its colour.
+    case colored
+    /// Paint covers most of the sheet: only a gentle, coarse light correction.
+    case paintCovered
 }
