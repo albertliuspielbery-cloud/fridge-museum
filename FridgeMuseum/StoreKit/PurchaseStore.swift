@@ -65,6 +65,14 @@ final class PurchaseStore {
 
     /// Fetches the product (for `displayPrice`) and re-reads current entitlements. Safe to call repeatedly.
     func load() async {
+        #if DEBUG
+        // Screenshot demos (DemoMode): show the base price instead of the simulator's sandbox storefront.
+        if let price = DemoMode.storePrice {
+            displayPrice = price
+            hasLoaded = true
+            return
+        }
+        #endif
         if product == nil, !isLoading {
             isLoading = true
             do {

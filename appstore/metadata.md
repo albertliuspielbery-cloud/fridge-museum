@@ -273,7 +273,7 @@ Thank you for reviewing My Fridge Museum.
 What it does: parents photograph their children's drawings and crafts. The app straightens the paper, whitens the background, and cuts crafts out from the table, then organizes each piece by child, semester, and age. It is a tool for parents, not an app for children.
 
 Testing without real children's art:
-- On a fresh install the fridge is empty and shows two sample tiles, "看範例畫作 / 看範例勞作" (English: "See Sample"). Tapping one opens a bundled real drawing or craft photo in the editor so you can try every tool (Crop, Adjust, Brush, Tap What to Keep, Compare). Samples never count toward the free quota and are not added to the museum.
+- On a fresh install the fridge is empty and shows two sample tiles, "看範例畫作 / 看範例勞作" (English: "See Sample"). Tapping one opens a bundled real drawing or craft photo in the editor so you can try every tool (Crop, Adjust, Brush, Compare; on crafts with several separate objects, Tap What to Keep also appears). Samples never count toward the free quota and are not added to the museum.
 - To add your own items, use the camera (any sheet of paper with a drawing on it works) or the "相簿 / Photos" button on the home screen to import images from the photo library.
 
 In-app purchase (non-consumable "Full Version", tw.starlight.fridgemuseum.full):
@@ -294,7 +294,7 @@ Privacy: all image processing (including the craft cutout, which uses Apple's Vi
 
 Contact: starlight.kids.app@gmail.com
 ```
-字元數：2602
+字元數：2656
 
 ## 12. 網址與版權
 
@@ -305,4 +305,4 @@ Contact: starlight.kids.app@gmail.com
 | 行銷網址 Marketing URL（選填） | 留空，或填 https://albertliuspielbery-cloud.github.io/fridge-museum/ （`docs/index.html` 目前只會轉到支援頁） |
 | 版權 Copyright | 2026 星光工作室 Starlight Studio |
 
-支援頁和隱私權頁目前只有中文；英文地區的審查員和使用者看得懂比較好，之後可以加英文段落。
+支援頁和隱私權頁都是中英雙語（同一頁，中文在前、英文在後），英文地區的審查員和使用者也看得懂。

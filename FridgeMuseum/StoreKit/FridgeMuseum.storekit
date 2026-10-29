@@ -20,12 +20,12 @@
       "internalID" : "6740000001",
       "localizations" : [
         {
-          "description" : "畫作、勞作不限張數，勞作 AI 去背無限次使用",
+          "description" : "畫作不限張數、勞作不限件數，全家共享，一次買斷",
           "displayName" : "完整版",
-          "locale" : "zh_Hant"
+          "locale" : "zh_TW"
         },
         {
-          "description" : "Unlimited drawings and crafts, plus AI cutouts.",
+          "description" : "Unlimited drawings and crafts for the family, one-time.",
           "displayName" : "Full Version",
           "locale" : "en_US"
         }
@@ -40,7 +40,7 @@
     "_billingIssuesEnabled" : false,
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_locale" : "zh_Hant",
+    "_locale" : "zh_TW",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "TWN",
     "_storeKitErrors" : [

@@ -5,12 +5,13 @@
 #   價格：台灣為基準地區 NT$190，其他地區用 Apple 自動換算的等值價格
 #   家人共享：開啟（開了就不能再關，擁有者已同意）
 #   銷售地區：台灣、香港、美國、加拿大、英國、澳洲、新加坡（不含歐盟、中國大陸）
-#   審查用截圖：有給檔案才上傳（跟星光一樣，不會自動產生假的截圖）
+#   審查用截圖：有給檔案才上傳（跟星光一樣，不會自動產生假的截圖）；檔案換了（MD5 不同）就換掉舊的
+#              任何 iPhone 截圖尺寸都可以（例如 6.9 吋 1320×2868），PNG 不能有透明度（alpha）
 # 不會送審，也不會改 App 本身的銷售地區。第一次送審時，要在 App 版本頁面的「App 內購買項目」把它加進去。
 # 用法：python3 ci/ci_iap.py [審查截圖.png]
 # 環境變數：ASC_KEY_ID、ASC_ISSUER_ID、ASC_KEY_P8（必要）；APP_BUNDLE_ID（可選）；
 #           FORCE_PRICE=1（可選：已經有別的價格時，強制改回 NT$190，會取代整個價格排程，包含早鳥價）
-import os, sys, json, time, hashlib, urllib.request, urllib.error
+import os, sys, json, time, hashlib, struct, urllib.request, urllib.error
 
 sys.stdout.reconfigure(encoding='utf-8')  # 中文註解訊息；不靠執行環境的預設編碼
 
@@ -30,10 +31,10 @@ LOCALIZATIONS = {
 for _loc, (_n, _d) in LOCALIZATIONS.items():
     assert len(_n) <= 35 and len(_d) <= 55, (_loc, len(_n), len(_d))
 REVIEW_NOTE = (
-    'Non-consumable "Full Version" (one-time purchase, Family Sharing on). Free tier: 3 drawings per day and 3 crafts '
-    'in total can be kept (Hang It Up or Save to Photos). After that, the paywall sheet appears when keeping another '
-    'artwork; it shows the StoreKit price, a "not a subscription" note, and Restore Purchases. To see it: take and keep '
-    '4 drawings on the same day. Editing is never blocked.')
+    'Non-consumable "Full Version" (one-time purchase, Family Sharing on). To see the paywall quickly: Settings (gear, '
+    "top right) > Unlock Full Version. Or keep 4 drawings on the same day (samples don't count). The paywall shows the "
+    'StoreKit price, a "not a subscription" note, and Restore Purchases. Editing is never blocked.')
+assert len(REVIEW_NOTE) <= 4000, len(REVIEW_NOTE)  # App Store Connect 審查備註上限 4000 字
 SHOT = sys.argv[1] if len(sys.argv) > 1 else ''
 FORCE_PRICE = os.environ.get('FORCE_PRICE') == '1'
 API = 'https://api.appstoreconnect.apple.com'
@@ -221,14 +222,27 @@ if have_terr != want or new_terr is not False:
              'availableTerritories': {'data': [{'type': 'territories', 'id': t} for t in TERRITORIES]}}}})
 report.append('銷售地區：' + '、'.join(TERRITORY_ZH[t] for t in TERRITORIES))
 
-# 6. 審查用截圖（購買畫面）：有給檔案才上傳；沒有就提醒擁有者
-shot = call('GET', f'/v2/inAppPurchases/{iid}/appStoreReviewScreenshot', ok404=True, soft=True)
-sd = shot and shot.get('data')
-if sd and ((sd.get('attributes') or {}).get('assetDeliveryState') or {}).get('state') not in ('COMPLETE', 'UPLOAD_COMPLETE'):
-    call('DELETE', f'/v1/inAppPurchaseAppStoreReviewScreenshots/{sd["id"]}')
-    sd = None
-if not sd and SHOT and os.path.isfile(SHOT):
-    b = open(SHOT, 'rb').read()
+# 6. 審查用截圖（購買畫面）：有給檔案才上傳；跟已上傳的不同（MD5 ≠ sourceFileChecksum）就刪掉舊的、換新的；
+#    沒有就提醒擁有者。已送審／上架（LOCKED_STATES）的商品在上面就結束了，不會走到這裡。
+def review_shot_bytes(path):
+    """讀審查截圖。Apple 只要求是 App 裡實際的購買畫面：任何 iPhone 截圖尺寸都可以（例如 1320×2868、1206×2622），
+    PNG 或 JPEG，但不能有透明度（alpha）。"""
+    b = open(path, 'rb').read()
+    if b[:3] == b'\xff\xd8\xff':
+        return b  # JPEG 沒有透明度
+    if b[:8] != b'\x89PNG\r\n\x1a\n' or b[12:16] != b'IHDR':
+        error(f'{path} 不是 PNG 或 JPEG 圖檔。')
+    w, h, _depth, ctype = struct.unpack('>IIBB', b[16:26])
+    if min(w, h) < 640 or max(w, h) < 920:
+        error(f'{path} 太小（{w}×{h}）：請用 iPhone 實際截圖（例如 1320×2868）。')
+    # 色彩類型 4／6 帶 alpha；IDAT 之前出現 tRNS 也是透明度
+    idat = b.find(b'IDAT')
+    if ctype in (4, 6) or b.find(b'tRNS', 0, idat if idat > 0 else len(b)) > 0:
+        error(f'{path} 有透明度（alpha），App Store Connect 不收。請另存成不透明的 PNG（RGB）或 JPEG 再推上來。')
+    return b
+
+
+def upload_review_shot(b):
     r = call('POST', '/v1/inAppPurchaseAppStoreReviewScreenshots', {'data': {'type': 'inAppPurchaseAppStoreReviewScreenshots',
              'attributes': {'fileName': os.path.basename(SHOT), 'fileSize': len(b)},
              'relationships': {'inAppPurchaseV2': {'data': {'type': 'inAppPurchases', 'id': iid}}}}})['data']
@@ -240,6 +254,23 @@ if not sd and SHOT and os.path.isfile(SHOT):
     call('PATCH', f'/v1/inAppPurchaseAppStoreReviewScreenshots/{r["id"]}', {'data': {
         'type': 'inAppPurchaseAppStoreReviewScreenshots', 'id': r['id'],
         'attributes': {'uploaded': True, 'sourceFileChecksum': hashlib.md5(b).hexdigest()}}})
+
+
+shot = call('GET', f'/v2/inAppPurchases/{iid}/appStoreReviewScreenshot', ok404=True, soft=True)
+sd = shot and shot.get('data')
+if sd and ((sd.get('attributes') or {}).get('assetDeliveryState') or {}).get('state') not in ('COMPLETE', 'UPLOAD_COMPLETE'):
+    call('DELETE', f'/v1/inAppPurchaseAppStoreReviewScreenshots/{sd["id"]}')
+    sd = None
+local = review_shot_bytes(SHOT) if SHOT and os.path.isfile(SHOT) else None
+if local is not None and sd:
+    if (sd.get('attributes') or {}).get('sourceFileChecksum') == hashlib.md5(local).hexdigest():
+        report.append('審查截圖：已經有了（跟 ' + os.path.basename(SHOT) + ' 一樣）')
+    else:
+        call('DELETE', f'/v1/inAppPurchaseAppStoreReviewScreenshots/{sd["id"]}')
+        upload_review_shot(local)
+        report.append('審查截圖：已換成新的 ' + os.path.basename(SHOT))
+elif local is not None:
+    upload_review_shot(local)
     report.append('審查截圖：已上傳 ' + os.path.basename(SHOT))
 elif sd:
     report.append('審查截圖：已經有了')

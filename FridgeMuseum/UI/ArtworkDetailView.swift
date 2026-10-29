@@ -134,7 +134,7 @@ struct ArtworkDetailView: View {
                     ArtworkImage(artwork: artwork)
                 }
             }
-            .frame(maxHeight: 420)
+            .frame(maxHeight: DemoMode.compactDetail ? 250 : 420)
         }
         .padding(.horizontal, 30)
         .padding(.top, 34)
