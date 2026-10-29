@@ -47,6 +47,11 @@ struct MuseumView: View {
     @State private var tagFilter: String?
     @AppStorage("museumGrouping") private var groupingRaw = Grouping.term.rawValue
     @AppStorage("museumNewestFirst") private var newestFirst = true
+    /// 大圖 / 標準 / 小圖 (MuseumLayout.swift).
+    @AppStorage(MuseumViewMode.storageKey) private var viewModeRaw = MuseumViewMode.standard.rawValue
+    @State private var contentWidth: CGFloat = 0
+    @State private var viewer: MuseumViewerStart?
+    @Environment(\.displayScale) private var displayScale
     @State private var editingChild: Child?
     @State private var showNewChild = false
     // 選取: change several artworks at once.
@@ -62,6 +67,8 @@ struct MuseumView: View {
     }
 
     private var grouping: Grouping { Grouping(rawValue: groupingRaw) ?? .term }
+    /// Demo screenshots pin their own mode, so a mode left over from another scene never leaks in.
+    private var viewMode: MuseumViewMode { DemoMode.museumViewMode ?? MuseumViewMode(stored: viewModeRaw) }
     /// `isAlive` first: a batch delete must never make a view read a deleted model.
     private var artworks: [Artwork] { allArtworks.filter { AppModel.isAlive($0) && $0.isInMuseum } }
 
@@ -118,8 +125,9 @@ struct MuseumView: View {
                         sortMenu
                     }
                     .padding(.horizontal, Metrics.gutter + 4)
+                    let mode = viewMode
                     ForEach(sections(list)) { section in
-                        sectionView(section)
+                        sectionView(section, mode: mode)
                     }
                 }
             }
@@ -127,6 +135,15 @@ struct MuseumView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { contentWidth = $0 }
+        // Pinch the wall: in → smaller prints, out → bigger (one step per pinch).
+        .simultaneousGesture(
+            MagnifyGesture().onEnded { value in
+                let next = viewMode.afterPinch(scale: value.magnification)
+                if next != viewMode { setViewMode(next) }
+            }
+        )
+        .sensoryFeedback(.selection, trigger: viewModeRaw)
         .background(Wallpaper())
         .navigationTitle(selecting ? Text("已選 \(selectedArtworks.count) 件") : Text("美術館"))
         .navigationBarBackButtonHidden(selecting)
@@ -142,6 +159,8 @@ struct MuseumView: View {
                 }
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
+                viewModeMenu
+                    .disabled(artworks.isEmpty)
                 if selecting {
                     Button {
                         withAnimation { endSelection() }
@@ -206,6 +225,12 @@ struct MuseumView: View {
         .sheet(isPresented: $showNewChild) {
             ChildEditorView(child: nil)
         }
+        .fullScreenCover(item: $viewer) { start in
+            MuseumViewer(artworks: start.artworks, startID: start.id) { id in
+                viewer = nil
+                open(.detail(id))
+            }
+        }
         .task {
             if let preset = DemoMode.museumPreset(children: children) {
                 childFilter = preset.child.map { .child($0) } ?? .all
@@ -214,7 +239,7 @@ struct MuseumView: View {
             }
         }
         .overlay(alignment: .topLeading) {
-            if DemoMode.scene("museum", "museum-filter"), artworks.count >= 6, artworks.allSatisfy({ $0.thumbnailData != nil }) { ReadyMarker() }
+            if DemoMode.scene("museum", "museum-filter", "museum-small", "museum-large"), artworks.count >= 6, artworks.allSatisfy({ $0.thumbnailData != nil }) { ReadyMarker() }
         }
     }
 
@@ -409,6 +434,45 @@ struct MuseumView: View {
         }
     }
 
+    // MARK: View mode (大圖 / 標準 / 小圖)
+
+    private var viewModeMenu: some View {
+        Menu {
+            Picker(selection: Binding(get: { viewMode }, set: { setViewMode($0) })) {
+                ForEach(MuseumViewMode.menuOrder) { m in
+                    Label(m.title, systemImage: m.systemImage).tag(m)
+                }
+            } label: {
+                Text("顯示方式")
+            }
+        } label: {
+            Image(systemName: viewMode.systemImage)
+        }
+        .accessibilityLabel(Text("顯示方式"))
+        .accessibilityValue(Text(verbatim: viewMode.title))
+    }
+
+    private func setViewMode(_ mode: MuseumViewMode) {
+        withAnimation(.snappy(duration: 0.3)) { viewModeRaw = mode.rawValue }
+    }
+
+    @ViewBuilder
+    private func tile(_ a: Artwork, mode: MuseumViewMode) -> some View {
+        let processing = app.processingIDs.contains(a.id)
+        switch mode {
+        case .standard:
+            MuseumTile(artwork: a, processing: processing, showChild: childFilter == .all)
+        case .small:
+            MuseumSmallTile(artwork: a, processing: processing, showChild: childFilter == .all)
+        case .large:
+            // Print width minus HungPrint's 10 pt mat on each side.
+            MuseumLargeTile(artwork: a, processing: processing,
+                            pixelSize: MuseumViewMode.largePixelSize(
+                                widthPoints: mode.tileWidth(containerWidth: contentWidth) - 20,
+                                aspect: a.aspectRatio, scale: displayScale))
+        }
+    }
+
     // MARK: Sections
 
     private func sections(_ list: [Artwork]) -> [Section] {
@@ -460,25 +524,37 @@ struct MuseumView: View {
         }
     }
 
-    private func sectionView(_ section: Section) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            CrayonHeader(title: section.title, subtitle: section.subtitle, count: section.items.count,
-                         ink: Palette.title)
-                .padding(.horizontal, Metrics.gutter + 4)
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)],
-                      alignment: .leading, spacing: 28) {
+    private func sectionView(_ section: Section, mode: MuseumViewMode) -> some View {
+        VStack(alignment: .leading, spacing: mode == .small ? 8 : 18) {
+            if mode == .small {
+                CompactSectionHeader(title: section.title, subtitle: section.subtitle, count: section.items.count)
+                    .padding(.horizontal, Metrics.gutter + 4)
+            } else {
+                CrayonHeader(title: section.title, subtitle: section.subtitle, count: section.items.count,
+                             ink: Palette.title)
+                    .padding(.horizontal, Metrics.gutter + 4)
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: mode.columnSpacing),
+                                     count: mode.columns(forWidth: contentWidth)),
+                      alignment: .leading, spacing: mode.rowSpacing) {
                 ForEach(section.items) { a in
                     let isSelected = selection.contains(a.id)
                     Button {
                         if selecting { toggleSelection(a.id) } else { open(.detail(a.id)) }
                     } label: {
-                        MuseumTile(artwork: a, processing: app.processingIDs.contains(a.id), showChild: childFilter == .all)
+                        tile(a, mode: mode)
                             .overlay(alignment: .topLeading) {
-                                if selecting { SelectionMark(selected: isSelected) }
+                                if selecting { SelectionMark(selected: isSelected, size: mode.selectionMarkSize) }
                             }
                             .opacity(selecting && !isSelected ? 0.8 : 1)
                     }
                     .buttonStyle(.plain)
+                    .overlay(alignment: .topTrailing) {
+                        if mode == .large && !selecting {
+                            FullScreenButton { viewer = MuseumViewerStart(id: a.id, artworks: filtered) }
+                                .padding(14)
+                        }
+                    }
                     .accessibilityAddTraits(selecting && isSelected ? .isSelected : [])
                     .contextMenu {
                         if !selecting {
@@ -498,9 +574,9 @@ struct MuseumView: View {
                     }
                 }
             }
-            .padding(.horizontal, Metrics.gutter + 6)
+            .padding(.horizontal, mode.horizontalPadding)
         }
-        .padding(.top, 8)
+        .padding(.top, mode == .small ? 4 : 8)
     }
 
     // MARK: Selection (選取)

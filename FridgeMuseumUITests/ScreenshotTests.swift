@@ -7,7 +7,8 @@ import XCTest
 final class ScreenshotTests: XCTestCase {
     static let allScenarios = [
         "home-empty", "home-full", "success", "edit-flat", "edit-craft", "crop-loupe", "adjust", "brush-craft",
-        "label", "paywall", "museum", "museum-filter", "detail", "settings",
+        "label", "paywall", "museum", "museum-filter", "museum-small", "museum-large", "detail",
+        "settings",
     ]
 
     override func setUp() {
@@ -20,7 +21,7 @@ final class ScreenshotTests: XCTestCase {
         return items.isEmpty ? value : items
     }
 
-    // One test per language × appearance, so a stuck simulator query only costs that set, not all 56 shots.
+    // One test per language × appearance, so a stuck simulator query only costs that set, not all 64 shots.
     @MainActor func testZhLight() { run(lang: "zh", look: "light") }
     @MainActor func testZhDark() { run(lang: "zh", look: "dark") }
     @MainActor func testEnLight() { run(lang: "en", look: "light") }

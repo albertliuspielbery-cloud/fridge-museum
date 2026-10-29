@@ -601,6 +601,17 @@
         }
       }
     },
+    "作品說明" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artwork Details"
+          }
+        }
+      }
+    },
     "作品說明牌" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -828,6 +839,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deselect All"
+          }
+        }
+      }
+    },
+    "全螢幕看" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View Full Screen"
           }
         }
       }
@@ -1519,6 +1541,17 @@
         }
       }
     },
+    "大圖" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Large"
+          }
+        }
+      }
+    },
     "套用" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1618,6 +1651,17 @@
         }
       }
     },
+    "孩子說：「%@」" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In their words: “%@”"
+          }
+        }
+      }
+    },
     "學期" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1703,6 +1747,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Compare"
+          }
+        }
+      }
+    },
+    "小圖" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Small"
           }
         }
       }
@@ -2772,6 +2827,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Soft Glow"
+          }
+        }
+      }
+    },
+    "標準" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard"
           }
         }
       }
@@ -4009,6 +4075,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Paint covers most of the paper, so only the lighting was adjusted."
+          }
+        }
+      }
+    },
+    "顯示方式" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View"
           }
         }
       }
