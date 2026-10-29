@@ -12,6 +12,8 @@
 #           FORCE_PRICE=1（可選：已經有別的價格時，強制改回 NT$190，會取代整個價格排程，包含早鳥價）
 import os, sys, json, time, hashlib, urllib.request, urllib.error
 
+sys.stdout.reconfigure(encoding='utf-8')  # 中文註解訊息；不靠執行環境的預設編碼
+
 BUNDLE = os.environ.get('APP_BUNDLE_ID') or 'tw.starlight.fridgemuseum'
 PRODUCT_ID = 'tw.starlight.fridgemuseum.full'
 REF_NAME = 'Full Version'
@@ -21,9 +23,12 @@ TERRITORIES = ['TWN', 'HKG', 'USA', 'CAN', 'GBR', 'AUS', 'SGP']
 TERRITORY_ZH = {'TWN': '台灣', 'HKG': '香港', 'USA': '美國', 'CAN': '加拿大', 'GBR': '英國', 'AUS': '澳洲', 'SGP': '新加坡'}
 # App Store Connect 限制：名稱 35 字、說明 55 字以內
 LOCALIZATIONS = {
-    'zh-Hant': ('完整版', '畫作、勞作不限張數，勞作 AI 去背無限次使用'),
-    'en-US': ('Full Version', 'Unlimited drawings and crafts, plus AI cutouts.'),
+    'zh-Hant': ('完整版', '畫作不限張數、勞作不限件數，全家共享，一次買斷'),
+    'en-US': ('Full Version', 'Unlimited drawings and crafts for the family, one-time.'),
 }
+# 用詞照 DECISIONS.md §三：「勞作不限件數」，不要寫「AI 去背無限次」
+for _loc, (_n, _d) in LOCALIZATIONS.items():
+    assert len(_n) <= 35 and len(_d) <= 55, (_loc, len(_n), len(_d))
 REVIEW_NOTE = (
     'Non-consumable "Full Version" (one-time purchase, Family Sharing on). Free tier: 3 drawings per day and 3 crafts '
     'in total can be kept (Hang It Up or Save to Photos). After that, the paywall sheet appears when keeping another '

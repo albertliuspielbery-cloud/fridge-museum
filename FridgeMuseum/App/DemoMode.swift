@@ -146,6 +146,8 @@ enum DemoMode {
         let kid2 = Child(name: zh ? "小美" : "Leo", birthday: day(2022, 9, 12), avatarColorHex: Palette.avatarHexes[4])
         context.insert(kid1)
         context.insert(kid2)
+        // New photos go to 小明 (the 拍給 chip shows a name, not 未分類).
+        app.currentChildID = kid1.id
 
         // Process each sample once, then reuse the rendered output for the other demo works.
         let flatData = sampleData(.flat), craftData = sampleData(.craft)
@@ -209,6 +211,8 @@ enum DemoMode {
             a.keptAt = Date().addingTimeInterval(Double(-i) * 3600)
             ids.append(a.id)
         }
+        // 孩子說 on the featured placard.
+        flatSource.note = zh ? "這是我生日那天，大家一起玩氣球！" : "It was my birthday and we all played with balloons!"
 
         // Fresh captures still in the editor (上一張還沒收進) — only for the scenarios that show one.
         var pendingFlatID = ids[0], pendingCraftID = ids[1]

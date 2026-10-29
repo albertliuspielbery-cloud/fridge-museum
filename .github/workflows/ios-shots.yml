@@ -4,7 +4,7 @@ name: iOS Screenshots
 on:
   # Dispatch only works once this file is on main; until then every push to the UI branch takes screenshots.
   push:
-    branches: [feat/ui-bibi]
+    branches: [feat/ui-bibi, 'store/**']
     paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
     inputs:
@@ -41,7 +41,12 @@ jobs:
       - name: 挑一台 iPhone 模擬器並固定狀態列
         id: sim
         run: |
-          UDID=$(xcrun simctl list devices available -j | python3 ci/pick_simulator.py "iPhone 17 Pro" "iPhone 16 Pro" "iPhone 17" "iPhone 16")
+          if [[ "$GITHUB_REF_NAME" == store/* ]]; then
+            # App Store 截圖要 6.9 吋（1320×2868）
+            UDID=$(xcrun simctl list devices available -j | python3 ci/pick_simulator.py "iPhone 17 Pro Max" "iPhone 16 Pro Max")
+          else
+            UDID=$(xcrun simctl list devices available -j | python3 ci/pick_simulator.py "iPhone 17 Pro" "iPhone 16 Pro" "iPhone 17" "iPhone 16")
+          fi
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
@@ -98,11 +103,12 @@ jobs:
             for f in *.png; do echo "- [$f]($f)"; done
           } > README.md
           git init -q
-          git checkout -q -b ci-shots
+          OUT=ci-shots; [[ "$GITHUB_REF_NAME" == store/* ]] && OUT=ci-shots-store
+          git checkout -q -b "$OUT"
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -qm "Screenshots for ${GITHUB_SHA::7} (run ${GITHUB_RUN_ID})"
-          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-shots
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$OUT"
       - name: 保存紀錄
         if: always()
         uses: actions/upload-artifact@v6

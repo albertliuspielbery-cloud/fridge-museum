@@ -68,6 +68,7 @@
 |---|---|---|
 | iOS App（勾「上傳」才上傳 TestFlight） | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/ios.yml | 上傳由 Albert |
 | App 內購買項目 | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/ios-iap.yml | Albert |
+| App Store 上架資料（文字、類別、年齡分級、審查備註、截圖；不送審；可勾「只預覽」） | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/ios-metadata.yml | Albert |
 | 準備 App 識別碼 | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/bundle-id.yml | 已完成 |
 | iOS Screenshots（模擬器拍 14 畫面 × 中英 × 淺深，推到 `ci-shots` 分支） | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/ios-shots.yml | Claude 可跑 |
 
