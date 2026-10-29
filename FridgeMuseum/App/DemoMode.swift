@@ -105,7 +105,7 @@ enum DemoMode {
         app.captureKind = .flat
         app.currentChildID = nil
         resetQuota(app: app)
-        if scenario == "home-empty" { return }
+        if scenario == "home-empty" || scenario == OnboardingCoordinator.demoScene { return }
 
         let seeded = await seed(app: app, context: context)
         if ["home-full", "success", "pending"].contains(scenario) {

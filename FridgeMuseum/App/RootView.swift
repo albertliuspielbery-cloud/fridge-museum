@@ -59,6 +59,7 @@ struct RootView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
+        .onboardingTutorial()
         .alert(Text("為每位小朋友建立相簿？"), isPresented: Binding(get: { app.photosPrimer != nil }, set: { if !$0 { app.photosPrimer = nil } }),
                presenting: app.photosPrimer) { primer in
             Button { app.continueSave(after: primer, albums: true, context: modelContext) } label: { Text("建立相簿") }

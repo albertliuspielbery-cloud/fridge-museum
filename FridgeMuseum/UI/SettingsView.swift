@@ -134,6 +134,7 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    OnboardingSettingsRow()
                     Link(destination: Self.privacyURL) { linkRow("隱私權政策", systemImage: "hand.raised") }
                     Link(destination: Self.supportURL) { linkRow("支援與意見回饋", systemImage: "questionmark.bubble") }
                     NavigationLink {
