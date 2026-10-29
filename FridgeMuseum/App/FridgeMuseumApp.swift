@@ -5,7 +5,9 @@ import UIKit
 @main
 struct FridgeMuseumApp: App {
     @State private var appModel = AppModel()
-    private let container: ModelContainer = ArchiveStore.makeContainer(inMemory: DemoMode.isActive)
+    /// Opened once per launch, after CloudSync has decided whether this launch syncs with iCloud (it may ask
+    /// CloudKit for the account status first, usually a fraction of a second; at most a few seconds).
+    @State private var container: ModelContainer?
 
     init() {
         Self.styleNavigationBars()
@@ -13,15 +15,25 @@ struct FridgeMuseumApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(appModel)
-                .environment(appModel.store.purchases)   // PaywallView reads PurchaseStore from the environment
-                .environment(appModel.store.quota)
-                .font(.fm(17))
-                .tint(Palette.teal)
-                .preferredColorScheme(DemoMode.colorScheme)
+            ZStack {
+                if let container {
+                    RootView()
+                        .environment(appModel)
+                        .environment(appModel.store.purchases)   // PaywallView reads PurchaseStore from the environment
+                        .environment(appModel.store.quota)
+                        .font(.fm(17))
+                        .tint(Palette.teal)
+                        .modelContainer(container)
+                } else {
+                    Wallpaper().ignoresSafeArea()
+                }
+            }
+            .preferredColorScheme(DemoMode.colorScheme)
+            .task {
+                guard container == nil else { return }
+                container = await appModel.sync.openStore(isFullVersion: appModel.store.isUnlocked)
+            }
         }
-        .modelContainer(container)
     }
 
     /// Navigation titles in the kitchen fonts (Huninn large titles, Chiron GoRound inline titles).

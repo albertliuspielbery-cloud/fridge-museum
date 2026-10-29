@@ -81,6 +81,8 @@ struct SettingsView: View {
                     Text("一次買斷，不是訂閱。支援「家人共享」。")
                 }
 
+                syncSection
+
                 Section {
                     ForEach(children) { c in
                         Button { editingChild = c } label: {
@@ -150,7 +152,7 @@ struct SettingsView: View {
                     Text("關於")
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("所有照片都只在這支手機上處理，不會上傳；App 不蒐集任何個人資料。")
+                        Text("照片只在這支手機上處理；開啟 iCloud 同步時，作品存在你自己的 iCloud，開發者看不到。App 不蒐集任何個人資料。")
                         Text(verbatim: Bundle.main.copyright)
                     }
                     .padding(.top, 4)
@@ -208,7 +210,75 @@ struct SettingsView: View {
         } header: {
             Text("備份到照片")
         } footer: {
-            Text("作品只存在這支手機裡。存到照片，手機換了也不怕。")
+            if app.sync.isActive {
+                Text("作品也同步在你自己的 iCloud。再存一份到照片，更安心。")
+            } else {
+                Text("作品只存在這支手機裡。存到照片，手機換了也不怕。")
+            }
+        }
+    }
+
+    /// iCloud 同步 (Full Version): the toggle, this launch's status and the last sync. Free version: one row that opens
+    /// the paywall. Changes take effect at the next launch (CloudSync).
+    private var syncSection: some View {
+        let status = app.sync.status(isFullVersion: app.store.isUnlocked)
+        return Section {
+            if app.store.isUnlocked {
+                Toggle(isOn: Binding(get: { app.sync.wantsSync }, set: { app.sync.setWantsSync($0) })) {
+                    Label {
+                        Text("iCloud 同步")
+                    } icon: {
+                        Image(systemName: "icloud").foregroundStyle(Palette.teal)
+                    }
+                }
+                LabeledContent {
+                    HStack(spacing: 6) {
+                        if status == .syncing || status == .starting { ProgressView().controlSize(.small) }
+                        Text(verbatim: status.label).multilineTextAlignment(.trailing)
+                    }
+                } label: {
+                    Text("狀態")
+                }
+                if app.sync.isActive, let last = app.sync.lastSyncedAt {
+                    LabeledContent {
+                        Text(verbatim: last.formatted(date: .abbreviated, time: .shortened)).monospacedDigit()
+                    } label: {
+                        Text("上次同步")
+                    }
+                }
+                if let detail = status.detail {
+                    Text(verbatim: detail)
+                        .font(.fm(13.5))
+                        .foregroundStyle(Palette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                Button {
+                    dismiss()
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(350))
+                        app.paywall = PaywallRequest(kind: .flat, artworkID: nil, action: .browse)
+                    }
+                } label: {
+                    HStack {
+                        Label {
+                            Text("iCloud 同步（完整版）")
+                        } icon: {
+                            Image(systemName: "icloud")
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Palette.faint)
+                    }
+                }
+            }
+        } header: {
+            Text("iCloud 同步")
+        } footer: {
+            if app.store.isUnlocked {
+                Text("用同一個 Apple 帳號的 iPhone、iPad 都看得到作品。照片只在這支手機上處理；作品存在你自己的 iCloud，開發者看不到。開關在下次打開 App 時生效，關掉同步不會刪掉手機上的作品。")
+            } else {
+                Text("完整版可以把作品同步到你自己的 iCloud，換手機、用 iPad 都看得到。")
+            }
         }
     }
 

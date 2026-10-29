@@ -26,6 +26,12 @@ settings:
     APP_BUNDLE_ID: tw.starlight.fridgemuseum
     # 版權字串（待擁有者確認）— the only place it is defined.
     APP_COPYRIGHT: "© 星光工作室 Starlight Studio"
+  # Push environment for CloudKit's silent pushes (FridgeMuseum.entitlements: aps-environment).
+  configs:
+    Debug:
+      APS_ENVIRONMENT: development
+    Release:
+      APS_ENVIRONMENT: production
 
 targets:
   FridgeMuseum:
@@ -36,6 +42,7 @@ targets:
       - path: FridgeMuseum
         excludes:
           - "Info.plist"
+          - "FridgeMuseum.entitlements"
           - "Resources/PrivacyInfo.xcprivacy"
           - "StoreKit/FridgeMuseum.storekit"
           - "**/API.md"
@@ -64,15 +71,22 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        NSCameraUsageDescription: 用相機拍下孩子的畫作和勞作。照片只會存在這支手機裡。
+        # iCloud sync (1.2.0): CloudKit's silent pushes (another device changed something).
+        UIBackgroundModes:
+          - remote-notification
+        NSCameraUsageDescription: 用相機拍下孩子的畫作和勞作。照片在手機上處理；開啟 iCloud 同步時，只存到你自己的 iCloud。
         NSPhotoLibraryAddUsageDescription: 把整理好的作品存到「照片」。
         NSPhotoLibraryUsageDescription: 為每位小朋友建立「冰箱美術館」相簿，並把整理好的作品放進去。
-        NSMicrophoneUsageDescription: 錄下孩子介紹自己作品的聲音，錄音只會存在這支手機裡。
+        NSMicrophoneUsageDescription: 錄下孩子介紹自己作品的聲音。錄音存在這支手機；開啟 iCloud 同步時，只存到你自己的 iCloud。
         NSSpeechRecognitionUsageDescription: 在手機上把孩子的錄音轉成文字備註，不會上傳到網路。
     settings:
       base:
         PRODUCT_NAME: FridgeMuseum
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
+        # iCloud (CloudKit, container iCloud.tw.starlight.fridgemuseum) + push. The App ID needs the iCloud capability
+        # with that container assigned (ci/ci_sign.py turns the capabilities on; the container is assigned by hand —
+        # HANDOFF.md「1.2.0 iCloud 同步」).
+        CODE_SIGN_ENTITLEMENTS: FridgeMuseum/FridgeMuseum.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor

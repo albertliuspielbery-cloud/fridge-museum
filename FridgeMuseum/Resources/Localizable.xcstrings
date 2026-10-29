@@ -260,6 +260,94 @@
         }
       }
     },
+    "iCloud 同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud Sync"
+          }
+        }
+      }
+    },
+    "iCloud 同步（完整版）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud Sync (Full Version)"
+          }
+        }
+      }
+    },
+    "iCloud 帳號不同，已暫停" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Different iCloud account, paused"
+          }
+        }
+      }
+    },
+    "iCloud 帳號有變動，請重新打開 App" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your iCloud account changed. Reopen the app."
+          }
+        }
+      }
+    },
+    "iCloud 暫時無法使用" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud isn’t available right now"
+          }
+        }
+      }
+    },
+    "iCloud 未登入" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not signed in to iCloud"
+          }
+        }
+      }
+    },
+    "iCloud 空間不足" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud storage is full"
+          }
+        }
+      }
+    },
+    "iCloud 空間滿了，新作品先留在手機上。到「設定 › Apple 帳號 › iCloud」整理空間後會自動繼續。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your iCloud storage is full, so new artworks stay on this phone for now. Free up space in Settings › Apple Account › iCloud and syncing picks up again."
+          }
+        }
+      }
+    },
     "mediumCraft" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -397,6 +485,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Your last artwork isn’t hung up yet"
+          }
+        }
+      }
+    },
+    "上次同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last Synced"
+          }
+        }
+      }
+    },
+    "下次打開 App 時停止同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stops the next time you open the app"
+          }
+        }
+      }
+    },
+    "下次打開 App 時開始同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts the next time you open the app"
           }
         }
       }
@@ -568,6 +689,17 @@
         }
       }
     },
+    "作品也同步在你自己的 iCloud。再存一份到照片，更安心。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artworks are also in your own iCloud. Save a copy to Photos for extra peace of mind."
+          }
+        }
+      }
+    },
     "作品只存在這支手機裡。存到照片，手機換了也不怕。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -601,6 +733,17 @@
         }
       }
     },
+    "作品會同步到你自己的 iCloud，用同一個 Apple 帳號的 iPhone、iPad 都看得到，換手機也不怕。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artworks sync to your own iCloud. See them on any iPhone or iPad signed in to the same Apple Account, even after you switch phones."
+          }
+        }
+      }
+    },
     "作品說明牌" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -630,6 +773,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Your artwork is still in the app. In Settings › My Fridge Museum › Photos, choose Add Photos Only or Full Access to save it."
+          }
+        }
+      }
+    },
+    "作品都還在 iCloud。重新打開 App 後會再檢查一次。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your artworks are still in iCloud. The app checks again when you reopen it."
           }
         }
       }
@@ -784,6 +938,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Couldn’t save."
+          }
+        }
+      }
+    },
+    "先不要" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Now"
           }
         }
       }
@@ -1143,6 +1308,17 @@
         }
       }
     },
+    "到 iPhone「設定」登入 Apple 帳號並開啟 iCloud，再重新打開 App。作品都還在手機上。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to your Apple Account and turn on iCloud in the iPhone’s Settings, then reopen the app. Your artworks are still on this phone."
+          }
+        }
+      }
+    },
     "到美術館看全部 %lld 件" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1372,6 +1548,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bottom-right corner"
+          }
+        }
+      }
+    },
+    "同步中…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Syncing…"
           }
         }
       }
@@ -1674,6 +1861,28 @@
         }
       }
     },
+    "完整版功能" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full Version feature"
+          }
+        }
+      }
+    },
+    "完整版可以把作品同步到你自己的 iCloud，換手機、用 iPad 都看得到。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With the Full Version, artworks sync to your own iCloud, so you can see them on a new iPhone or your iPad."
+          }
+        }
+      }
+    },
     "完整版：想收幾張都可以喔！" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1781,6 +1990,17 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "已同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to date"
           }
         }
       }
@@ -2136,6 +2356,17 @@
         }
       }
     },
+    "已關閉" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off"
+          }
+        }
+      }
+    },
     "平面畫作" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2176,6 +2407,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choose from Photos"
+          }
+        }
+      }
+    },
+    "從背景把 App 滑掉再打開就會生效。手機上的作品都會留著。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe the app away and open it again to apply. Everything on this phone stays."
           }
         }
       }
@@ -2231,6 +2473,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Everything is processed on this phone. Nothing is uploaded."
+          }
+        }
+      }
+    },
+    "所有處理都在這支手機上完成；作品同步到你自己的 iCloud，開發者看不到。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Everything is processed on this phone. Artworks sync to your own iCloud, where the developer can’t see them."
           }
         }
       }
@@ -2643,6 +2896,17 @@
         }
       }
     },
+    "暫時無法同步，稍後會自動再試" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can’t sync right now. It will try again later."
+          }
+        }
+      }
+    },
     "更多" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2695,6 +2959,17 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "會用到你的 iCloud 空間。下次打開 App 時開始同步，隨時可以在「設定」關掉；關掉不會刪掉手機上的作品。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It uses your iCloud storage. Syncing starts the next time you open the app. You can turn it off in Settings anytime, and turning it off never deletes anything on this phone."
           }
         }
       }
@@ -2875,6 +3150,17 @@
         }
       }
     },
+    "準備中…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Getting ready…"
+          }
+        }
+      }
+    },
     "為每位小朋友建立相簿？" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2941,6 +3227,17 @@
         }
       }
     },
+    "照片只在手機上處理，作品存在你自己的 iCloud" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos are processed on this phone and kept in your own iCloud"
+          }
+        }
+      }
+    },
     "照片只在這支手機上處理，不會上傳" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2948,6 +3245,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Photos are processed on this phone and never uploaded"
+          }
+        }
+      }
+    },
+    "照片只在這支手機上處理；開啟 iCloud 同步時，作品存在你自己的 iCloud，開發者看不到。App 不蒐集任何個人資料。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos are processed only on this phone. With iCloud Sync on, artworks are kept in your own iCloud, where the developer can’t see them. The app collects no personal data."
+          }
+        }
+      }
+    },
+    "照片還是只在手機上處理；作品存在你自己的 iCloud，開發者看不到。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos are still processed only on this phone. Artworks are kept in your own iCloud, where the developer can’t see them."
           }
         }
       }
@@ -2970,6 +3289,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Version Info"
+          }
+        }
+      }
+    },
+    "狀態" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
           }
         }
       }
@@ -3003,6 +3333,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use Their Artwork"
+          }
+        }
+      }
+    },
+    "用同一個 Apple 帳號的 iPhone、iPad 都看得到作品。照片只在這支手機上處理；作品存在你自己的 iCloud，開發者看不到。開關在下次打開 App 時生效，關掉同步不會刪掉手機上的作品。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See your artworks on any iPhone or iPad signed in to the same Apple Account. Photos are processed on this phone; artworks are kept in your own iCloud, where the developer can’t see them. Changes apply the next time you open the app, and turning sync off never deletes anything on this phone."
           }
         }
       }
@@ -3146,6 +3487,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Brush Size"
+          }
+        }
+      }
+    },
+    "等待網路連線" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for a connection"
           }
         }
       }
@@ -3625,6 +3977,17 @@
         }
       }
     },
+    "這支手機現在登入的 Apple 帳號，和上次同步時不同。為了不刪掉手機上的作品，先暫停同步；換回原本的帳號就會繼續。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This phone is signed in to a different Apple Account than the last time it synced. To keep the artworks on this phone safe, syncing is paused. Switch back to the original account to continue."
+          }
+        }
+      }
+    },
     "這是掛在冰箱上的作品說明牌。名字和生日只會記在這支手機上，下次不用再填。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3632,6 +3995,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "This is the museum label that hangs with the artwork. The name and birthday are saved only on this phone, so you won’t have to enter them again."
+          }
+        }
+      }
+    },
+    "這是掛在冰箱上的作品說明牌。名字和生日只記在你的裝置和你自己的 iCloud，下次不用再填。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is the museum label that hangs with the artwork. The name and birthday are saved only on your devices and in your own iCloud, so you won’t have to enter them again."
           }
         }
       }
@@ -3654,6 +4028,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "On the Fridge"
+          }
+        }
+      }
+    },
+    "這次無法開啟同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t turn on sync this time"
           }
         }
       }
@@ -3881,6 +4266,17 @@
         }
       }
     },
+    "開啟 iCloud 同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn On iCloud Sync"
+          }
+        }
+      }
+    },
     "關" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3954,6 +4350,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Avatar"
+          }
+        }
+      }
+    },
+    "頭像只存在你的裝置和你自己的 iCloud。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The avatar stays on your devices and in your own iCloud."
           }
         }
       }

@@ -1,0 +1,52 @@
+# iCloud 同步（1.2.0）：把 CloudKit 資料結構（schema）寫進 iCloud 容器的「開發（Development）」環境。
+#
+# 為什麼要這個：TestFlight 和 App Store 版本用的是「正式（Production）」環境，而正式環境不能由 App 自動建立資料結構。
+# 一般做法是在 Mac 上跑 Debug 版自動產生到開發環境，再到 CloudKit Console 按「Deploy Schema Changes」部署到正式環境。
+# 我們沒有 Mac，所以用 Xcode 附的 cktool 把 ci/cloudkit/schema.ckdb（照 SwiftData 的命名規則手寫，未經實機驗證）匯入開發環境，
+# 跑完印出開發環境目前的 schema 給你核對。之後一樣要到 CloudKit Console 按部署（步驟見 HANDOFF.md「1.2.0 iCloud 同步」）。
+#
+# 需要：
+#   - iCloud 容器 iCloud.tw.starlight.fridgemuseum 已在 developer.apple.com 建立（手動）
+#   - GitHub Secret CLOUDKIT_MANAGEMENT_TOKEN：CloudKit Console → 右上角帳號 → Settings → Tokens → 新增 Management Token
+#     （只顯示一次；預設一年到期）
+#   - GitHub Secret APPLE_TEAM_ID（已有）
+# 這個流程只寫開發環境，不會動正式環境的資料，也不會動使用者的資料。由 Albert 手動按（會改 Apple 帳號下的 CloudKit 設定）。
+name: CloudKit 資料結構（開發環境）
+on:
+  workflow_dispatch:
+
+jobs:
+  schema:
+    name: 匯入 CloudKit schema 到開發環境
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      CONTAINER: iCloud.tw.starlight.fridgemuseum
+    steps:
+      - uses: actions/checkout@v5
+      - name: 用 Xcode 26
+        run: ci/select_xcode.sh
+      - name: 匯入並核對
+        env:
+          CK_TOKEN: ${{ secrets.CLOUDKIT_MANAGEMENT_TOKEN }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -eo pipefail
+          [ -n "$CK_TOKEN" ] || { echo "::error::缺少 GitHub Secret：CLOUDKIT_MANAGEMENT_TOKEN（CloudKit Console → Settings → Tokens）"; exit 1; }
+          [ -n "$APPLE_TEAM_ID" ] || { echo "::error::缺少 GitHub Secret：APPLE_TEAM_ID"; exit 1; }
+          xcrun cktool save-token --help || true
+          # cktool 把 token 存在鑰匙圈。官方文件只寫了互動式用法，所以先試「token 當參數」，不行再試「從標準輸入讀」（未驗證）。
+          xcrun cktool save-token --type management "$CK_TOKEN" \
+            || printf '%s\n' "$CK_TOKEN" | xcrun cktool save-token --type management \
+            || { echo "::error::cktool 無法儲存 management token（請看上面 save-token --help 的用法）"; exit 1; }
+          xcrun cktool import-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER" \
+            --environment development --file ci/cloudkit/schema.ckdb
+          xcrun cktool export-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER" \
+            --environment development --output-file "$RUNNER_TEMP/development.ckdb"
+          echo "------ 開發環境目前的 schema ------"
+          cat "$RUNNER_TEMP/development.ckdb"
+          {
+            echo "### CloudKit schema 已匯入開發環境"
+            echo "下一步：到 https://icloud.developer.apple.com/dashboard/ → 選 $CONTAINER → 左上切到 Development → Schema 確認有 CD_Artwork、CD_Child，"
+            echo "然後按「Deploy Schema Changes…」部署到 Production。"
+          } >> "$GITHUB_STEP_SUMMARY"
