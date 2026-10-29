@@ -10,10 +10,10 @@
 
 | 項目 | 狀態 |
 |---|---|
-| iOS App | **1.0.1** 已上傳 TestFlight（2026-10-28，run 40706765651，main @ 802da3e）。1.0 擁有者已實機測過，回饋已在 1.0.1 修正；1.0.1 還沒實機測 |
+| iOS App | **1.1.0** 已上傳 TestFlight（2026-10-29，run 40792044130，main @ 0e2fd68）。1.0 擁有者實機測過；1.0.1、1.1.0 還沒實機測（要確認從舊版升級資料正常） |
 | App 內購買 | `tw.starlight.fridgemuseum.full`「完整版 / Full Version」已建立：NT$190、家人共享開、地區 TW/HK/US/CA/GB/AU/SG。審查截圖已上傳（10/28 第 2 次執行成功），但流程結束時讀到的狀態仍是 MISSING_METADATA，要到 ASC 確認是否已變 Ready to Submit |
 | 網頁測試版 | **0.9.0** 上線中：https://claude.ai/artifact/MQTbRzJLuHZUzNpgRvADPf （只有擁有者看得到）。原始碼在 `web/` |
-| repo | `albertliuspielbery-cloud/fridge-museum`（**公開**）。main = App 1.0.1。開發分支用 `fix/**`（push 也會跑模擬器測試） |
+| repo | `albertliuspielbery-cloud/fridge-museum`（**公開**）。main = App 1.1.0。開發分支用 `fix/**`（push 也會跑模擬器測試） |
 | 隱私／支援頁 | GitHub Pages：`docs/privacy.html`、`docs/support.html` → https://albertliuspielbery-cloud.github.io/fridge-museum/privacy.html 、…/support.html |
 
 ---
@@ -73,7 +73,7 @@
 
 - Secrets：`ASC_KEY_ID`、`ASC_ISSUER_ID`、`ASC_KEY_P8`、`APPLE_TEAM_ID`（Albert 設的，Admin 權限金鑰）。
 - 沒有 Mac：CI 是唯一的編譯器。雲端環境的 proxy 擋掉 Actions log 和 artifact 下載，看錯誤用 annotations（`ci/annotate_log.py`），看畫面用 `git fetch origin ci-shots`。
-- push 到 main 會自動跑模擬器編譯＋單元測試（108 個測試）。
+- push 到 main 會自動跑模擬器編譯＋單元測試（153 個測試）。
 
 ### TestFlight 還要做的
 1. ~~再跑一次「App 內購買項目」~~（10/28 已跑）。到 ASC 確認商品是否已是 Ready to Submit（沙盒才拿得到價格）。之後最好換成實機付費頁截圖（存成 `ci/iap_review.png` 重跑）。
@@ -86,6 +86,11 @@
 
 ### 已知小問題（nit）
 - （1.0.1 已修：語音轉文字寫入前檢查作品是否還在；中文首頁副標掉字。1.1.0 已修：空冰箱範例卡被流理台切到。）
+
+### 1.1.0 新功能重點
+- 重複提醒：`ArchiveKit/ArtFingerprint.swift`（v2：soft pHash + 格子 + 色相，門檻 0.40），只提醒不擋。
+- 重的處理一次只做一張：編輯中、連拍中、匯入中都會暫停背景輸出（AppModel claim/defer/drain）；存到照片的 4096 輸出走 `App/ExportGate.swift` 排隊。
+- 資料模型新增（都是 optional）：`Artwork.fingerprintData`、`Child.avatarImageData`。
 
 ### 1.1.0 連拍與備份提醒（`feat/burst`）
 - 連拍：相機快門上方「連拍」開關。每張直接成為待收作品（給目前「拍給」的孩子），不開編輯器；照樣找紙角，匯出等連拍結束才一張一張跑（AppModel `beginBurst/endBurst`，沿用 deferral；`runDeferred` 現在一次只跑一張、編輯器一開就暫停）。「完成」回廚房，便利貼「繼續」從最舊的一張開始，收進／存到手機／不要這張後自動開下一張（逐張時上一張的完整算圖排到佇列，等沒有編輯器開著才跑；改過的作品標成 processingState = pending，App 被關掉時下次開啟會重算）。開 App 時沒處理完的作品也走同一個佇列。「全部存到照片」在編輯器開著時暫停，單張存到手機排在批次目前那張後面（`ExportGate`，先來先做，一次只做一張 4096 匯出）。
@@ -117,7 +122,9 @@
 ## 6. 待辦與未決
 
 - [x] Albert：iPhone 安裝 TestFlight 1.0，回報問題 → 1.0.1 修正：放棄儲存（不要這張／全部不要）、陰影去除、降低發熱、設定齒輪移到右上角。
-- [ ] Albert：實機測 1.0.1（陰影、放棄儲存、發熱）。
+- [x] 1.1.0（Albert 10/28 要求）：重複作品提醒、小朋友頭像、美術館多選批次設定、拍給（新照片的小朋友）、連拍、備份提醒、付費頁新文案（Albert 已同意）。三輪獨立審查 GO。
+- [ ] Albert：實機測 1.1.0（從 1.0.x 升級、陰影、連拍、重複提醒真實照片、發熱）。
+- [ ] 上架：文案 `appstore/metadata.md`、6.9 吋截圖（`store/**` 分支 push 會拍到 `ci-shots-store`）都在 `store/1.1.0` 分支；加標題的截圖等 Albert 確認；之後填 ASC。
 - [ ] 確認內購商品狀態；設定 App 銷售地區（價格與供應狀況）。
 - [ ] App Store 上架資料：中英文名稱、副標「寶貝的畫，一張都不用丟」、說明、關鍵字、截圖、隱私問卷（不收集資料）。
 - [ ] 上架後：早鳥價 NT$150 一個月、兌換碼（比照星光）。
