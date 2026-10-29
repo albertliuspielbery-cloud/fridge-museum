@@ -5,7 +5,6 @@ on:
   # Dispatch only works once this file is on main; until then every push to the UI branch takes screenshots.
   push:
     branches: [feat/ui-bibi, 'store/**']
-    paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
     inputs:
       only:
