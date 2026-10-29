@@ -49,6 +49,17 @@ enum DemoMode {
         var favorites = false
     }
 
+    /// 美術館 view mode for the museum scenes (museum-small / museum-large); the other museum scenes pin 標準 so a mode
+    /// stored by an earlier launch never shows up in their screenshots. nil outside the museum scenes.
+    static var museumViewMode: MuseumViewMode? {
+        switch scenario {
+        case "museum-small": .small
+        case "museum-large": .large
+        case "museum", "museum-filter": .standard
+        default: nil
+        }
+    }
+
     @MainActor
     static func museumPreset(children: [Child]) -> MuseumPreset? {
         guard scenario == "museum-filter" else { return nil }
@@ -117,7 +128,7 @@ enum DemoMode {
             path.wrappedValue.append(Route.edit(seeded.pendingFlat))
             try? await Task.sleep(for: .seconds(2))
             app.paywall = PaywallRequest(kind: .flat, artworkID: seeded.pendingFlat, action: .keep)
-        case "museum", "museum-filter":
+        case "museum", "museum-filter", "museum-small", "museum-large":
             path.wrappedValue.append(Route.museum)
         case "detail":
             path.wrappedValue.append(Route.detail(seeded.featured))

@@ -426,6 +426,19 @@ EN_BURST = {
 EN.update(EN_BURST)
 # ---- end feat/burst
 
+# ---- feat/museum-modes: 美術館 大圖 / 標準 / 小圖 view modes, full-screen viewer. New strings only, kept apart for merging.
+EN_MUSEUM_MODES = {
+    "顯示方式": "View",
+    "標準": "Standard",
+    "小圖": "Small",
+    "大圖": "Large",
+    "孩子說：「%@」": "In their words: “%@”",
+    "全螢幕看": "View Full Screen",
+    "作品說明": "Artwork Details",
+}
+EN.update(EN_MUSEUM_MODES)
+# ---- end feat/museum-modes
+
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),
     "CFBundleName": ("冰箱美術館", "My Fridge Museum"),

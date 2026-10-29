@@ -4,14 +4,16 @@ import SwiftUI
 /// 美術館「選取」: the checkmark on a selected print.
 struct SelectionMark: View {
     let selected: Bool
+    /// Sized per museum view mode (小圖 20 / 標準 26 / 大圖 30).
+    var size: CGFloat = 26
 
     var body: some View {
         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-            .font(.system(size: 26, weight: .semibold))
+            .font(.system(size: size, weight: .semibold))
             .foregroundStyle(selected ? Palette.teal : Color.white)
             .background(Circle().fill(selected ? Color.white : Color.black.opacity(0.28)))
             .shadow(color: Palette.shadow, radius: 2, y: 1)
-            .padding(10)
+            .padding(size < 24 ? 5 : 10)
             .accessibilityHidden(true)
     }
 }
