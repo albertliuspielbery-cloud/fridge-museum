@@ -7,7 +7,7 @@ import XCTest
 final class ScreenshotTests: XCTestCase {
     static let allScenarios = [
         "home-empty", "home-full", "success", "edit-flat", "edit-craft", "crop-loupe", "adjust", "brush-craft",
-        "label", "paywall", "museum", "museum-filter", "detail", "settings",
+        "label", "paywall", "museum", "museum-filter", "detail", "settings", "share-card",
     ]
 
     override func setUp() {

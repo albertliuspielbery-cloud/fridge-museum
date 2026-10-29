@@ -243,6 +243,23 @@
         }
       }
     },
+    "In %@’s words" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In %@’s words"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@說"
+          }
+        }
+      }
+    },
     "copyright.fallback" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1049,6 +1066,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Share"
+          }
+        }
+      }
+    },
+    "分享卡片" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share Card"
           }
         }
       }
@@ -2610,6 +2638,17 @@
         }
       }
     },
+    "方形" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Square"
+          }
+        }
+      }
+    },
     "日期" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3036,6 +3075,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Drawing"
+          }
+        }
+      }
+    },
+    "直式 4:5" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portrait 4:5"
           }
         }
       }
