@@ -473,8 +473,12 @@ def review_detail(app_id, vid, listing):
             write('PATCH', f'/v1/appStoreReviewDetails/{d["id"]}', {'data': {'type': 'appStoreReviewDetails',
                   'id': d['id'], 'attributes': p}}, '審查資訊：' + ', '.join(p))
     else:
-        write('POST', '/v1/appStoreReviewDetails', {'data': {'type': 'appStoreReviewDetails', 'attributes': want,
-              'relationships': {'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': vid}}}}}, '建立審查資訊')
+        # ASC 建立審查資訊時一定要有聯絡人姓名和電話，這個流程不代填：先跳過，請擁有者填好聯絡資訊後再跑一次。
+        warning('版本頁還沒有「App 審查資訊」，ASC 要求先有聯絡人姓名和電話才能建立，所以這次先跳過審查備註。請到 App Store'
+                f' Connect → 版本頁最下面「App 審查資訊」填好聯絡資訊後，再跑一次這個流程：'
+                f'https://appstoreconnect.apple.com/apps/{app_id}/distribution/ios/version/inflight')
+        report.append('審查備註：跳過（還沒有審查資訊，先填聯絡資訊再重跑）')
+        return
     missing = [zh for k, zh in (('contactFirstName', '名字'), ('contactLastName', '姓氏'), ('contactPhone', '電話'))
                if not cur.get(k)]
     if missing:
