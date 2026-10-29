@@ -86,6 +86,9 @@ def fake_call(method, path, body=None, ok404=False, soft=False, want_error=False
         n = f'N{next(ids)}'
         if p == '/v1/appStoreVersionLocalizations':
             S['vlocs'][n] = dict(d['attributes']); return {'data': {'id': n}}
+        if p == '/v1/appStoreVersions':
+            S['versions'][n] = dict(d['attributes'], appVersionState='PREPARE_FOR_SUBMISSION')
+            return {'data': {'id': n, 'attributes': S['versions'][n]}}
         if p == '/v1/appInfoLocalizations':
             S['ilocs'][n] = dict(d['attributes']); return {'data': {'id': n}}
         if p == '/v1/appStoreReviewDetails':
@@ -150,10 +153,33 @@ print('--- third run with 11 shots in zh set'); w = run(); print(w)
 assert len(S['order'][zh_set]) == 6 and all(S['shots'][i]['fileName'].startswith('zh-Hant-0') for i in S['order'][zh_set])
 assert [S['shots'][i]['fileName'][8:10] for i in S['order'][zh_set]] == ['01', '02', '03', '04', '05', '06'], [S['shots'][i]['fileName'] for i in S['order'][zh_set]]
 print('--- fourth run no writes'); w = run(); assert not w, w
+print('--- kept UPLOAD_COMPLETE screenshot: waited for, nothing re-uploaded or deleted')
+k = S['order'][zh_set][2]; S['shots'][k]['assetDeliveryState'] = {'state': 'UPLOAD_COMPLETE'}
+w = run(); assert ('GET', f'/v1/appScreenshots/{k}') in log, log
+assert not [x for x in w if x[0] in ('POST', 'DELETE')], w
+assert S['shots'][k]['assetDeliveryState']['state'] == 'COMPLETE'
 print('--- released app: whatsNew sent')
 S['versions']['v0'] = {'versionString': '1.0.5', 'appStoreState': 'READY_FOR_SALE', 'appVersionState': 'READY_FOR_DISTRIBUTION'}
 w = run('--no-screenshots'); print(w); assert any('whatsNew' in v for v in S['vlocs'].values())
+print('--- whatsNew not sent when --version differs from metadata.md section 6')
+for v in S['vlocs'].values():
+    v['whatsNew'] = 'keep me'
+w = run('--no-screenshots', '--version', '1.2.0')
+assert S['versions']['v1']['versionString'] == '1.2.0'
+assert all(v['whatsNew'] == 'keep me' for v in S['vlocs'].values())
+assert any('沒有送（版本號不符）' in r for r in M.report)
+S['versions']['v1']['versionString'] = '1.1.0'
+print('--- releaseType notice for existing AFTER_APPROVAL version (not changed)')
+S['versions']['v1']['releaseType'] = 'AFTER_APPROVAL'
+w = run('--no-screenshots'); assert S['versions']['v1']['releaseType'] == 'AFTER_APPROVAL'
+assert not [x for x in w if x == ('PATCH', '/v1/appStoreVersions/v1')], w
 print('--- in review: exits 0 without writes')
 S['versions']['v1']['appVersionState'] = 'WAITING_FOR_REVIEW'; S['versions']['v1']['appStoreState'] = 'WAITING_FOR_REVIEW'
 w = run(); assert not w
+print('--- no editable version: new one created with releaseType MANUAL')
+S['versions']['v1']['appVersionState'] = S['versions']['v1']['appStoreState'] = 'READY_FOR_DISTRIBUTION'
+S['versions']['v1']['versionString'] = '1.1.0'
+w = run('--no-screenshots', '--version', '1.2.0')
+nv = [v for k, v in S['versions'].items() if k.startswith('N')]
+assert len(nv) == 1 and nv[0]['releaseType'] == 'MANUAL' and nv[0]['versionString'] == '1.2.0', nv
 print('ALL OK')

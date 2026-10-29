@@ -14,6 +14,8 @@
 # 環境變數：ASC_KEY_ID、ASC_ISSUER_ID、ASC_KEY_P8（必要，--check／--from-md 不用）；APP_BUNDLE_ID（可選）
 import os, re, sys, json, time, struct, hashlib, argparse, urllib.request, urllib.error
 
+sys.stdout.reconfigure(encoding='utf-8')  # 中文註解訊息；不靠執行環境的預設編碼
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LISTING = os.path.join(ROOT, 'appstore', 'listing.json')
 METADATA_MD = os.path.join(ROOT, 'appstore', 'metadata.md')
@@ -67,7 +69,8 @@ MD_SECTIONS = {1: 'name', 2: 'subtitle', 3: 'promotionalText', 4: 'description',
 def parse_metadata_md(path=METADATA_MD):
     """讀 metadata.md：回傳 {'locales': {locale: {field: text}}, 'reviewNotes': str, 'urls': {...}, 'copyright': str}"""
     lines = open(path, encoding='utf-8').read().split('\n')
-    out = {'locales': {l: {} for l in LOCALES}, 'reviewNotes': None, 'urls': {}, 'copyright': None}
+    out = {'locales': {l: {} for l in LOCALES}, 'reviewNotes': None, 'urls': {}, 'copyright': None,
+           'whatsNewVersion': None}
     sec, loc, buf = None, None, None
     for line in lines:
         if buf is not None:
@@ -84,6 +87,9 @@ def parse_metadata_md(path=METADATA_MD):
         m = re.match(r'^## (\d+)\.', line)
         if m:
             sec, loc = int(m.group(1)), None
+            if sec == 6:  # 「## 6. 此版本新增內容 What's New（1.1.0）」→ 這段寫的是哪一版
+                vm = re.search(r'[（(]\s*(\d+(?:\.\d+)+)\s*[）)]', line)
+                out['whatsNewVersion'] = vm.group(1) if vm else None
             continue
         if line.strip() == '```':
             buf = []
@@ -152,6 +158,8 @@ def check(listing):
         errs.append('審查備註和 metadata.md 第 11 節不一致')
     if listing.get('copyright') != md['copyright']:
         errs.append('版權和 metadata.md 第 12 節不一致')
+    if listing.get('whatsNewVersion') != md['whatsNewVersion']:
+        errs.append('whatsNewVersion 和 metadata.md 第 6 節標題的版本號不一致')
     for loc in LOCALES:
         for p in shot_files(loc):
             if not os.path.isfile(p):
@@ -177,6 +185,7 @@ def from_md():
         L.setdefault('marketingUrl', '')
     listing['reviewNotes'] = md['reviewNotes']
     listing['copyright'] = md['copyright']
+    listing['whatsNewVersion'] = md['whatsNewVersion']
     with open(LISTING, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(listing, f, ensure_ascii=False, indent=2)
         f.write('\n')
@@ -289,14 +298,20 @@ def ensure_version(app_id, version, listing):
         if any(v['attributes'].get('versionString') == version for v in vs):
             error(f'版本 {version} 已經上架過了。要更新請用新的版本號（例如下一版），在「版本號」欄位填新的號碼重跑。')
         r = write('POST', '/v1/appStoreVersions', {'data': {'type': 'appStoreVersions', 'attributes': {
-            'platform': 'IOS', 'versionString': version, 'copyright': listing['copyright']},
+            # releaseType MANUAL：審查通過後也要擁有者自己按「發布」，絕不自動上架
+            'platform': 'IOS', 'versionString': version, 'copyright': listing['copyright'], 'releaseType': 'MANUAL'},
             'relationships': {'app': {'data': {'type': 'apps', 'id': app_id}}}}}, f'建立版本 {version}')
-        report.append(f'已建立版本 {version}')
+        report.append(f'已建立版本 {version}（發布方式：手動發布）')
         return (r or {}).get('data'), released
     v = editable[0]
     a = v['attributes']
     vid = v['id']
     old_vs, old_cr = a.get('versionString'), a.get('copyright')
+    rt = a.get('releaseType')
+    if rt in ('AFTER_APPROVAL', 'SCHEDULED'):
+        # 既有版本的發布方式不改（擁有者的決定），只提醒
+        notice(f'版本 {old_vs} 的發布方式目前是 {"審查通過後自動發布" if rt == "AFTER_APPROVAL" else "排定日期自動發布"}（{rt}）。'
+               '這個流程不會改它；如果想審查通過後自己按發布，請到 ASC 版本頁「版本發布」選「手動發布此版本」。')
     if old_vs != version:
         clash = [x for x in vs if x['id'] != vid and x['attributes'].get('versionString') == version]
         if clash:
@@ -311,11 +326,18 @@ def ensure_version(app_id, version, listing):
     return v, released
 
 
-def version_localizations(vid, listing, released):
+def version_localizations(vid, listing, released, version):
     have = {l['attributes']['locale']: l for l in all_pages(f'/v1/appStoreVersions/{vid}/appStoreVersionLocalizations?limit=50')}
     fields = ['description', 'keywords', 'promotionalText', 'supportUrl', 'marketingUrl']
+    wn_note = '；第一個上架版本，不填「此版本新增內容」'
     if released:
-        fields.append('whatsNew')
+        if listing.get('whatsNewVersion') == version:
+            fields.append('whatsNew')
+            wn_note = '、此版本新增內容'
+        else:
+            warning(f'metadata.md 的「此版本新增內容」是寫給 {listing.get("whatsNewVersion")} 的，這次版本是 {version}，'
+                    '所以沒有送出。請先更新 metadata.md 第 6 節（標題的版本號和內容），跑 --from-md 再重跑。')
+            wn_note = '；此版本新增內容：沒有送（版本號不符）'
     out = {}
     for loc in LOCALES:
         L = listing['locales'][loc]
@@ -336,8 +358,7 @@ def version_localizations(vid, listing, released):
     extra = sorted(set(have) - set(LOCALES))
     if extra:
         warning('ASC 上還有其他語言：' + '、'.join(extra) + '（這個流程不會動它們，也不會刪掉；不需要的話請到 ASC 移除）')
-    report.append('版本資料（描述、關鍵字、宣傳文字、網址）：' + '、'.join(LOCALES)
-                  + ('' if released else '；第一個上架版本，不填「此版本新增內容」'))
+    report.append('版本資料（描述、關鍵字、宣傳文字、網址）：' + '、'.join(LOCALES) + wn_note)
     return out
 
 
@@ -395,27 +416,25 @@ def age_rating(info_id, listing):
     d = (r or {}).get('data')
     if not d:
         warning('讀不到年齡分級問卷，請到 ASC →「App 資訊」→「年齡分級」手動填（全部選「無／否」，結果 4+）。')
+        report.append('年齡分級：沒有填（讀不到問卷，請手動填）')
         return
     cur = d.get('attributes') or {}
-    # 只送 ASC 認得的欄位（GET 回傳裡有的）；ASC 多出來的新題目提醒擁有者
-    if cur:
-        unknown = [k for k in want if k not in cur]
-        for k in unknown:
-            print('age rating: ASC 沒有欄位', k, '，跳過')
-            want.pop(k)
-        new_q = [k for k, v in cur.items() if k not in listing['ageRating'] and v is None
-                 and k not in ('developerAgeRatingInfoUrl', 'gracRatingClassificationNumber', 'koreaAgeRatingOverride',
-                               'ageRatingOverride')]
-        if new_q:
-            warning('年齡分級問卷有這個流程不認得的新題目：' + '、'.join(new_q) + '。請到 ASC →「App 資訊」→「年齡分級」確認（應該都是「無／否」）。')
+    # 所有答案都送（GET 沒回傳的欄位也送）；ASC 不收的欄位由下面的重試拿掉並回報
+    new_q = [k for k, v in cur.items() if k not in listing['ageRating'] and v is None
+             and k not in ('developerAgeRatingInfoUrl', 'gracRatingClassificationNumber', 'koreaAgeRatingOverride',
+                           'ageRatingOverride', 'socialMediaAgeRestricted')]
+    if new_q:
+        warning('年齡分級問卷有這個流程不認得的新題目：' + '、'.join(new_q) + '。請到 ASC →「App 資訊」→「年齡分級」確認（應該都是「無／否」）。')
     patch = diff(cur, want)
-    dropped = []
-    for _ in range(8):
+    already = len(want) - len(patch)
+    dropped, written, failed = [], [], None
+    for _ in range(10):
         if not patch:
             break
         res = write('PATCH', f'/v1/ageRatingDeclarations/{d["id"]}', {'data': {'type': 'ageRatingDeclarations',
                     'id': d['id'], 'attributes': patch}}, '年齡分級：' + ', '.join(patch), want_error=True)
         if not res or '__error__' not in res:
+            written = sorted(patch)
             break
         bad = set()
         for e in res['errors']:
@@ -423,14 +442,22 @@ def age_rating(info_id, listing):
             if m and m.group(1) in patch:
                 bad.add(m.group(1))
         if not bad:
-            warning(f'年齡分級更新失敗（{res["__error__"]}）：{err_text(res)}。請到 ASC 手動填（全部「無／否」，結果 4+）。')
-            return
+            failed = f'{res["__error__"]}：{err_text(res)}'
+            break
         dropped += sorted(bad)
         for k in bad:
             patch.pop(k)
+    else:
+        failed = '重試太多次'
     if dropped:
-        warning('年齡分級這些題目 ASC 不收，已跳過：' + '、'.join(dropped) + '。請到 ASC 確認問卷已完成。')
-    report.append('年齡分級：全部「無／否」（應為 4+）')
+        warning('年齡分級這些題目 ASC 不收，已跳過：' + '、'.join(dropped) + '。請到 ASC →「App 資訊」→「年齡分級」確認問卷已完成。')
+    if failed:
+        warning(f'年齡分級更新失敗（{failed}）。請到 ASC 手動填（全部「無／否」，結果 4+）。')
+        report.append(f'年齡分級：寫入失敗，未寫入：{", ".join(sorted(patch))}；原本就一樣 {already} 題')
+        return
+    verb = '會寫入' if DRY else '已寫入'
+    report.append(f'年齡分級：{verb} {len(written)} 題（{", ".join(written) or "無"}）；原本就一樣 {already} 題；'
+                  f'ASC 不收而跳過：{", ".join(dropped) or "無"}。答案都是「無／否」，請到 ASC 確認結果是 4+')
 
 
 def review_detail(app_id, vid, listing):
@@ -527,27 +554,36 @@ def screenshots(loc_ids, listing):
         todo = [(p, n) for p, n in want if n not in by_name]
         final_order = [by_name[n]['id'] if n in by_name else None for _, n in want]
         current_order = [s['id'] for s in old]
-        if not todo and not stale and not broken and current_order == final_order:
+        # 只有 COMPLETE 算完成；之前傳過但還是 UPLOAD_COMPLETE 的保留（不重傳），但一樣要等它變 COMPLETE 才刪舊的
+        kept_unfinished = {i for i in keep_ids if shot_state(next(s for s in old if s['id'] == i)) != 'COMPLETE'}
+        if not todo and not stale and not broken and not kept_unfinished and current_order == final_order:
             report.append(f'截圖 {loc}：{len(want)} 張已經是最新的')
             continue
+        room = MAX_SHOTS_PER_SET - len(keep_ids) - len(stale)
+        early = max(0, len(todo) - room)
         if DRY:
-            print(f'[dry-run] {loc}：截圖組 {sid}，會上傳 {len(todo)} 張、刪除舊的 {len(stale) + len(broken)} 張、'
-                  f'保留 {len(keep_ids)} 張，然後排好順序')
+            print(f'[dry-run] {loc}：截圖組 {sid}，會上傳 {len(todo)} 張、刪除舊的 {len(stale) + len(broken)} 張'
+                  f'（其中 {early} 張要在上傳前先刪，因為一組最多 {MAX_SHOTS_PER_SET} 張）、保留 {len(keep_ids)} 張，然後排好順序')
             continue
-        # 壞掉（沒傳完）的先刪；一組最多 10 張，放不下時先刪掉最舊的幾張舊截圖騰出位置
+        # 壞掉（沒傳完、FAILED）的先刪，它們本來就不會顯示
         for s in broken:
             call('DELETE', f'/v1/appScreenshots/{s["id"]}')
-        room = MAX_SHOTS_PER_SET - len(keep_ids) - len(stale)
+        # 一組最多 10 張。舊的 + 新的放不下時，只好在上傳前先刪舊截圖，而且只刪「剛好放得下」的張數，
+        # 從排在最後面的開始刪（最不顯眼；商店頁前幾張維持原樣）。之後上傳失敗的話，這幾張就沒了，
+        # 但其餘舊截圖還在，重跑會補齊。
+        if early:
+            warning(f'{loc} 截圖組已經有 {len(keep_ids) + len(stale)} 張（上限 {MAX_SHOTS_PER_SET}），'
+                    f'要先刪掉排在最後的 {min(early, len(stale))} 張舊截圖才能上傳新的。上傳失敗的話請重跑。')
         while room < len(todo) and stale:
-            s = stale.pop(0)
+            s = stale.pop()  # 排在最後面的先刪
             call('DELETE', f'/v1/appScreenshots/{s["id"]}')
             room += 1
-            print('deleted old screenshot early (set is full)', s['id'])
+            print('deleted old screenshot before upload (set is full)', s['id'])
         new_ids = {}
         for p, n in todo:
             new_ids[n] = upload_screenshot(sid, p, n)
-        # 等 Apple 處理完（COMPLETE）才刪舊的
-        deadline, pending = time.time() + 600, set(new_ids.values())
+        # 等 Apple 處理完（全部 COMPLETE，包含保留下來的）才刪舊的
+        deadline, pending = time.time() + 600, set(new_ids.values()) | kept_unfinished
         while pending and time.time() < deadline:
             time.sleep(5)
             for i in list(pending):
@@ -604,10 +640,12 @@ def main():
     app_id = app['id']
     v, released = ensure_version(app_id, args.version, listing)
     vid = (v or {}).get('id')
-    loc_ids = version_localizations(vid, listing, released) if vid else {}
+    # App 資訊的語言（名稱）先建，再建版本的語言：新增語言時 ASC 比較不會卡在「缺 App 名稱」
     info = pick_appinfo(app_id)
     if info:
         appinfo_localizations(info['id'], listing)
+    loc_ids = version_localizations(vid, listing, released, args.version) if vid else {}
+    if info:
         categories(info['id'], listing)
         age_rating(info['id'], listing)
     if vid:
