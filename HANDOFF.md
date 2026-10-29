@@ -10,7 +10,7 @@
 
 | 項目 | 狀態 |
 |---|---|
-| iOS App | **1.1.0** 已上傳 TestFlight（2026-10-29，run 40792044130，main @ 0e2fd68）。1.0 擁有者實機測過；1.0.1、1.1.0 還沒實機測（要確認從舊版升級資料正常） |
+| iOS App | **1.1.0** 已送審（2026-10-29 14:50，App＋「完整版」內購共 2 項，狀態「等待審查」；發布方式：手動）。Albert 已實機測過 1.1.0 |
 | App 內購買 | `tw.starlight.fridgemuseum.full`「完整版 / Full Version」已建立：NT$190、家人共享開、地區 TW/HK/US/CA/GB/AU/SG。審查截圖已上傳（10/28 第 2 次執行成功），但流程結束時讀到的狀態仍是 MISSING_METADATA，要到 ASC 確認是否已變 Ready to Submit |
 | 網頁測試版 | **0.9.0** 上線中：https://claude.ai/artifact/MQTbRzJLuHZUzNpgRvADPf （只有擁有者看得到）。原始碼在 `web/` |
 | repo | `albertliuspielbery-cloud/fridge-museum`（**公開**）。main = App 1.1.0。開發分支用 `fix/**`（push 也會跑模擬器測試） |
@@ -125,7 +125,9 @@
 - [x] Albert：iPhone 安裝 TestFlight 1.0，回報問題 → 1.0.1 修正：放棄儲存（不要這張／全部不要）、陰影去除、降低發熱、設定齒輪移到右上角。
 - [x] 1.1.0（Albert 10/28 要求）：重複作品提醒、小朋友頭像、美術館多選批次設定、拍給（新照片的小朋友）、連拍、備份提醒、付費頁新文案（Albert 已同意）。三輪獨立審查 GO。
 - [ ] Albert：實機測 1.1.0（從 1.0.x 升級、陰影、連拍、重複提醒真實照片、發熱）。
-- [ ] 上架：文案 `appstore/metadata.md`、6.9 吋截圖（`store/**` 分支 push 會拍到 `ci-shots-store`）都在 `store/1.1.0` 分支；加標題的截圖等 Albert 確認；之後填 ASC。
+- [x] 上架資料：`appstore/listing.json`＋`appstore/screenshots/`（加標題截圖），用「App Store 上架資料」流程寫入 ASC；隱私「不收集資料」、免費＋7 地區、內容版權、審查聯絡人都已填。2026-10-29 送審。
+- [ ] 等審查結果（Apple 寄信）。通過後由 Albert 按「發佈」。被退件就修好再送。
+- [ ] 上架後：早鳥價 NT$150（首月）要在 ASC 排價格。
 - [ ] 確認內購商品狀態；設定 App 銷售地區（價格與供應狀況）。
 - [ ] App Store 上架資料：中英文名稱、副標「寶貝的畫，一張都不用丟」、說明、關鍵字、截圖、隱私問卷（不收集資料）。
 - [ ] 上架後：早鳥價 NT$150 一個月、兌換碼（比照星光）。
