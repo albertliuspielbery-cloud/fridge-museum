@@ -426,6 +426,14 @@ EN_BURST = {
 EN.update(EN_BURST)
 # ---- end feat/burst
 
+# ---- feat/brush-zoom: 筆刷 zoom & pan on the editor stage. New strings only, kept apart for merging.
+EN_BRUSH_ZOOM = {
+    "兩指可以放大、移動": "Pinch to zoom; drag with two fingers to move.",
+    "恢復原尺寸": "Zoom to Fit",
+}
+EN.update(EN_BRUSH_ZOOM)
+# ---- end feat/brush-zoom
+
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),
     "CFBundleName": ("冰箱美術館", "My Fridge Museum"),

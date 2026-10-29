@@ -953,6 +953,17 @@
         }
       }
     },
+    "兩指可以放大、移動" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pinch to zoom; drag with two fingers to move."
+          }
+        }
+      }
+    },
     "共 %lld 件" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2187,6 +2198,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Undo Stroke"
+          }
+        }
+      }
+    },
+    "恢復原尺寸" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom to Fit"
           }
         }
       }

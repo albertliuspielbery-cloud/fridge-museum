@@ -47,7 +47,19 @@ struct EditView: View {
     @State private var brushSize: Double = 3
     @State private var compare = false
     @State private var split: CGFloat = 0.5
+    /// The stroke being drawn, in artwork-normalized points (so zoom / pan never moves it).
     @State private var liveStroke: [CGPoint] = []
+    /// Its radius (fraction of the output's long edge), fixed when the stroke starts: slider size ÷ zoom.
+    @State private var liveStrokeRadius: Double = 0
+    /// 筆刷 / 對比: two-finger pinch & pan, double tap (view only — strokes stay in artwork space).
+    @State private var stageZoom = StageZoom()
+    @State private var pinchStart: PinchStart?
+    /// Ring showing the brush size for a moment after the slider moves.
+    @State private var showsSizePreview = false
+    @State private var sizePreviewToken = 0
+    /// 「兩指可以放大、移動」 rides on the brush hint the first time the brush is opened.
+    @State private var showsZoomHint = false
+    @AppStorage("brushZoomHintShown") private var brushZoomHintShown = false
     @State private var isSaving = false
     @State private var kindSelection: ArtworkKind
     @State private var activeCorner: Int?
@@ -118,6 +130,7 @@ struct EditView: View {
         .onChange(of: kindSelection) { _, newKind in
             if newKind == .craft, tool == .crop { tool = nil }
             compare = false
+            resetZoom()
             pickingParts = false
             Task { await model.setKind(newKind) }
         }
@@ -134,6 +147,20 @@ struct EditView: View {
         } message: {
             Text("這張會從 App 裡刪掉，不會存到手機。")
         }
+        .onChange(of: tool) { _, newTool in
+            resetZoom()
+            if newTool == .brush {
+                if !brushZoomHintShown, !DemoMode.isActive {
+                    brushZoomHintShown = true
+                    showsZoomHint = true
+                }
+            } else {
+                showsZoomHint = false
+            }
+        }
+        .onChange(of: compare) { _, _ in resetZoom() }
+        .onChange(of: artwork.id) { _, _ in resetZoom() }
+        .onChange(of: brushSize) { _, _ in flashSizePreview() }
         .onAppear { app.beginEditing(artwork.id) }
         .task {
             model.render()
@@ -334,7 +361,12 @@ struct EditView: View {
     @ViewBuilder
     private func resultStage(size: CGSize) -> some View {
         if let out = model.output {
-            let rect = fitRect(out.size, in: size)
+            let fit = fitRect(out.size, in: size)
+            // Where the artwork is drawn: the fit rect, zoomed / panned while 筆刷 or 對比 is on.
+            let rect = stageZoom.displayRect(fit: fit)
+            let visible = rect.intersection(CGRect(origin: .zero, size: size))
+            let shown = visible.isNull ? rect : visible
+            let touchSurface = usesStageTouches
             ZStack(alignment: .topLeading) {
                 Image(uiImage: out)
                     .resizable()
@@ -349,16 +381,16 @@ struct EditView: View {
                             Rectangle().frame(width: rect.width * split)
                         }
                         .offset(x: rect.minX, y: rect.minY)
-                    CompareDivider(height: rect.height)
-                        .offset(x: rect.minX + rect.width * split - 22, y: rect.minY)
+                    CompareDivider(height: shown.height)
+                        .offset(x: rect.minX + rect.width * split - 22, y: shown.minY)
                     HStack {
                         StageChip(text: String(localized: "原圖"))
                         Spacer()
                         StageChip(text: String(localized: "處理後"))
                     }
                     .padding(10)
-                    .frame(width: rect.width)
-                    .offset(x: rect.minX, y: rect.maxY - 52)
+                    .frame(width: shown.width)
+                    .offset(x: shown.minX, y: shown.maxY - 52)
                     .allowsHitTesting(false)
                 }
                 if pickingParts {
@@ -383,14 +415,35 @@ struct EditView: View {
                     }
                 }
                 if !liveStroke.isEmpty {
-                    Path { p in p.addLines(liveStroke) }
+                    let points = liveStroke.map { stageZoom.viewPoint(fromImage: $0, fit: fit) }
+                    let radius = CGFloat(liveStrokeRadius) * max(rect.width, rect.height)
+                    Path { p in p.addLines(points) }
                         .stroke(liveStrokeColor,
-                                style: StrokeStyle(lineWidth: max(2, liveRadius(rect: rect) * 2), lineCap: .round, lineJoin: .round))
+                                style: StrokeStyle(lineWidth: max(2, radius * 2), lineCap: .round, lineJoin: .round))
+                    if let last = points.last {
+                        BrushRing(radius: radius)
+                            .position(last)
+                    }
+                } else if tool == .brush, showsSizePreview {
+                    BrushRing(radius: StageZoom.screenRadius(sliderSize: brushSize, fit: fit))
+                        .position(x: size.width / 2, y: size.height / 2)
+                        .transition(.opacity)
                 }
             }
             .frame(width: size.width, height: size.height, alignment: .topLeading)
+            // Zoomed: keep the artwork inside the stage (at 1× the print's shadow may spill over as before).
+            .mask { Rectangle().padding(stageZoom.isZoomed ? 0 : -40) }
             .contentShape(Rectangle())
             .gesture(stageGesture(rect: rect))
+            .allowsHitTesting(!touchSurface)
+            .overlay {
+                if touchSurface {
+                    StageTouchSurface { event in
+                        handleStageTouch(event, fit: fit, viewport: size)
+                    }
+                    .accessibilityHidden(true)
+                }
+            }
             .overlay {
                 if model.isRendering {
                     ProgressView()
@@ -398,6 +451,13 @@ struct EditView: View {
                         .background(Circle().fill(Palette.surface))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                         .allowsHitTesting(false)
+                }
+            }
+            .overlay(alignment: .bottomLeading) {
+                if touchSurface, stageZoom.isZoomed {
+                    zoomResetChip
+                        .padding(6)
+                        .transition(.opacity)
                 }
             }
         } else if model.failed {
@@ -435,23 +495,14 @@ struct EditView: View {
         return brushMode == .restore ? Palette.green.opacity(0.5) : Palette.red.opacity(0.5)
     }
 
-    /// Brush radius in view points for the live stroke preview (radius = fraction of the output's long edge).
-    private func liveRadius(rect: CGRect) -> CGFloat {
-        CGFloat(brushSize * 0.006) * max(rect.width, rect.height)
-    }
+    /// 筆刷 and 對比 take the stage's touches through `StageTouchSurface` (one finger draws / drags the split line,
+    /// two fingers zoom and pan, double tap zooms); otherwise the SwiftUI gesture below (part picking).
+    private var usesStageTouches: Bool { tool == .brush || compare }
 
+    /// Part picking (taps on the craft parts). 筆刷 / 對比 go through `handleStageTouch` instead.
     private func stageGesture(rect: CGRect) -> some Gesture {
         DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                if pickingParts { return }
-                if tool == .brush {
-                    liveStroke.append(value.location)
-                } else if compare, rect.width > 0 {
-                    split = ((value.location.x - rect.minX) / rect.width).clamped(0, 1)
-                }
-            }
             .onEnded { value in
-                if tool == .brush { commitStroke(rect: rect) }
                 if pickingParts, rect.width > 0, rect.height > 0 {
                     let p = CGPoint(x: (value.location.x - rect.minX) / rect.width, y: (value.location.y - rect.minY) / rect.height)
                     if model.togglePart(atOutputPoint: p) == false {
@@ -461,18 +512,90 @@ struct EditView: View {
             }
     }
 
-    private func commitStroke(rect: CGRect) {
+    private func handleStageTouch(_ event: StageTouchEvent, fit: CGRect, viewport: CGSize) {
+        switch event {
+        case .strokeBegan(let p):
+            if tool == .brush {
+                liveStrokeRadius = StageZoom.strokeRadius(sliderSize: brushSize, scale: stageZoom.scale)
+                liveStroke = [stageZoom.imagePoint(fromView: p, fit: fit)]
+            } else if compare {
+                split = stageZoom.imagePoint(fromView: p, fit: fit).x.clamped(0, 1)
+            }
+        case .strokeMoved(let p):
+            if tool == .brush {
+                guard !liveStroke.isEmpty else { return }
+                liveStroke.append(stageZoom.imagePoint(fromView: p, fit: fit))
+            } else if compare {
+                split = stageZoom.imagePoint(fromView: p, fit: fit).x.clamped(0, 1)
+            }
+        case .strokeEnded:
+            if tool == .brush { commitStroke() } else { liveStroke = [] }
+        case .strokeCancelled:
+            liveStroke = []
+        case let .transformBegan(centroid, distance):
+            pinchStart = PinchStart(zoom: stageZoom, centroid: centroid, distance: distance)
+        case let .transformChanged(centroid, distance):
+            guard let start = pinchStart else { return }
+            stageZoom = start.zoom.pinched(startCentroid: start.centroid, startDistance: start.distance,
+                                           centroid: centroid, distance: distance, fit: fit, viewport: viewport)
+        case .transformEnded:
+            pinchStart = nil
+        case .doubleTap(let p):
+            withAnimation(.easeOut(duration: 0.25)) {
+                stageZoom = stageZoom.toggled(at: p, fit: fit, viewport: viewport)
+            }
+        }
+    }
+
+    private func commitStroke() {
         let points = liveStroke
         liveStroke = []
-        guard !points.isEmpty, rect.width > 0, rect.height > 0 else { return }
-        guard let mapping = model.result?.mapping else { return }
-        // Touches are output-normalized; strokes live unturned (flat: corrected sheet, craft: original photo).
+        guard !points.isEmpty, let mapping = model.result?.mapping else { return }
+        // Points are output-normalized; strokes live unturned (flat: corrected sheet, craft: original photo).
         let norm = points.map { v -> NormPoint in
-            let s = mapping.toStrokeSpace(CGPoint(x: (v.x - rect.minX) / rect.width, y: (v.y - rect.minY) / rect.height))
+            let s = mapping.toStrokeSpace(v)
             return NormPoint(x: Double(s.x), y: Double(s.y))
         }
-        let radius = mapping.strokeRadius(fromOutputRadius: brushSize * 0.006)
+        let radius = mapping.strokeRadius(fromOutputRadius: liveStrokeRadius)
         model.addStroke(BrushStroke(mode: model.recipe.kind == .flat ? .paintWhite : brushMode, radius: radius, points: norm))
+    }
+
+    private func resetZoom() {
+        stageZoom = StageZoom()
+        pinchStart = nil
+        liveStroke = []
+    }
+
+    /// Brush size ring at the stage center for a moment after the slider moves (the real on-screen size).
+    private func flashSizePreview() {
+        guard tool == .brush else { return }
+        sizePreviewToken += 1
+        let token = sizePreviewToken
+        withAnimation(.easeOut(duration: 0.15)) { showsSizePreview = true }
+        Task {
+            try? await Task.sleep(for: .milliseconds(900))
+            guard token == sizePreviewToken else { return }
+            withAnimation(.easeOut(duration: 0.3)) { showsSizePreview = false }
+        }
+    }
+
+    /// 「100%」: back to the whole artwork. Shows the current zoom.
+    private var zoomResetChip: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.25)) { stageZoom = StageZoom() }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.down.right.and.arrow.up.left")
+                Text(verbatim: "\(Int((stageZoom.scale * 100).rounded()))%")
+            }
+            .font(.fm(14, bold: true))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .background(Capsule().fill(Palette.chip))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("恢復原尺寸"))
     }
 
     @ViewBuilder
@@ -592,6 +715,14 @@ struct EditView: View {
             if flat { t = String(localized: "在髒點上塗抹，會塗成白色。只建議用在空白紙面。") }
             else if brushMode == .restore { t = String(localized: "塗抹被誤刪的作品部分，把它補回來。") }
             else { t = String(localized: "塗抹要去掉的背景部分。") }
+            if showsZoomHint {
+                if AppLanguage.isChinese {
+                    if !t.hasSuffix("。") { t += " · " }
+                } else {
+                    t += " "
+                }
+                t += String(localized: "兩指可以放大、移動")
+            }
         default:
             if model.output == nil { t = String(localized: "冰冰正在整理這張作品，請稍等一下。") }
             else if pickingParts { t = String(localized: "點一下要留下或拿掉的部分，至少要留一個。") }
@@ -913,6 +1044,27 @@ extension Artwork {
 }
 
 // MARK: Stage pieces
+
+/// Where a two-finger gesture started (zoom, finger centroid and distance).
+struct PinchStart {
+    var zoom: StageZoom
+    var centroid: CGPoint
+    var distance: CGFloat
+}
+
+/// Brush size outline (white with a dark edge so it shows on any artwork).
+struct BrushRing: View {
+    var radius: CGFloat
+
+    var body: some View {
+        Circle()
+            .strokeBorder(Color.black.opacity(0.35), lineWidth: 3.5)
+            .overlay(Circle().strokeBorder(Color.white, lineWidth: 1.5))
+            .frame(width: max(6, radius * 2), height: max(6, radius * 2))
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
 
 struct StageChip: View {
     var text: String
