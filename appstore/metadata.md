@@ -1,6 +1,6 @@
 # App Store 上架資料 — 冰箱美術館 / My Fridge Museum
 
-2026-10-28　星光工作室 Starlight Studio　版本 1.0.1
+2026-10-29　星光工作室 Starlight Studio　版本 1.1.0（App Store 第一個公開版本）
 
 每個欄位的內容放在程式碼區塊裡，可以直接整段複製貼到 App Store Connect。區塊後面的數字是字元數（Apple 算的是字元，換行也算一個），已經對照 Apple 的上限。
 
@@ -40,15 +40,15 @@ Keep every drawing they make
 
 zh-Hant
 ```
-拍下孩子的畫和勞作：紙自動拉正、底色變白，勞作自動去背，再依學期和年齡收進每個孩子的美術館。全部在手機上處理，App 不會上傳照片。
+整理抽屜那天開連拍，一張接一張拍：紙自動拉正、底色變白，勞作自動去背，再收進每個孩子的美術館。全部在手機上處理，App 不會上傳照片。
 ```
-字元數：66
+字元數：67
 
 en-US
 ```
-Snap your child's art. Drawings come out straight and white, crafts are lifted off the table, and each piece is filed in that child's own museum, all on your iPhone.
+Burst-shoot a whole drawer of art. Drawings come out straight and white, crafts are lifted off the table, and each piece is filed in that child's museum, on your iPhone.
 ```
-字元數：165
+字元數：169
 
 ## 4. 描述 Description（上限 4000）
 
@@ -57,6 +57,12 @@ Snap your child's art. Drawings come out straight and white, crafts are lifted o
 zh-Hant
 ```
 冰箱上的畫越貼越多，抽屜裡的勞作越堆越高。冰箱美術館讓你用 iPhone 拍一張，就把孩子的作品整理好、收起來。原稿收不下也沒關係，作品會好好留在美術館裡。
+
+【拍照：一張，或一整疊】
+・先按「拍給」選好孩子，接下來拍的作品都會收進他的美術館
+・整理抽屜那天開「連拍」，一張拍完換下一張，回到廚房再一張張整理，或「全部收進」
+・也可以從「照片」挑選已經拍好的作品
+・拍到收過的作品，會提醒「這張好像收過了」；兩張都想留也可以
 
 【畫作：紙拉正，底色變白】
 ・自動找出紙張四角，把斜拍的紙拉正
@@ -72,16 +78,18 @@ zh-Hant
 ・被誤刪的地方，用「補回作品」筆刷塗回來
 
 【每個孩子都有自己的美術館】
-・可以新增好幾個孩子，填名字（或暱稱）和生日
+・可以新增好幾個孩子，填名字（或暱稱）和生日，頭像可以用照片或他自己的一件作品
 ・畫作、勞作分開看，也能依學期（上學期 8–1 月、下學期 2–7 月）、年齡或年份分組
 ・每件作品都有一張說明牌：作品名稱、日期、當時幾歲、用什麼做的、標籤和備註
 ・錄下孩子介紹作品的聲音，支援的機型會直接在手機上轉成文字
 ・喜歡的加到最愛，用學期、年齡、標籤篩選，很快就找到
+・按「選取」一次選好幾件，一起設定孩子、加標籤、改日期、加到最愛、存到手機或刪除
 
 【存到手機】
 ・按「存到手機」存進「照片」App，畫作最長邊可達 4096 像素，細節清楚
 ・允許完整照片權限時，每個孩子會有一本「冰箱美術館 – 名字」相簿；只允許「加入照片」也能存，會放在「最近項目」
 ・可以在圖片下方加上名字、年齡和日期，也能用 iPhone 的分享選單傳給家人
+・作品只存在這支手機裡。還沒存到照片的作品多了，會提醒你備份；設定裡看得到「已存到照片」幾件，也能一次全部存好
 
 【隱私】
 ・所有處理都在這支 iPhone 上完成，App 不會上傳你的照片
@@ -91,18 +99,24 @@ zh-Hant
 
 【免費版與完整版】
 ・免費版：平面畫作每天可以收 3 張（當地午夜重置），立體勞作可以試用 3 件
-・按「收進這次」或「存到手機」才算，同一件作品只算一次；看範例不算
-・完整版：一次買斷，不是訂閱，不會每月扣款。畫作、勞作不限張數，支援 Apple「家人共享」，之後的更新都免費
+・作品收進美術館或存到手機才算，同一件作品只算一次；看範例不算
+・完整版：一次買斷，不是訂閱，不會每月扣款。平面畫作不限張數、立體勞作不限件數；全家共享，一次買，家人的 iPhone 也能用；之後的更新都免費
 
 冰箱美術館是給家長用的整理工具。
 
 有問題或建議，歡迎來信：starlight.kids.app@gmail.com
 ```
-字元數：986
+字元數：1249
 
 en-US
 ```
 The fridge is covered and the craft drawer won't close. With My Fridge Museum, one photo is all it takes to tidy up and keep each piece. When the original can't stay, the artwork lives on in the museum.
+
+ONE PHOTO, OR A WHOLE STACK
+• Tap "Artist" to choose a child first, and new photos go straight to their museum
+• Clearing out a drawer? Turn on Burst, snap one after another, then sort them back in the kitchen or tap "Hang Them All Up"
+• Or choose photos you've already taken from your library
+• Snap something that's already in the museum and you'll see "Looks like you kept this one already". Keeping both is fine
 
 DRAWINGS: STRAIGHT AND WHITE
 • Finds the paper's corners and straightens a photo taken at an angle
@@ -118,16 +132,18 @@ CRAFTS: LIFTED OFF THE TABLE
 • If a bit was cut away by mistake, paint it back with the Restore Artwork brush
 
 A MUSEUM FOR EACH CHILD
-• Add several children, each with a name or nickname and a birthday
+• Add several children, each with a name or nickname, a birthday, and an avatar made from a photo or one of their own artworks
 • See drawings and crafts separately, and group by semester (Fall: Aug–Jan, Spring: Feb–Jul), age, or year
 • Every artwork gets a museum label: title, date, age at the time, what it was made with, tags, and a note
 • Record your child talking about their work, transcribed right on your iPhone (on supported models)
 • Mark favorites and filter by semester, age, or tag to find a piece quickly
+• Tap Select to set the artist, add tags, change the date, favorite, save, or delete several artworks at once
 
 SAVE TO PHOTOS
 • Save to Photos at high resolution, up to 4096 pixels on the long side for drawings
 • With full Photos access, each child gets an album such as "My Fridge Museum – Mia". With add-only access, artworks save to Recents
 • Add the name, age, and date below the image if you like, or send it to family with the iPhone share sheet
+• Artworks live only on this phone. When several haven't been saved to Photos yet, the app gently reminds you, and Settings shows how many are saved, with Save All to Photos for the rest
 
 PRIVACY
 • Everything is processed on your iPhone. The app never uploads your photos
@@ -137,14 +153,14 @@ PRIVACY
 
 FREE AND FULL VERSION
 • Free: keep up to 3 drawings a day (resets at midnight) and try 3 crafts
-• A piece counts only when you tap "Hang It Up" or "Save to Photos", and only once. Samples don't count
-• Full Version: a one-time purchase, not a subscription, with no recurring charges. Unlimited drawings and crafts, works with Family Sharing, and all future updates are included
+• A piece counts only when it's hung up in the museum or saved to Photos, and only once. Samples don't count
+• Full Version: a one-time purchase, not a subscription, with no recurring charges. Unlimited drawings and crafts, Family Sharing so one purchase covers the whole family, and future updates are free
 
 My Fridge Museum is an organizing tool for parents.
 
 Questions or ideas? Write to starlight.kids.app@gmail.com
 ```
-字元數：2630
+字元數：3429
 
 ## 5. 關鍵字 Keywords（上限 100 字元，逗號分隔、逗號後不空格）
 
@@ -152,9 +168,9 @@ Questions or ideas? Write to starlight.kids.app@gmail.com
 
 zh-Hant
 ```
-畫作,勞作,作品集,孩子,小孩,兒童,幼兒園,塗鴉,美勞,掃描,收藏,保存,整理,去背,紀錄,成長,回憶,相簿,蠟筆,親子,學校,家長,斷捨離,收納,幼稚園,數位化
+畫作,勞作,作品集,孩子,小孩,兒童,幼兒園,塗鴉,美勞,掃描,收藏,保存,整理,去背,紀錄,成長,回憶,相簿,蠟筆,親子,學校,家長,斷捨離,收納,幼稚園,數位化,備份
 ```
-字元數：82（UTF-8 196 bytes）
+字元數：85（UTF-8 203 bytes）
 
 en-US
 ```
@@ -162,44 +178,50 @@ kids,children,art,organizer,craft,scan,portfolio,preschool,kindergarten,school,k
 ```
 字元數：96（UTF-8 96 bytes）
 
-## 6. 此版本新增內容 What's New（1.0.1）
+## 6. 此版本新增內容 What's New（1.1.0）
 
-<!-- 如果 1.0.1 是第一個公開上架的版本，App Store 不會顯示「新增內容」（ASC 甚至可能不讓你填），這段就留到下一版再用。 -->
+<!-- 1.1.0 是第一個在 App Store 公開上架的版本（1.0、1.0.1 只在 TestFlight），所以 App Store 不會顯示這段，ASC 也可能不讓你填。先寫好留著：下一版可以參考，或直接留空。 -->
 
 zh-Hant
 ```
-・不想留的作品，可以直接「不要這張」，或一次「全部不要」
-・從紙邊伸進來的影子，現在會盡量自動修淡
-・處理作品時手機比較不會發熱
-・設定移到首頁右上角
+・連拍：一張接一張拍，回到廚房再一張張整理，或「全部收進」
+・拍給：先選好孩子，新拍的作品直接收進他的美術館
+・美術館可以一次選好幾件，一起設定孩子、標籤、日期、最愛，或存到手機、刪除
+・孩子的頭像可以用照片或他自己的作品
+・拍到收過的作品，會提醒「這張好像收過了」
+・還沒存到照片的作品多了，會提醒你備份；設定裡看得到已存幾件
+・付費頁把完整版包含的內容寫得更清楚
 ```
-字元數：75
+字元數：183
 
 en-US
 ```
-• Don't want to keep a photo? Tap Discard, or Discard All
-• Shadows reaching in from the edge of the paper are now reduced automatically
-• The phone stays cooler while artworks are processed
-• Settings moved to the top-right corner of the home screen
+• Burst: snap one after another, then sort them in the kitchen or hang them all up
+• Artist: choose a child first, and new photos go straight to their museum
+• Select several artworks in the museum to set the artist, tags, date, or favorite, or to save or delete them
+• Child avatars from a photo or one of their artworks
+• A reminder when you snap something that's already in the museum
+• A gentle backup reminder, and Settings shows how many artworks are saved to Photos
+• A clearer paywall that lists what the Full Version includes
 ```
-字元數：250
+字元數：534
 
 ## 7. 截圖文字（依截圖順序）
 
-標題：中文 ≤ 12 字、英文 ≤ 30 字元。副標可選。截圖來源：`ci-shots-store` 分支（6.9 吋 Pro Max），檔名 `<lang>-<look>-<scenario>.png`。
+標題：中文 ≤ 12 字、英文 ≤ 30 字元。副標可選。商店截圖共 6 張，6.9 吋（1320×2868），來源 `ci-shots-store` 分支，檔名 `<lang>-<look>-<scenario>.png`。
 
 | # | 畫面（scenario） | zh 標題 | zh 副標 | en 標題 | en 副標 |
 |---|---|---|---|---|---|
-| 1 | home-full 冰箱首頁 | 把孩子的作品掛上冰箱（10） | 拍一張就收好，這次收的都在這裡 | Hang their art on the fridge (28) | Snap once and it's kept |
+| 1 | home-full 冰箱首頁 | 把孩子的作品掛上冰箱（10） | 選好拍給誰，拍完就收好 | Hang their art on the fridge (28) | Pick the artist, snap, and it's kept |
 | 2 | edit-flat 畫作前後對照 | 紙拉正，底色變白（8） | 淡黃蠟筆、水彩、鉛筆不會被洗掉 | Straight, white, and clean (26) | Pale crayon and watercolor stay bright |
 | 3 | edit-craft 勞作去背 | 勞作自動去背（6） | 去掉桌面，換上乾淨背景和陰影 | Crafts lifted off the table (27) | A clean background and soft shadow |
-| 4 | museum 每個孩子的美術館 | 每個孩子的美術館（8） | 依學期、年齡、標籤找作品 | A museum for each child (23) | Find art by semester, age, or tag |
+| 4 | museum 每個孩子的美術館 | 每個孩子的美術館（8） | 每個孩子都有頭像，依學期、年齡、標籤找作品 | A museum for each child (23) | Each with an avatar; filter by semester, age, or tag |
 | 5 | detail 作品說明牌 | 每件作品的說明牌（8） | 當時幾歲、哪個學期，錄下孩子說的話 | A label for every piece (23) | Age, semester, and their own words |
-| 6a | success 已掛上冰箱（建議） | 收進這次，馬上拍下一張（11） | 存到照片時，依孩子分相簿 | Hang it up, snap the next (25) | Save to Photos, one album per child |
-| 6b | paywall 付費頁（備選） | 一次買斷，全家共享（9） | 不是訂閱；免費版每天可收 3 張畫作 | One purchase, whole family (26) | Not a subscription. 3 free drawings a day |
+| 6 | success 已掛上冰箱 | 收進這次，馬上拍下一張（11） | 一整疊要拍，就開連拍 | Hang it up, snap the next (25) | A whole stack? Turn on Burst |
 
 說明：
-- 第 6 張建議用 `success`（已掛上冰箱的提示）。目前截圖腳本沒有「已存到手機」的畫面，所以副標寫的是存照片的功能，不是畫面上的字。用付費頁當最後一張也可以，但第一眼看到價格頁對家長比較不友善。
+- 第 1 張首頁有「拍給」小標籤，副標對應它；第 4 張書架上有每個孩子的頭像（示範資料是顏色頭像，不是照片），副標只說「有頭像」。
+- 第 6 張畫面是「已掛上冰箱！」的提示；副標介紹連拍，不是畫面上的字。
 - 第 5 張 `detail` 的示範資料沒有填備註，所以畫面上只會有「錄下孩子的介紹」按鈕，不會有「孩子說」的文字框；副標寫「錄下孩子說的話」是對的，但如果想讓截圖更好看，可以在 DemoMode 的 `featured` 作品加一句備註。
 
 ## 8. 類別
@@ -266,12 +288,13 @@ Permissions:
 - Camera: to photograph artwork. If denied, importing from Photos still works.
 - Photos: add-only access is enough to save. Full access is optional and only used to create one album per child ("My Fridge Museum – name"). Without it, artworks save to Recents.
 - Microphone and speech recognition: only when recording an optional voice note; transcription uses on-device recognition.
+- Child avatars chosen from Photos use the system photo picker, which needs no permission.
 
 Privacy: all image processing (including the craft cutout, which uses Apple's Vision framework) runs on the device. Photos are never uploaded, there is no account, no analytics, no ads, and the app makes no network requests of its own. No generative AI is used on the children's work.
 
 Contact: starlight.kids.app@gmail.com
 ```
-字元數：2511
+字元數：2602
 
 ## 12. 網址與版權
 
