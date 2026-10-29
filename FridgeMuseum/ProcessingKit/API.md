@@ -26,6 +26,10 @@ struct ProcessingRecipe: Codable, Sendable, Hashable {
     var straightenDegrees: Double = 0    // −15…15, positive = clockwise (clamped on decode)
     var removedPartSeeds: [CGPoint] = [] // craft: normalized ORIGINAL coords; a part containing a seed is removed
     var partsEdited: Bool = false        // craft: false = automatic edge-clutter drop still applies (see below)
+    var autoTurns: Int? = nil            // 1.2.0: nil = upright check not run yet; else turns it applied (0 = none)
+
+    func applyingAutoOrientation(_ e: AutoOrientation) -> ProcessingRecipe // once only; flat; never over a manual turn
+    var isAutoTurned: Bool { get }       // auto turn applied and quarterTurns unchanged since (editor hint)
 
     var turnDegrees: Double { get }      // quarterTurns * 90 + straightenDegrees (clockwise)
     mutating func rotateClockwise()      // quarterTurns = (q + 1) % 4
@@ -103,10 +107,19 @@ func preview(id: UUID, originalData: Data, recipe: ProcessingRecipe,
              maxEdge: Int = previewMaxEdge, includeBefore: Bool = true) throws -> PreviewResult
 func export(id: UUID, originalData: Data, recipe: ProcessingRecipe) throws -> ExportResult
 func evict(id: UUID)
+func estimateOrientation(id: UUID, originalData: Data, corners: Quad?) -> AutoOrientation   // 1.2.0, see below
 
 nonisolated func partID(atOutputPoint p: CGPoint, in result: PreviewResult) -> Int?
 nonisolated func originalPoint(fromOutputPoint p: CGPoint, in result: PreviewResult) -> CGPoint
 ```
+Automatic upright turn (1.2.0, `AutoOrientation.swift`, flat only): on a ≤ 720 px perspective-corrected copy,
+Vision fast text recognition in all four turns (decisive when one turn clearly wins), plus weak cues — upright drawn
+faces and a colour prior (sky blue / sun yellow along the top, grass green along the bottom). Weak cues only count when
+≥ 2 agree including a non-colour one, or all 3 colour cues agree, and none disagrees. `AutoOrientation.shouldApply`
+is the go signal. Run once at intake (`AppModel.autoProcess`, or `EditModel.autoOrientIfNeeded` when the editor
+opens first) and stored in `recipe.autoTurns`. The capture angle itself comes from gravity
+(`CaptureKit/CaptureOrientation.swift`).
+
 `recipe.corners == nil` on a flat render → the processor detects the paper itself (and may add `.paperNotFound`).
 
 Cast shadows (1.0.1, flat only, no recipe field): when the sheet was found or the user set corners (quad ≠ full),

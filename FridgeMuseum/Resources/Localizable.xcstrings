@@ -2091,6 +2091,17 @@
         }
       }
     },
+    "已自動轉正，不對的話到「裁切」轉一下。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turned upright automatically. If it’s wrong, turn it in “Crop.”"
+          }
+        }
+      }
+    },
     "已解鎖完整版" : {
       "extractionState" : "manual",
       "localizations" : {

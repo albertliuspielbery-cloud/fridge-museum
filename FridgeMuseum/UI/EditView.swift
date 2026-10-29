@@ -136,6 +136,7 @@ struct EditView: View {
         }
         .onAppear { app.beginEditing(artwork.id) }
         .task {
+            await model.autoOrientIfNeeded(allowed: !artwork.isSample && !DemoMode.isActive)
             model.render()
             if DemoMode.isActive { DemoMode.configure(editor: model, tool: $tool, compare: $compare, activeCorner: $activeCorner, showLabel: $showLabel) }
         }
@@ -595,6 +596,9 @@ struct EditView: View {
         default:
             if model.output == nil { t = String(localized: "冰冰正在整理這張作品，請稍等一下。") }
             else if pickingParts { t = String(localized: "點一下要留下或拿掉的部分，至少要留一個。") }
+            else if model.isAutoTurned, !artwork.isKept, model.notes.first != .paperNotFound {
+                t = String(localized: "已自動轉正，不對的話到「裁切」轉一下。")
+            }
             else if let note = model.notes.first { t = note.localizedText }
             else if model.recipe.kind == .flat, model.result?.paperMode == .paintCovered, !compare {
                 t = String(localized: "顏料幾乎蓋滿紙，只輕調光線")

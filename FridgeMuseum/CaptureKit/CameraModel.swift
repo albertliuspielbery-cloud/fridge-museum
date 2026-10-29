@@ -20,6 +20,8 @@ final class CameraModel {
     let controller = CameraController()
 
     @ObservationIgnored private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
+    /// Gravity-based capture angle; also right when the phone is held (almost) flat over a table.
+    @ObservationIgnored private let gravity = GravityOrientationTracker()
     @ObservationIgnored private weak var previewLayer: AVCaptureVideoPreviewLayer?
 
     var paperFound: Bool { liveQuad != nil }
@@ -33,6 +35,7 @@ final class CameraModel {
             state = .denied
             return
         }
+        gravity.start()
         controller.setQuadHandler { quad in
             Task { @MainActor in self.updateQuad(quad) }
         }
@@ -47,6 +50,7 @@ final class CameraModel {
 
     func stop() {
         controller.stop()
+        gravity.stop()
         liveQuad = nil
     }
 
@@ -60,13 +64,16 @@ final class CameraModel {
         setUpRotation()
     }
 
-    /// Takes a photo; returns encoded HEIC/JPEG data with orientation metadata.
+    /// Takes a photo; returns encoded HEIC/JPEG data with orientation metadata (EXIF set from the capture angle).
     func capture() async -> Data? {
         guard state == .running, !isCapturing else { return nil }
         isCapturing = true
         shutterCount += 1
         defer { isCapturing = false }
-        let angle = rotationCoordinator?.videoRotationAngleForHorizonLevelCapture ?? 90
+        // Gravity first: the coordinator's horizon-level angle does not follow the phone while it lies flat
+        // (table shots), so it kept portrait and landscape drawings arrived sideways.
+        let angle: CGFloat = gravity.currentAngle.map { CGFloat($0) }
+            ?? rotationCoordinator?.videoRotationAngleForHorizonLevelCapture ?? 90
         return try? await controller.capturePhoto(rotationAngle: angle)
     }
 

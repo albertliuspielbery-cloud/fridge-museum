@@ -88,6 +88,26 @@ final class EditModel {
         render()
     }
 
+    /// Fresh capture opened before the background intake got to it: find the paper and the one-time upright turn
+    /// (AppModel.autoProcess does the same), so the first preview already stands the right way up.
+    func autoOrientIfNeeded(allowed: Bool) async {
+        guard allowed, recipe.kind == .flat, recipe.corners == nil, recipe.autoTurns == nil else { return }
+        let turnsBefore = recipe.quarterTurns
+        isRendering = true
+        let corners = await processor.detectCorners(id: artworkID, originalData: originalData)
+        let estimate = await processor.estimateOrientation(id: artworkID, originalData: originalData, corners: corners)
+        guard recipe.kind == .flat, recipe.autoTurns == nil else { return }
+        if recipe.corners == nil { recipe.corners = corners }
+        if recipe.quarterTurns == turnsBefore {
+            recipe = recipe.applyingAutoOrientation(estimate)
+        } else {
+            recipe.autoTurns = 0      // turned by hand meanwhile: their choice sticks
+        }
+    }
+
+    /// Show 「已自動轉正」 on the hint line.
+    var isAutoTurned: Bool { recipe.kind == .flat && recipe.isAutoTurned }
+
     func redetectCorners() async {
         isRendering = true
         recipe.corners = await processor.detectCorners(id: artworkID, originalData: originalData)
