@@ -30,9 +30,9 @@ struct AutoOrientation: Sendable, Hashable {
 /// Content-based upright check (prototype-free; Vision + a colour-layout prior for kids' drawings).
 ///
 /// Every score is computed per candidate turn t = 0...3 (t clockwise quarter turns would make it upright):
-/// - text: `VNRecognizeTextRequest` (fast, zh-Hant/en when supported, no language correction) with Vision told the
-///   image needs t turns. Children often write their name or the date — upright text reads with high confidence,
-///   turned text reads as little or nothing. Decisive when one turn clearly wins.
+/// - text: `VNRecognizeTextRequest` (zh-Hant/en when supported, no language correction); each line read votes by its
+///   own geometry (see `textScores`). Children often write their name or the date. Decisive when one turn clearly
+///   wins.
 /// - faces: `VNDetectFaceRectanglesRequest`; drawn faces are sometimes found, upright (small roll) only. Weak.
 /// - layout: blue (sky) and yellow (sun) along the top, green (grass) along the bottom. Weak, three separate cues.
 /// Weak cues only turn the artwork when at least two agree with one of them not from the colour layout, or all
@@ -47,8 +47,9 @@ enum AutoOrienter {
     /// Vision orientation meaning "turn this image `t` quarter turns clockwise to see it upright" (EXIF 1, 6, 3, 8).
     static let orientations: [CGImagePropertyOrientation] = [.up, .right, .down, .left]
 
-    /// Full estimate on an upright-as-captured (perspective-corrected) artwork image. ~4 fast text passes + 4 face
-    /// passes on a ≤ 720 px copy and a 96 px colour sample.
+    /// Full estimate on an upright-as-captured (perspective-corrected) artwork image. 4 fast text passes (+ 2 accurate
+    /// ones only when text was found but the fast passes don't agree) and 4 face passes on a ≤ 720 px copy, plus a
+    /// 96 px colour sample.
     static func estimate(cgImage: CGImage) -> AutoOrientation {
         guard let small = scaled(cgImage, maxEdge: visionEdge) else { return .none }
         let text = textScores(small)
@@ -98,27 +99,104 @@ enum AutoOrienter {
 
     // MARK: Vision
 
-    /// Text score per turn (0...3).
-    static func textScores(_ image: CGImage) -> [Double] {
-        (0..<4).map { textScore(image, turns: $0) }
+    /// One line of text Vision read in one pass.
+    struct TextRead: Sendable, CustomStringConvertible {
+        var pass: Int
+        var accurate: Bool
+        var string: String
+        var confidence: Double
+        /// Direction of the text line (bottom-left → bottom-right corner) in the pass's upright frame, degrees,
+        /// y up: 0 = reads left to right, 90 = runs upward, ±180 = upside down.
+        var angle: Double
+        /// Line length ÷ line height in pixels (a real text line is wide and short).
+        var aspect: Double
+        /// Clockwise quarter turns this line says the image needs: the pass's turn plus the line's own angle.
+        var impliedTurns: Int
+        var weight: Double
+
+        var description: String {
+            let level = accurate ? "A" : "F"
+            let c = String(format: "%.2f", confidence), a = String(format: "%.0f", angle)
+            let r = String(format: "%.1f", aspect), w = String(format: "%.1f", weight)
+            return "\(level)\(pass) \"\(string)\" c\(c) a\(a) r\(r)→\(impliedTurns) w\(w)"
+        }
     }
 
-    private static func textScore(_ image: CGImage, turns: Int) -> Double {
+    /// Text score per turn (0...3).
+    ///
+    /// Why not just "how much text each pass reads": Vision also reads text that is turned relative to the
+    /// orientation it was given (it may re-orient internally), and fast mode reads upside-down Latin as confident
+    /// junk — so plain per-pass totals come out level. Instead each line votes with its own geometry: the line's
+    /// direction in the pass's frame (a line running upward means one more clockwise turn), and lines that are not
+    /// wide-and-short (a vertical column read as a tall box) don't vote. Fast passes in all four turns pick the
+    /// winner; when that is not clear, two accurate passes on the winning axis break the 0°/180° tie (the
+    /// accurate recognizer reads upside-down text at low confidence or recognizes it as turned).
+    static func textScores(_ image: CGImage) -> [Double] {
+        textAnalysis(image).scores
+    }
+
+    /// Scores plus every line read, for diagnostics.
+    static func textAnalysis(_ image: CGImage) -> (scores: [Double], reads: [TextRead]) {
+        var reads = (0..<4).flatMap { readText(image, turns: $0, accurate: false) }
+        let fast = tally(reads)
+        guard fast.reduce(0, +) > 0 else { return (fast, reads) }
+        if let w = winner(fast), w.score >= 4, w.score >= 2.5 * w.second { return (fast, reads) }
+        let axis = fast[0] + fast[2] >= fast[1] + fast[3] ? 0 : 1
+        let precise = [axis, axis + 2].flatMap { readText(image, turns: $0, accurate: true) }
+        reads += precise
+        var scores = tally(precise)
+        // The other axis keeps half its fast evidence, so a wrong axis guess can still lose cleanly.
+        for t in [(axis + 1) % 4, (axis + 3) % 4] { scores[t] = fast[t] * 0.5 }
+        return (scores, reads)
+    }
+
+    /// Human-readable list of what Vision read (test failure messages).
+    static func textDiagnostics(_ image: CGImage) -> String {
+        let a = textAnalysis(image)
+        let scores = a.scores.map { String(format: "%.1f", $0) }.joined(separator: ", ")
+        return "text scores [\(scores)] reads: " + a.reads.map(\.description).joined(separator: " | ")
+    }
+
+    private static func tally(_ reads: [TextRead]) -> [Double] {
+        var scores = [Double](repeating: 0, count: 4)
+        for r in reads { scores[r.impliedTurns] += r.weight }
+        return scores
+    }
+
+    private static func readText(_ image: CGImage, turns: Int, accurate: Bool) -> [TextRead] {
         let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .fast
+        request.recognitionLevel = accurate ? .accurate : .fast
         request.usesLanguageCorrection = false
         if let supported = try? request.supportedRecognitionLanguages() {
             let wanted = ["zh-Hant", "en-US"].filter { supported.contains($0) }
             if !wanted.isEmpty { request.recognitionLanguages = wanted }
         }
         let handler = VNImageRequestHandler(cgImage: image, orientation: orientations[turns], options: [:])
-        do { try handler.perform([request]) } catch { return 0 }
-        var score = 0.0
+        do { try handler.perform([request]) } catch { return [] }
+        // Pixel size of the frame Vision's normalized coordinates refer to (the image turned `turns` times).
+        let w = Double(turns % 2 == 0 ? image.width : image.height)
+        let h = Double(turns % 2 == 0 ? image.height : image.width)
+        var out: [TextRead] = []
         for observation in request.results ?? [] {
-            guard let candidate = observation.topCandidates(1).first, candidate.confidence >= 0.4 else { continue }
-            score += stringScore(candidate.string) * Double(candidate.confidence)
+            guard let candidate = observation.topCandidates(1).first, candidate.confidence >= 0.3 else { continue }
+            let base = stringScore(candidate.string)
+            guard base > 0 else { continue }
+            let bl = observation.bottomLeft, br = observation.bottomRight, tl = observation.topLeft
+            let dx = Double(br.x - bl.x) * w, dy = Double(br.y - bl.y) * h
+            let ux = Double(tl.x - bl.x) * w, uy = Double(tl.y - bl.y) * h
+            let length = (dx * dx + dy * dy).squareRoot(), height = (ux * ux + uy * uy).squareRoot()
+            let aspect = length / max(height, 1e-6)
+            let angle = atan2(dy, dx) * 180 / .pi
+            let own = ((Int((angle / 90).rounded()) % 4) + 4) % 4
+            let chars = candidate.string.filter { $0.isLetter || $0.isNumber }.count
+            // A line of several characters must be wider than tall; otherwise it is a turned column read as a box.
+            let usable = chars < 3 || aspect >= 1.0
+            let weight = usable ? base * Double(candidate.confidence) : 0
+            out.append(TextRead(pass: turns, accurate: accurate, string: candidate.string,
+                                confidence: Double(candidate.confidence), angle: angle, aspect: aspect,
+                                impliedTurns: (turns + own) % 4, weight: weight))
         }
-        return score
+        return out
     }
 
     /// Letters / digits read (capped), plus a bonus for something shaped like a date (2026.3.14, 3/14) — turned

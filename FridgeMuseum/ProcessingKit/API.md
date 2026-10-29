@@ -113,7 +113,8 @@ nonisolated func partID(atOutputPoint p: CGPoint, in result: PreviewResult) -> I
 nonisolated func originalPoint(fromOutputPoint p: CGPoint, in result: PreviewResult) -> CGPoint
 ```
 Automatic upright turn (1.2.0, `AutoOrientation.swift`, flat only): on a ≤ 720 px perspective-corrected copy,
-Vision fast text recognition in all four turns (decisive when one turn clearly wins), plus weak cues — upright drawn
+Vision text recognition in all four turns where each read line votes by its own geometry (direction + wide-and-short),
+fast first, two accurate passes on the winning axis only when fast is unclear (decisive when one turn clearly wins), plus weak cues — upright drawn
 faces and a colour prior (sky blue / sun yellow along the top, grass green along the bottom). Weak cues only count when
 ≥ 2 agree including a non-colour one, or all 3 colour cues agree, and none disagrees. `AutoOrientation.shouldApply`
 is the go signal. Run once at intake (`AppModel.autoProcess`, or `EditModel.autoOrientIfNeeded` when the editor

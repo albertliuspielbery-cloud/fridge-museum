@@ -138,14 +138,17 @@ struct AutoOrientationTests {
         let sheet = try textSheet()
         // Vision text recognition should run in the Simulator; if this environment reads nothing at all, there is
         // nothing to compare.
-        guard (AutoOrienter.textScores(sheet).max() ?? 0) > 0 else { return }
+        guard !AutoOrienter.textAnalysis(sheet).reads.isEmpty else { return }
         for k in 0..<4 {
             let turned = try rotatedClockwise(sheet, turns: k)
             let result = AutoOrienter.estimate(cgImage: turned)
+            // What Vision saw, per pass (F = fast, A = accurate; pass = turns Vision was told; a = line angle,
+            // r = line aspect, → = turns the line votes for), so a CI failure says why.
+            let seen = AutoOrienter.textDiagnostics(turned)
             // Content turned k clockwise needs (4 − k) more clockwise turns to stand upright.
-            #expect(result.quarterTurns == (4 - k) % 4, "turned \(k): got \(result)")
-            #expect(result.basis == .text, "turned \(k): got \(result)")
-            #expect(result.shouldApply == (k != 0))
+            #expect(result.quarterTurns == (4 - k) % 4, "turned \(k): got \(result); \(seen)")
+            #expect(result.basis == .text, "turned \(k): got \(result); \(seen)")
+            #expect(result.shouldApply == (k != 0), "turned \(k): got \(result); \(seen)")
         }
     }
 
