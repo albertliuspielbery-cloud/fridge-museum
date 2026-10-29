@@ -426,6 +426,35 @@ EN_BURST = {
 EN.update(EN_BURST)
 # ---- end feat/burst
 
+# ---- feat/onboarding: 新手教學 (first launch + Settings › 使用教學). New strings only, kept apart for merging.
+EN_ONBOARDING = {
+    "略過": "Skip",
+    "下一步": "Next",
+    "第 %lld 頁，共 %lld 頁": "Page %1$lld of %2$lld",
+    "使用教學": "How It Works",
+    # Pages (Bibi says the title; one line under it). Page 4's title reuses the home line
+    # "照片只在這支手機上處理，不會上傳" from the table above.
+    "寶貝的畫，一張都不用丟": "Keep every drawing they make",
+    "我是冰冰。拍下孩子的畫和勞作，我幫你整理乾淨，掛上冰箱。":
+        "I’m Bibi. Snap your kid’s drawings and crafts, and I’ll tidy them up and hang them on the fridge.",
+    "放平，拍一張": "Lay it flat, snap a photo",
+    "紙會自動拉正、底色變白；勞作會自動去背。一整疊要收？打開「連拍」，一張接一張拍。":
+        "The page straightens itself and the paper turns white. Crafts get a clean background. "
+        "Got a whole stack? Turn on Burst and keep snapping.",
+    "收進這次，掛上冰箱": "Hang it up on the fridge",
+    "作品會依孩子、學期、年齡收進美術館。存到手機時，可以依孩子分相簿。":
+        "Artworks go into the museum by child, semester, and age. When you save to Photos, each child can have their own album.",
+    "App 不蒐集任何個人資料，也不用註冊帳號。": "The app collects no personal data, and there’s no account to sign up for.",
+    "先加一位小朋友吧": "Let’s add your little artist",
+    "填上名字和生日，每張作品都會記下當時幾歲。也可以先看看範例。":
+        "Add a name and birthday, and every artwork remembers how old they were. Or look at a sample first.",
+    "先加一位小朋友": "Add a Child",
+    "先看範例": "See a Sample",
+    "直接開始": "Start Now",
+}
+EN.update(EN_ONBOARDING)
+# ---- end feat/onboarding
+
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),
     "CFBundleName": ("冰箱美術館", "My Fridge Museum"),
