@@ -1,0 +1,67 @@
+{
+  "primaryCategory": "PHOTO_AND_VIDEO",
+  "secondaryCategory": "LIFESTYLE",
+  "reviewContactEmail": "starlight.kids.app@gmail.com",
+  "ageRating": {
+    "advertising": false,
+    "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+    "contests": "NONE",
+    "gambling": false,
+    "gamblingSimulated": "NONE",
+    "gunsOrOtherWeapons": "NONE",
+    "healthOrWellnessTopics": false,
+    "kidsAgeBand": null,
+    "lootBox": false,
+    "medicalOrTreatmentInformation": "NONE",
+    "messagingAndChat": false,
+    "parentalControls": false,
+    "profanityOrCrudeHumor": "NONE",
+    "ageAssurance": false,
+    "sexualContentGraphicAndNudity": "NONE",
+    "sexualContentOrNudity": "NONE",
+    "socialMedia": false,
+    "horrorOrFearThemes": "NONE",
+    "matureOrSuggestiveThemes": "NONE",
+    "unrestrictedWebAccess": false,
+    "userGeneratedContent": false,
+    "violenceCartoonOrFantasy": "NONE",
+    "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+    "violenceRealistic": "NONE",
+    "ageRatingOverrideV2": "NONE"
+  },
+  "screenshots": {
+    "displayTypes": [
+      "APP_IPHONE_67"
+    ],
+    "size": [
+      1320,
+      2868
+    ]
+  },
+  "locales": {
+    "zh-Hant": {
+      "name": "冰箱美術館",
+      "subtitle": "寶貝的畫，一張都不用丟",
+      "promotionalText": "整理抽屜那天開連拍，一張接一張拍：紙自動拉正、底色變白，勞作自動去背，再收進每個孩子的美術館。全部在手機上處理，App 不會上傳照片。",
+      "description": "冰箱上的畫越貼越多，抽屜裡的勞作越堆越高。冰箱美術館讓你用 iPhone 拍一張，就把孩子的作品整理好、收起來。原稿收不下也沒關係，作品會好好留在美術館裡。\n\n【拍照：一張，或一整疊】\n・先按「拍給」選好孩子，接下來拍的作品都會收進他的美術館\n・整理抽屜那天開「連拍」，一張拍完換下一張，回到廚房再一張張整理，或「全部收進」\n・也可以從「照片」挑選已經拍好的作品\n・拍到收過的作品，會提醒「這張好像收過了」；兩張都想留也可以\n\n【畫作：紙拉正，底色變白】\n・自動找出紙張四角，把斜拍的紙拉正\n・修平光線，泛黃、灰暗的紙底變成乾淨的白色\n・淡黃蠟筆、水彩、鉛筆不會被洗掉\n・自動清掉紙上的小黑點；從紙邊伸進來的影子也會盡量修掉\n・不是白紙？會保留紙本來的顏色\n・四角沒對準可以拖曳調整，也能旋轉、拉直；左右拖曳就能比較前後\n\n【勞作：從桌面上去背】\n・用裝置端 AI 把作品從桌面上分出來（在手機上完成，不上傳），換上純白、暖白、淺灰或柔光漸層背景，還能加上自然陰影\n・旁邊有其他東西？點一下選要留下的部分\n・被誤刪的地方，用「補回作品」筆刷塗回來\n\n【每個孩子都有自己的美術館】\n・可以新增好幾個孩子，填名字（或暱稱）和生日，頭像可以用照片或他自己的一件作品\n・畫作、勞作分開看，也能依學期（上學期 8–1 月、下學期 2–7 月）、年齡或年份分組\n・每件作品都有一張說明牌：作品名稱、日期、當時幾歲、用什麼做的、標籤和備註\n・錄下孩子介紹作品的聲音，支援的機型會直接在手機上轉成文字\n・喜歡的加到最愛，用學期、年齡、標籤篩選，很快就找到\n・按「選取」一次選好幾件，一起設定孩子、加標籤、改日期、加到最愛、存到手機或刪除\n\n【存到手機】\n・按「存到手機」存進「照片」App，畫作最長邊可達 4096 像素，細節清楚\n・允許完整照片權限時，每個孩子會有一本「冰箱美術館 – 名字」相簿；只允許「加入照片」也能存，會放在「最近項目」\n・可以在圖片下方加上名字、年齡和日期，也能用 iPhone 的分享選單傳給家人\n・作品只存在這支手機裡。還沒存到照片的作品多了，會提醒你備份；設定裡看得到「已存到照片」幾件，也能一次全部存好\n\n【隱私】\n・所有處理都在這支 iPhone 上完成，App 不會上傳你的照片\n・不需要註冊帳號，沒有廣告、沒有追蹤，不蒐集任何資料\n・不用生成式 AI 改動孩子的作品：只整理紙張和背景，不會重畫或添加任何內容\n・拍照、整理、存到手機都不用連網\n\n【免費版與完整版】\n・免費版：平面畫作每天可以收 3 張（當地午夜重置），立體勞作可以試用 3 件\n・作品收進美術館或存到手機才算，同一件作品只算一次；看範例不算\n・完整版：一次買斷，不是訂閱，不會每月扣款。平面畫作不限張數、立體勞作不限件數；全家共享，一次買，家人的 iPhone 也能用；之後的更新都免費\n\n冰箱美術館是給家長用的整理工具。\n\n有問題或建議，歡迎來信：starlight.kids.app@gmail.com",
+      "keywords": "畫作,勞作,作品集,孩子,小孩,兒童,幼兒園,塗鴉,美勞,掃描,收藏,保存,整理,去背,紀錄,成長,回憶,相簿,蠟筆,親子,學校,家長,斷捨離,收納,幼稚園,數位化,備份",
+      "whatsNew": "・連拍：一張接一張拍，回到廚房再一張張整理，或「全部收進」\n・拍給：先選好孩子，新拍的作品直接收進他的美術館\n・美術館可以一次選好幾件，一起設定孩子、標籤、日期、最愛，或存到手機、刪除\n・孩子的頭像可以用照片或他自己的作品\n・拍到收過的作品，會提醒「這張好像收過了」\n・還沒存到照片的作品多了，會提醒你備份；設定裡看得到已存幾件\n・付費頁把完整版包含的內容寫得更清楚",
+      "supportUrl": "https://albertliuspielbery-cloud.github.io/fridge-museum/support.html",
+      "privacyPolicyUrl": "https://albertliuspielbery-cloud.github.io/fridge-museum/privacy.html",
+      "marketingUrl": ""
+    },
+    "en-US": {
+      "name": "My Fridge Museum",
+      "subtitle": "Keep every drawing they make",
+      "promotionalText": "Burst-shoot a whole drawer of art. Drawings come out straight and white, crafts are lifted off the table, and each piece is filed in that child's museum, on your iPhone.",
+      "description": "The fridge is covered and the craft drawer won't close. With My Fridge Museum, one photo is all it takes to tidy up and keep each piece. When the original can't stay, the artwork lives on in the museum.\n\nONE PHOTO, OR A WHOLE STACK\n• Tap \"Artist\" to choose a child first, and new photos go straight to their museum\n• Clearing out a drawer? Turn on Burst, snap one after another, then sort them back in the kitchen or tap \"Hang Them All Up\"\n• Or choose photos you've already taken from your library\n• Snap something that's already in the museum and you'll see \"Looks like you kept this one already\". Keeping both is fine\n\nDRAWINGS: STRAIGHT AND WHITE\n• Finds the paper's corners and straightens a photo taken at an angle\n• Evens out the light, so yellowed or dim paper turns clean white\n• Keeps pale yellow crayon, watercolor, and pencil from washing out\n• Removes little specks, and reduces shadows that reach in from the edge of the sheet\n• Colored paper keeps its color\n• Fine-tune the corners, rotate or straighten, and drag the slider to compare before and after\n\nCRAFTS: LIFTED OFF THE TABLE\n• On-device AI separates the craft from the table, then places it on white, warm white, light gray, or a soft glow, with an optional natural shadow\n• Something else in the shot? Tap the parts you want to keep\n• If a bit was cut away by mistake, paint it back with the Restore Artwork brush\n\nA MUSEUM FOR EACH CHILD\n• Add several children, each with a name or nickname, a birthday, and an avatar made from a photo or one of their own artworks\n• See drawings and crafts separately, and group by semester (Fall: Aug–Jan, Spring: Feb–Jul), age, or year\n• Every artwork gets a museum label: title, date, age at the time, what it was made with, tags, and a note\n• Record your child talking about their work, transcribed right on your iPhone (on supported models)\n• Mark favorites and filter by semester, age, or tag to find a piece quickly\n• Tap Select to set the artist, add tags, change the date, favorite, save, or delete several artworks at once\n\nSAVE TO PHOTOS\n• Save to Photos at high resolution, up to 4096 pixels on the long side for drawings\n• With full Photos access, each child gets an album such as \"My Fridge Museum – Mia\". With add-only access, artworks save to Recents\n• Add the name, age, and date below the image if you like, or send it to family with the iPhone share sheet\n• Artworks live only on this phone. When several haven't been saved to Photos yet, the app gently reminds you, and Settings shows how many are saved, with Save All to Photos for the rest\n\nPRIVACY\n• Everything is processed on your iPhone. The app never uploads your photos\n• No account, no ads, no tracking, and no data collected\n• No generative AI changes your child's work. The app tidies the paper and background; it never redraws or adds anything\n• Taking photos, organizing, and saving all work without an internet connection\n\nFREE AND FULL VERSION\n• Free: keep up to 3 drawings a day (resets at midnight) and try 3 crafts\n• A piece counts only when it's hung up in the museum or saved to Photos, and only once. Samples don't count\n• Full Version: a one-time purchase, not a subscription, with no recurring charges. Unlimited drawings and crafts, Family Sharing so one purchase covers the whole family, and future updates are free\n\nMy Fridge Museum is an organizing tool for parents.\n\nQuestions or ideas? Write to starlight.kids.app@gmail.com",
+      "keywords": "kids,children,art,organizer,craft,scan,portfolio,preschool,kindergarten,school,keepsake,memories",
+      "whatsNew": "• Burst: snap one after another, then sort them in the kitchen or hang them all up\n• Artist: choose a child first, and new photos go straight to their museum\n• Select several artworks in the museum to set the artist, tags, date, or favorite, or to save or delete them\n• Child avatars from a photo or one of their artworks\n• A reminder when you snap something that's already in the museum\n• A gentle backup reminder, and Settings shows how many artworks are saved to Photos\n• A clearer paywall that lists what the Full Version includes",
+      "supportUrl": "https://albertliuspielbery-cloud.github.io/fridge-museum/support.html",
+      "privacyPolicyUrl": "https://albertliuspielbery-cloud.github.io/fridge-museum/privacy.html",
+      "marketingUrl": ""
+    }
+  },
+  "reviewNotes": "Thank you for reviewing My Fridge Museum.\n\nWhat it does: parents photograph their children's drawings and crafts. The app straightens the paper, whitens the background, and cuts crafts out from the table, then organizes each piece by child, semester, and age. It is a tool for parents, not an app for children.\n\nTesting without real children's art:\n- On a fresh install the fridge is empty and shows two sample tiles, \"看範例畫作 / 看範例勞作\" (English: \"See Sample\"). Tapping one opens a bundled real drawing or craft photo in the editor so you can try every tool (Crop, Adjust, Brush, Tap What to Keep, Compare). Samples never count toward the free quota and are not added to the museum.\n- To add your own items, use the camera (any sheet of paper with a drawing on it works) or the \"相簿 / Photos\" button on the home screen to import images from the photo library.\n\nIn-app purchase (non-consumable \"Full Version\", tw.starlight.fridgemuseum.full):\n- Free use allows 3 drawings per day and 3 crafts in total. The paywall appears only when you tap \"收進這次 / Hang It Up\" or \"存到手機 / Save to Photos\" after that quota is used, i.e. on the 4th drawing of the day or the 4th craft. It never interrupts editing.\n- The quickest way to see it: tap the gear at the top right of the home screen (Settings) > \"解鎖完整版 / Unlock Full Version\". \"恢復購買 / Restore Purchases\" is in the same section and on the paywall.\n- The Full Version IAP is submitted with this version. Family Sharing is enabled. Ask to Buy shows a \"Waiting for approval\" state and unlocks automatically when approved.\n- No sign-in is needed; use a Sandbox Apple Account to purchase. Restore Purchases is in Settings and on the paywall.\n- The UI follows the device language.\n- iPhone only. If the camera is unavailable, use the \"Photos\" button to import.\n\nPermissions:\n- Camera: to photograph artwork. If denied, importing from Photos still works.\n- Photos: add-only access is enough to save. Full access is optional and only used to create one album per child (\"My Fridge Museum – name\"). Without it, artworks save to Recents.\n- Microphone and speech recognition: only when recording an optional voice note; transcription uses on-device recognition.\n- Child avatars chosen from Photos use the system photo picker, which needs no permission.\n\nPrivacy: all image processing (including the craft cutout, which uses Apple's Vision framework) runs on the device. Photos are never uploaded, there is no account, no analytics, no ads, and the app makes no network requests of its own. No generative AI is used on the children's work.\n\nContact: starlight.kids.app@gmail.com",
+  "copyright": "2026 星光工作室 Starlight Studio"
+}

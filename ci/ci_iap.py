@@ -21,9 +21,12 @@ TERRITORIES = ['TWN', 'HKG', 'USA', 'CAN', 'GBR', 'AUS', 'SGP']
 TERRITORY_ZH = {'TWN': '台灣', 'HKG': '香港', 'USA': '美國', 'CAN': '加拿大', 'GBR': '英國', 'AUS': '澳洲', 'SGP': '新加坡'}
 # App Store Connect 限制：名稱 35 字、說明 55 字以內
 LOCALIZATIONS = {
-    'zh-Hant': ('完整版', '畫作、勞作不限張數，勞作 AI 去背無限次使用'),
-    'en-US': ('Full Version', 'Unlimited drawings and crafts, plus AI cutouts.'),
+    'zh-Hant': ('完整版', '畫作、勞作都不限張數，全家共享，一次買斷'),
+    'en-US': ('Full Version', 'Unlimited drawings and crafts for the family, one-time.'),
 }
+# 用詞照 DECISIONS.md §三：「勞作不限件數」，不要寫「AI 去背無限次」
+for _loc, (_n, _d) in LOCALIZATIONS.items():
+    assert len(_n) <= 35 and len(_d) <= 55, (_loc, len(_n), len(_d))
 REVIEW_NOTE = (
     'Non-consumable "Full Version" (one-time purchase, Family Sharing on). Free tier: 3 drawings per day and 3 crafts '
     'in total can be kept (Hang It Up or Save to Photos). After that, the paywall sheet appears when keeping another '

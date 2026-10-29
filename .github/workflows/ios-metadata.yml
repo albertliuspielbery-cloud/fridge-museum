@@ -1,0 +1,53 @@
+# 冰箱美術館：把 App Store 上架資料填進 App Store Connect（appstore/listing.json + appstore/screenshots/）
+# 只能手動執行；可以重複執行。**不會送審**，也不會選建置版本、改價格或銷售地區。
+# 內容：版本號、描述、關鍵字、宣傳文字、網址、名稱、副標題、類別、年齡分級、版權、審查備註、iPhone 6.9 吋截圖
+# 需要 GitHub Secrets：ASC_KEY_ID、ASC_ISSUER_ID、ASC_KEY_P8（跟 iOS App 上傳用的同一組）
+# 改文字：先改 appstore/metadata.md，再跑 python3 ci/ci_metadata.py --from-md 更新 listing.json
+name: App Store 上架資料
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本號（要和上傳的建置版本一樣）'
+        type: string
+        default: '1.1.0'
+      screenshots:
+        description: '上傳截圖'
+        type: boolean
+        default: true
+      dry_run:
+        description: '只預覽，不寫入（列出會改什麼）'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: ios-metadata
+  cancel-in-progress: false
+jobs:
+  metadata:
+    name: 填寫上架資料
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: 檢查上架資料（字數、和 metadata.md 一致、截圖尺寸）
+        run: |
+          python3 -m py_compile ci/ci_metadata.py ci/ci_iap.py ci/test_ci_metadata.py
+          python3 ci/ci_metadata.py --check
+          python3 ci/test_ci_metadata.py > /tmp/metadata-test.log || { tail -40 /tmp/metadata-test.log; exit 1; }
+      - name: 填進 App Store Connect
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APP_BUNDLE_ID: ${{ vars.APP_BUNDLE_ID || 'tw.starlight.fridgemuseum' }}
+          VERSION: ${{ inputs.version }}
+          SHOTS: ${{ inputs.screenshots && '1' || '' }}
+          DRY: ${{ inputs.dry_run && '1' || '' }}
+        run: |
+          python3 -m pip install -q pyjwt cryptography
+          args=(--version "$VERSION")
+          [ -n "$SHOTS" ] || args+=(--no-screenshots)
+          [ -n "$DRY" ] && args+=(--dry-run)
+          python3 ci/ci_metadata.py "${args[@]}"
