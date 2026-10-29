@@ -349,11 +349,17 @@ final class AppModel {
         defer { processingIDs.remove(id) }
         if artwork.recipe.kind == .flat && artwork.recipe.corners == nil {
             let corners = await processor.detectCorners(id: id, originalData: data)
+            // One-time upright check, written together with the corners (EditModel.autoOrientIfNeeded mirrors it).
+            var upright: AutoOrientation?
+            if artwork.recipe.autoTurns == nil && !artwork.isSample && !DemoMode.isActive {
+                upright = await processor.estimateOrientation(id: id, originalData: data, corners: corners)
+            }
             guard !Task.isCancelled, Self.isAlive(artwork) else { return }
             // Re-read: the editor may have written its recipe while the corners were being found.
             var recipe = artwork.recipe
             if recipe.kind == .flat && recipe.corners == nil {
                 recipe.corners = corners
+                if let upright { recipe = recipe.applyingAutoOrientation(upright) }
                 artwork.recipe = recipe
             }
         }

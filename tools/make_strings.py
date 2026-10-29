@@ -433,6 +433,12 @@ EN_BRUSH_ZOOM = {
 }
 EN.update(EN_BRUSH_ZOOM)
 # ---- end feat/brush-zoom
+# ---- feat/auto-rotate: automatic upright turn at intake (editor hint line). New strings only, kept apart for merging.
+EN_AUTO_ROTATE = {
+    "已自動轉正，不對的話到「裁切」轉一下。": "Turned upright automatically. If it’s wrong, turn it in “Crop.”",
+}
+EN.update(EN_AUTO_ROTATE)
+# ---- end feat/auto-rotate
 
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),

@@ -150,6 +150,17 @@ actor ImageProcessor {
         return detectPaperSync(id: id, data: originalData)
     }
 
+    /// Which quarter turn makes a flat artwork upright (`AutoOrienter`), judged on a small perspective-corrected copy
+    /// of the sheet inside `corners` (nil = detect). Cheap: reuses the cached 1600 px working copy.
+    func estimateOrientation(id: UUID, originalData: Data, corners: Quad?) -> AutoOrientation {
+        let quad = (corners ?? detectPaperSync(id: id, data: originalData).quad).clampedToUnit()
+        guard let src = try? source(id: id, data: originalData, maxEdge: Self.previewMaxEdge) else { return .none }
+        let focalPx = focalPixels(id: id, data: originalData, width: Double(src.extent.width), height: Double(src.extent.height))
+        let warped = perspectiveCorrect(src, quad: quad, maxEdge: AutoOrienter.visionEdge, focalPixels: focalPx)
+        guard let cg = context.createCGImage(warped, from: warped.extent, format: .RGBA8, colorSpace: srgb) else { return .none }
+        return AutoOrienter.estimate(cgImage: cg)
+    }
+
     /// Upright original (for the crop tool).
     func sourcePreview(id: UUID, originalData: Data, maxEdge: Int = ImageProcessor.previewMaxEdge) throws -> RenderedImage {
         let src = try source(id: id, data: originalData, maxEdge: maxEdge)

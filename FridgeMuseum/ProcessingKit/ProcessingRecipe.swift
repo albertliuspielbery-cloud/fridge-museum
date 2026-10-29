@@ -110,6 +110,10 @@ struct ProcessingRecipe: Codable, Sendable, Hashable {
     /// Craft: false while the person has not picked parts yet; the processor then also drops edge clutter
     /// automatically (`ProcessingNote.autoDroppedEdgeParts`). `PartPicking` sets it.
     var partsEdited: Bool = false
+    /// Automatic upright turn (1.2.0): nil = not checked yet; otherwise the quarter turns the content check applied
+    /// at intake (0 = left as captured). Set once, so re-renders stay stable; a manual turn simply changes
+    /// `quarterTurns` and wins.
+    var autoTurns: Int?
 
     init(kind: ArtworkKind = .flat) {
         self.kind = kind
@@ -119,7 +123,7 @@ struct ProcessingRecipe: Codable, Sendable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case version, kind, corners, strength, protect, vivid, removeSpecks, sensitivity, background, shadow, strokes, caption
-        case quarterTurns, straightenDegrees, removedPartSeeds, partsEdited
+        case quarterTurns, straightenDegrees, removedPartSeeds, partsEdited, autoTurns
     }
 
     init(from decoder: Decoder) throws {
@@ -144,6 +148,8 @@ struct ProcessingRecipe: Codable, Sendable, Hashable {
         straightenDegrees = tilt.isFinite ? tilt.clamped(-15, 15) : 0
         removedPartSeeds = (try? c.decodeIfPresent([CGPoint].self, forKey: .removedPartSeeds)) ?? d.removedPartSeeds
         partsEdited = (try? c.decodeIfPresent(Bool.self, forKey: .partsEdited)) ?? d.partsEdited
+        let auto: Int? = (try? c.decodeIfPresent(Int.self, forKey: .autoTurns)) ?? nil
+        autoTurns = auto.map { (($0 % 4) + 4) % 4 }
     }
 
     /// Total turn in degrees, clockwise.
@@ -151,6 +157,26 @@ struct ProcessingRecipe: Codable, Sendable, Hashable {
 
     mutating func rotateClockwise() { quarterTurns = (quarterTurns + 1) % 4 }
     mutating func rotateCounterClockwise() { quarterTurns = (quarterTurns + 3) % 4 }
+
+    /// Records the one-time automatic upright check. Turns only when the content was sure and nobody has turned the
+    /// artwork yet; a recipe that was already checked is returned unchanged.
+    func applyingAutoOrientation(_ estimate: AutoOrientation) -> ProcessingRecipe {
+        guard autoTurns == nil else { return self }
+        var r = self
+        if kind == .flat, estimate.shouldApply, quarterTurns == 0 {
+            r.quarterTurns = ((estimate.quarterTurns % 4) + 4) % 4
+            r.autoTurns = r.quarterTurns
+        } else {
+            r.autoTurns = 0
+        }
+        return r
+    }
+
+    /// The automatic turn is in effect (applied and not changed by hand since).
+    var isAutoTurned: Bool {
+        guard let autoTurns, autoTurns != 0 else { return false }
+        return quarterTurns == autoTurns
+    }
 
     func encoded() throws -> Data {
         let e = JSONEncoder()
