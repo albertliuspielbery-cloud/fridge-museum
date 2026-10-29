@@ -83,6 +83,7 @@ struct ArtworkDetailView: View {
                 .accessibilityLabel(artwork.isFavorite ? Text("取消最愛") : Text("加到最愛"))
                 .sensoryFeedback(.selection, trigger: artwork.isFavorite)
                 Menu {
+                    ShareCardMenuItems(artwork: artwork, preview: shareImage)
                     Button { showLabel = true } label: { Label("編輯說明牌", systemImage: "text.below.photo") }
                     Button(role: .destructive) { confirmDelete = true } label: { Label("刪除", systemImage: "trash") }
                 } label: {
@@ -123,6 +124,7 @@ struct ArtworkDetailView: View {
         .overlay(alignment: .topLeading) {
             if DemoMode.scene("detail"), artwork.thumbnailData != nil { ReadyMarker() }
         }
+        .modifier(ShareCardDemoScene(artwork: artwork))
     }
 
     private var printPanel: some View {
@@ -157,6 +159,7 @@ struct ArtworkDetailView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("分享"))
             }
+            ShareCardButton(artwork: artwork, preview: shareImage)
             Button {
                 isSaving = true
                 Task {

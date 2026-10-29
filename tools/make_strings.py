@@ -479,6 +479,16 @@ EN_ONBOARDING = {
 }
 EN.update(EN_ONBOARDING)
 # ---- end feat/onboarding
+# ---- feat/share-card: 分享卡片 (detail screen knob + 更多 menu). New strings only, kept apart for merging.
+EN_SHARE_CARD = {
+    "分享卡片": "Share Card",
+    "直式 4:5": "Portrait 4:5",
+    "方形": "Square",
+    # Card label above the child's words in English (zh cards keep 孩子說); only looked up in English.
+    "In %@’s words": ("%@說", "In %@’s words"),
+}
+EN.update(EN_SHARE_CARD)
+# ---- end feat/share-card
 
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),

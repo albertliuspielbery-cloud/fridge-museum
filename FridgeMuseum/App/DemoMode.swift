@@ -130,7 +130,7 @@ enum DemoMode {
             app.paywall = PaywallRequest(kind: .flat, artworkID: seeded.pendingFlat, action: .keep)
         case "museum", "museum-filter", "museum-small", "museum-large":
             path.wrappedValue.append(Route.museum)
-        case "detail":
+        case "detail", "share-card":
             path.wrappedValue.append(Route.detail(seeded.featured))
         case "settings":
             showSettings.wrappedValue = true
