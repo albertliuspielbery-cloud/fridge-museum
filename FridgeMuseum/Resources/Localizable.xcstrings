@@ -1191,6 +1191,17 @@
         }
       }
     },
+    "分享照片" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share Photo"
+          }
+        }
+      }
+    },
     "分組" : {
       "extractionState" : "manual",
       "localizations" : {
