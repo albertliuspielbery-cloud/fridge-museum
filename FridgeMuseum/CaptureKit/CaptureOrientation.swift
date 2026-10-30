@@ -126,6 +126,8 @@ final class GravityOrientationTracker: @unchecked Sendable {
     }
 
     func start() {
+        // A new camera session: forget the angle remembered from the previous one.
+        lock.withLock { filter = CaptureOrientationFilter() }
         guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
         manager.deviceMotionUpdateInterval = 1.0 / 15
         manager.startDeviceMotionUpdates(to: queue) { [weak self] motion, _ in

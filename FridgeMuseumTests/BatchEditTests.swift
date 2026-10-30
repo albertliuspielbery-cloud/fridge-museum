@@ -133,11 +133,35 @@ struct BatchEditTests {
             #expect(!AppModel.owesOrientationCheck(a))
             #expect((a.modifiedAt ?? .distantPast) > day(2026, 1, 1))
             #expect(a.processingState == .pending)                  // owed a re-render, not started yet
+            #expect(app.isQueuedForRender(a.id))                    // the museum shows its spinner
         }
         #expect(app.rotateAll(list, clockwise: false, context: context) == 2)
         #expect(app.rotateAll(list, clockwise: false, context: context) == 2)
         #expect(list[0].recipe.quarterTurns == 3)
         #expect(app.rotateAll([], clockwise: true, context: context) == 0)
+    }
+
+    /// Once the editor closes, the queued turns render one at a time and the spinners go away. (The test data
+    /// isn't a real image, so each render ends as `.failed` — that's how we see it ran.)
+    @Test func queuedTurnsRenderAfterTheEditorCloses() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let list = makeArtworks(2, in: context)
+        for a in list {
+            a.renderedImageData = Data([9])
+            a.processingState = .done
+        }
+        try context.save()
+        let editor = UUID()
+        app.beginEditing(editor)
+        #expect(app.rotateAll(list, clockwise: true, context: context) == 2)
+        app.endEditing(editor, context: context)
+        for _ in 0..<600 where list.contains(where: { $0.processingState != .failed }) {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(list.allSatisfy { $0.processingState == .failed })
+        #expect(list.allSatisfy { !app.isQueuedForRender($0.id) })
     }
 
     @Test func turningKeepsAnEarlierAutomaticResult() {

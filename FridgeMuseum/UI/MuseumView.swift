@@ -460,7 +460,7 @@ struct MuseumView: View {
 
     @ViewBuilder
     private func tile(_ a: Artwork, mode: MuseumViewMode) -> some View {
-        let processing = app.processingIDs.contains(a.id)
+        let processing = app.processingIDs.contains(a.id) || app.isQueuedForRender(a.id)
         switch mode {
         case .standard:
             MuseumTile(artwork: a, processing: processing, showChild: childFilter == .all)
@@ -620,6 +620,7 @@ struct MuseumView: View {
         let n = app.rotateAll(selectedArtworks, clockwise: clockwise, context: modelContext)
         guard n > 0 else { return }
         app.show(String(localized: "已把 \(n) 件作品轉向"))
+        endSelection()
     }
 
     /// Same path as saving one artwork (quota, Photos primer / permission, per-child albums). saveAll stops at the

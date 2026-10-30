@@ -237,8 +237,12 @@ final class AppModel {
         runDeferred(context: context)
     }
 
-    /// Edited while stepping through pending captures; their full-size render waits in the queue (renderLater).
-    @ObservationIgnored private var staleIDs: Set<UUID> = []
+    /// Edited while stepping through pending captures (or turned with 轉向); their full-size render waits in the
+    /// queue (renderLater). Observed: the museum shows its spinner for these (isQueuedForRender).
+    private var staleIDs: Set<UUID> = []
+
+    /// A re-render is owed and waiting in the queue (the museum shows the tile's spinner, so 轉向 isn't tapped twice).
+    func isQueuedForRender(_ id: UUID) -> Bool { staleIDs.contains(id) }
 
     /// Stepping through pending captures (繼續): the closed editor's full-size render waits in the queue — it runs
     /// once no editor is open — instead of alongside the next editor's previews. `stale`: the recipe was edited, so
@@ -461,6 +465,15 @@ final class AppModel {
         guard Self.isAlive(artwork), let data = artwork.originalImageData else { return }
         let id = artwork.id
         renderingIDs.insert(id)
+        // Declared before the removal below, so it runs after it: a renderLater(stale:) that arrived while this render
+        // ran (e.g. 轉向 during an editor commit or a background export) was skipped by the drain as busy — queue it
+        // again now that the artwork is free, instead of losing it until the next launch.
+        defer {
+            if staleIDs.contains(id), Self.isAlive(artwork) {
+                deferredIDs.insert(id)
+                runDeferred(context: context)
+            }
+        }
         defer { renderingIDs.remove(id) }
         await settleOrientation(artwork)
         guard Self.isAlive(artwork) else { return }
