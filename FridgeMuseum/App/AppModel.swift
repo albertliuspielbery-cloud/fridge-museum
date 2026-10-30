@@ -59,6 +59,8 @@ final class AppModel {
     let processor = ImageProcessor.shared
     let photos = PhotoLibrarySaver()
     let store = StoreBridge()
+    /// iCloud sync (Full Version): how this launch's store was opened, status for Settings (App/CloudSync.swift).
+    let sync = CloudSync()
 
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     /// Background processing per artwork, so deleting (重拍, a replaced sample) can cancel it first.
@@ -308,22 +310,61 @@ final class AppModel {
     /// At launch: artworks whose processing never finished (app closed mid-render, or while an editor was open).
     func processUnfinished(context: ModelContext) {
         guard !DemoMode.isActive else { return }
+        queueUnfinished(context: context, syncedOnly: false)
+        Task { [weak self] in await self?.backfillFingerprints(context: context) }
+    }
+
+    /// Queues unfinished artworks for rendering. `syncedOnly`: just the ones that came from another device (after an
+    /// iCloud import, mid-session) — this device's own unfinished work is only picked up at launch.
+    private func queueUnfinished(context: ModelContext, syncedOnly: Bool) {
         let done = ProcessingState.done.rawValue
         let failed = ProcessingState.failed.rawValue
         let descriptor = FetchDescriptor<Artwork>(predicate: #Predicate { $0.processingStateRaw != done && $0.processingStateRaw != failed })
+        let device = DeviceIdentity.storedID
+        let now = Date()
         // Through the same queue as held exports (oldest first, one at a time, paused while an editor is open): a
         // burst cut short by the app closing can leave dozens, and starting them all at once heats the phone.
         // Corners are found in the queue too, right before each export.
         // Unfinished but already rendered = the recipe changed after that render (edited while stepping through
         // pending captures — renderLater — or the app closed mid-render): re-render it from the current recipe.
+        // Synced from another device (iCloud): rendered there, so only one that arrived without a render gets one
+        // here, and another device's capture still being edited there is left alone (LaunchRender).
         for artwork in (try? context.fetch(descriptor)) ?? [] where processTasks[artwork.id] == nil && Self.isAlive(artwork) {
             let id = artwork.id
             guard !processingIDs.contains(id), !renderingIDs.contains(id) else { continue }
-            if artwork.renderedImageData != nil { staleIDs.insert(id) }
-            deferredIDs.insert(id)
+            let isLocal = SyncOrigin.isLocal(artwork.originDeviceID, device: device)
+            if syncedOnly && isLocal { continue }
+            let owns = SyncOrigin.ownsPending(origin: artwork.originDeviceID, createdAt: artwork.createdAt, device: device, now: now)
+            switch LaunchRender.action(isLocal: isLocal, ownsPending: owns, isKept: artwork.isKept,
+                                       hasRender: artwork.renderedImageData != nil, age: now.timeIntervalSince(artwork.createdAt)) {
+            case .skip:
+                continue
+            case .render:
+                deferredIDs.insert(id)
+            case .rerender:
+                staleIDs.insert(id)
+                deferredIDs.insert(id)
+            }
         }
         runDeferred(context: context)
-        Task { [weak self] in await self?.backfillFingerprints(context: context) }
+    }
+
+    /// Artworks being edited, processed or rendered right now (iCloud duplicate merging leaves them alone).
+    private var busyArtworkIDs: Set<UUID> {
+        editingIDs.union(claimedIDs).union(processingIDs).union(renderingIDs).union(processTasks.keys)
+    }
+
+    /// iCloud housekeeping, after the store opens and after each import: merges copies of the same artwork / child
+    /// that arrived from several devices, and renders synced artworks that came without a working copy.
+    /// Returns false when it should run later (an editor, burst, import or batch save has the phone).
+    @discardableResult
+    func runSyncMaintenance(context: ModelContext) -> Bool {
+        guard sync.isActive, !DemoMode.isActive else { return true }
+        guard !isEditorBusy, saveAllProgress == nil, !isWalkingPending else { return false }
+        let report = SyncDedupe.run(context: context, skipping: busyArtworkIDs)
+        if let current = currentChildID, let merged = report.childRemap[current] { setCaptureChild(merged) }
+        queueUnfinished(context: context, syncedOnly: true)
+        return true
     }
 
     /// Opens one of the bundled sample photos (看範例) in the editor. Samples never count toward the quota.
@@ -331,7 +372,9 @@ final class AppModel {
         guard let url = Bundle.main.url(forResource: kind == .flat ? "sample-flat" : "sample-craft", withExtension: "jpg"),
               let data = try? Data(contentsOf: url) else { return nil }
         let existing = try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.isSample && !$0.isKept }))
-        for old in existing ?? [] where old.kind == kind {
+        // Only this device's own sample: another device's (synced through iCloud) may be open in its editor.
+        let device = DeviceIdentity.storedID
+        for old in existing ?? [] where old.kind == kind && SyncOrigin.isLocal(old.originDeviceID, device: device) {
             delete(old, context: context)
         }
         let a = ingest(data, kind: kind, child: nil, capturedAt: Date(), context: context, isSample: true, opensEditor: true)
@@ -371,9 +414,13 @@ final class AppModel {
 
     /// The one-time upright check (ProcessingRecipe.autoTurns) is still owed: a flat capture that has never been
     /// rendered. Artworks from before 1.2.0 (all rendered) and samples are left as they are.
+    /// iCloud: an artwork synced from another device is that device's to check (its recipe, with the turn, arrives
+    /// with its render); only this device's own captures — or another device's capture abandoned here
+    /// (`isOwnPending`) — are checked here.
     static func owesOrientationCheck(_ artwork: Artwork) -> Bool {
         artwork.recipe.kind == .flat && artwork.recipe.autoTurns == nil && artwork.renderedImageData == nil
             && !artwork.isSample && !DemoMode.isActive
+            && (SyncOrigin.isLocal(artwork.originDeviceID, device: DeviceIdentity.storedID) || artwork.isOwnPending)
     }
 
     /// Pays the owed one-time upright check before a render reads the recipe — every path that stores a render
@@ -413,8 +460,9 @@ final class AppModel {
             let fingerprint = await Task.detached(priority: .utility) {
                 ArtFingerprint.make(fromImageData: thumbnail)?.encoded
             }.value
-            // The artwork may have been deleted (重拍) while the render ran: never write to a deleted model.
-            guard !Task.isCancelled, Self.isAlive(artwork) else { return }
+            // The artwork may have been deleted (重拍, or on another device via iCloud) while the render ran: never
+            // write to a deleted model.
+            guard !Task.isCancelled, Self.isAlive(artwork), fetchArtwork(id, context: context) != nil else { return }
             artwork.renderedImageData = out.imageData
             artwork.thumbnailData = out.thumbnailData
             artwork.fingerprintData = fingerprint
@@ -724,10 +772,11 @@ final class AppModel {
         Task { await processor.evict(id: id) }
     }
 
-    /// Captures that were never kept (the home sticky note). Samples are left alone.
+    /// Captures that were never kept (the home sticky note). Samples are left alone, and so are another device's
+    /// captures arriving through iCloud (`Artwork.isOwnPending`): 全部不要 / 全部收進 / 繼續 only touch this device's.
     func pendingArtworks(context: ModelContext) -> [Artwork] {
         let all = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { !$0.isKept && !$0.isSample }))) ?? []
-        return all.filter { Self.isAlive($0) }
+        return all.filter { Self.isAlive($0) && $0.isOwnPending }
     }
 
     // MARK: 這張好像收過了 (likely duplicates)

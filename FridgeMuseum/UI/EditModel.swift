@@ -34,7 +34,9 @@ final class EditModel {
 
     init(artwork: Artwork) {
         artworkID = artwork.id
+        // iCloud: not on an artwork synced from another device (that device checks it; see owesOrientationCheck).
         mayAutoOrient = artwork.renderedImageData == nil && !artwork.isSample && !DemoMode.isActive
+            && (SyncOrigin.isLocal(artwork.originDeviceID, device: DeviceIdentity.storedID) || artwork.isOwnPending)
         originalData = artwork.originalImageData ?? Data()
         var r = artwork.recipe
         r.kind = artwork.kind

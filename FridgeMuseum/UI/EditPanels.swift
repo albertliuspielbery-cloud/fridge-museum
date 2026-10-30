@@ -223,7 +223,8 @@ struct LabelSheet: View {
                         .frame(maxWidth: .infinity)
                         .background(FridgeDoorShape(top: 22, bottom: 22, handleHeight: 50).padding(.trailing, 10))
                         .overlay(alignment: .top) { Tape(style: .dots, width: 110, angle: -3).offset(y: 12) }
-                    Text("這是掛在冰箱上的作品說明牌。名字和生日只會記在這支手機上，下次不用再填。")
+                    Text(app.sync.isActive ? "這是掛在冰箱上的作品說明牌。名字和生日只記在你的裝置和你自己的 iCloud，下次不用再填。" as LocalizedStringKey
+                         : "這是掛在冰箱上的作品說明牌。名字和生日只會記在這支手機上，下次不用再填。")
                         .font(.fm(14.5)).foregroundStyle(Palette.muted)
                         .fixedSize(horizontal: false, vertical: true)
 

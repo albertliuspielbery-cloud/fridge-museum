@@ -9,6 +9,7 @@ struct ChildEditorView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var app
 
     @State private var name: String
     @State private var hasBirthday: Bool
@@ -71,7 +72,11 @@ struct ChildEditorView: View {
                 } header: {
                     Text("頭像")
                 } footer: {
-                    Text("頭像只存在這支手機裡。")
+                    if app.sync.isActive {
+                        Text("頭像只存在你的裝置和你自己的 iCloud。")
+                    } else {
+                        Text("頭像只存在這支手機裡。")
+                    }
                 }
                 Section {
                     HStack(spacing: 8) {

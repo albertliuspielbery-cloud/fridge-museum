@@ -27,7 +27,8 @@ struct HomeView: View {
         artworks.filter(\.isInMuseum).sorted { ($0.keptAt ?? $0.createdAt) > ($1.keptAt ?? $1.createdAt) }
     }
 
-    private var pending: [Artwork] { artworks.filter { !$0.isKept && !$0.isSample } }
+    /// This device's captures not kept yet (another device's, arriving through iCloud, stay with that device).
+    private var pending: [Artwork] { artworks.filter(\.isOwnPending) }
 
     /// Museum artworks not saved to Photos yet (備份提醒).
     private var unsaved: [Artwork] { museum.filter(BackupReminder.needsBackup) }
@@ -168,9 +169,14 @@ struct HomeView: View {
             }
             // Full width under the title row, so the line no longer wraps its last character.
             Label {
-                Text("照片只在這支手機上處理，不會上傳")
+                // With iCloud sync on this session, "never uploaded" would no longer be true.
+                if app.sync.isActive {
+                    Text("照片只在手機上處理，作品存在你自己的 iCloud")
+                } else {
+                    Text("照片只在這支手機上處理，不會上傳")
+                }
             } icon: {
-                Image(systemName: "lock")
+                Image(systemName: app.sync.isActive ? "icloud" : "lock")
             }
             .font(.fm(13, relativeTo: .footnote))
             .foregroundStyle(Palette.muted)
@@ -641,6 +647,7 @@ struct SampleTile: View {
 
 /// 拍照小技巧 — a taped cream card that unfolds.
 struct TipsCard: View {
+    @Environment(AppModel.self) private var app
     @State private var expanded = false
 
     var body: some View {
@@ -662,7 +669,8 @@ struct TipsCard: View {
                     tip("拍畫作時盡量讓整張紙入鏡，四周留一點桌面。")
                     tip("拍勞作時放在素色桌面上，四周留空。")
                     tip("光線均勻最好；不用開閃光燈，App 會幫你修平光線。")
-                    tip("所有處理都在這支手機上完成，不會上傳。")
+                    tip(app.sync.isActive ? "所有處理都在這支手機上完成；作品同步到你自己的 iCloud，開發者看不到。" as LocalizedStringKey
+                        : "所有處理都在這支手機上完成，不會上傳。")
                 }
                 .transition(.opacity)
             }

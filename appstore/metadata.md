@@ -260,7 +260,8 @@ en-US
 我在程式碼裡查過的（branch `store/shots`，commit 5337633）：
 - 整個 `FridgeMuseum/` 沒有 `URLSession`、`URLRequest`、`Network`／`NWConnection`、`WKWebView`、`SFSafariViewController`。
 - 沒有任何第三方 SDK：`project.yml` 沒有 Swift Package，只有 App／測試 target；也沒有 Firebase、Crashlytics、Sentry、分析或廣告相關程式碼，沒有 `AppTrackingTransparency`／廣告識別碼。
-- SwiftData 明確設定 `cloudKitDatabase: .none`（`ArchiveKit/ArchiveStore.swift`），沒有 entitlements 檔，所以沒有 iCloud／CloudKit。
+- 1.1.0：SwiftData 明確設定 `cloudKitDatabase: .none`（`ArchiveKit/ArchiveStore.swift`），沒有 entitlements 檔，所以沒有 iCloud／CloudKit。
+- 1.2.0（`feat/icloud`）：完整版可開「iCloud 同步」，用 CloudKit **私人資料庫**（`cloudKitDatabase: .private("iCloud.tw.starlight.fridgemuseum")`）。資料存在使用者自己的 iCloud，開發者讀不到（CloudKit Console 也看不到使用者私人資料庫的內容），不符合 Apple 對「收集」的定義（傳出裝置**且開發者或合作夥伴可存取**）→ 隱私答案維持「不收集資料」。見下方「1.2.0 要改的上架資料」。
 - `Resources/PrivacyInfo.xcprivacy`：`NSPrivacyTracking` false、`NSPrivacyCollectedDataTypes` 空的，只宣告 UserDefaults（CA92.1）。
 - 語音轉文字設 `requiresOnDeviceRecognition = true`（`CaptureKit/VoiceNoteRecorder.swift`），不支援離線辨識的手機只保留錄音、不轉文字。
 - 對外的只有：`ShareLink`（使用者自己按分享）、設定裡的隱私權政策／支援頁 `Link`、打開系統「設定」的 `openURL`。購買由 StoreKit／Apple 處理，不算開發者收集。
@@ -306,3 +307,31 @@ Contact: starlight.kids.app@gmail.com
 | 版權 Copyright | 2026 星光工作室 Starlight Studio |
 
 支援頁和隱私權頁都是中英雙語（同一頁，中文在前、英文在後），英文地區的審查員和使用者也看得懂。
+
+---
+
+## 1.2.0 要改的上架資料（iCloud 同步，`feat/icloud`）
+
+`appstore/listing.json` **還沒改**（1.1.0 審查中）。送 1.2.0 前，照下面改 listing.json 再跑「App Store 上架資料」流程（不要用流程重產生）：
+
+**宣傳文字 promotionalText（zh / en）**：「全部在手機上處理，App 不會上傳照片。」→「全部在手機上處理；完整版還能同步到你自己的 iCloud。」／ en 版同理（"Everything is processed on your iPhone; the Full Version can also sync to your own iCloud."）。字數仍在 170 內要再數。
+
+**說明 description**
+- 【存到手機】「作品只存在這支手機裡。還沒存到照片的作品多了…」→「沒開 iCloud 同步時，作品只存在這支手機裡。還沒存到照片的作品多了…」
+  en: "Artworks live only on this phone." → "Without iCloud Sync, artworks live only on this phone."
+- 新增一段【iCloud 同步（完整版）】：
+  「・用同一個 Apple 帳號的 iPhone、iPad 都看得到作品，換手機也不怕／・作品存在你自己的 iCloud，開發者看不到／・隨時可以在設定關掉，關掉不會刪掉手機上的作品」
+  en: "ICLOUD SYNC (FULL VERSION) • See your artworks on any iPhone or iPad signed in to the same Apple Account • Artworks are kept in your own iCloud; the developer can’t see them • Turn it off in Settings anytime; nothing on the phone is deleted"
+- 【隱私】「所有處理都在這支 iPhone 上完成，App 不會上傳你的照片」→「所有處理都在這支 iPhone 上完成，照片不會傳給開發者；開啟 iCloud 同步時只存到你自己的 iCloud」
+  en: "Everything is processed on your iPhone. Your photos are never sent to us; with iCloud Sync on, they’re kept only in your own iCloud"
+- 「拍照、整理、存到手機都不用連網」可保留（同步需要連網，但其他功能不用）。
+- 【免費版與完整版】完整版那一句加上「iCloud 同步」（en: "iCloud Sync,"）。
+
+**審查備註 reviewNotes**：最後的 Privacy 段改成："Privacy: all image processing runs on the device. Photos are never sent to the developer: there is no account, no analytics, no ads, and no server of our own. With the Full Version, the optional iCloud Sync (Settings > iCloud Sync) stores artworks in the user's own private CloudKit database via SwiftData, which the developer cannot access. No generative AI is used on the children's work."
+並在 IAP 段加一行："- The Full Version also includes iCloud Sync (same Apple Account across devices). After purchase, a one-time explanation appears; sync starts the next time the app is opened."
+
+**App 隱私權**：維持「不收集資料（Data Not Collected）」，追蹤：否（理由見第 10 節）。
+
+**截圖**：付費頁多了一行「iCloud 同步：換手機、用 iPad 都看得到」，`ci/iap_review.png` 和付費頁截圖要重拍；設定頁截圖會多「iCloud 同步」區塊（免費版顯示「iCloud 同步（完整版）」）。
+
+**新版本說明（What's New）建議**：「新增 iCloud 同步（完整版）：用同一個 Apple 帳號的 iPhone、iPad 都看得到作品，換手機也不怕。」／ "New: iCloud Sync (Full Version). See your artworks on every iPhone and iPad signed in to your Apple Account."

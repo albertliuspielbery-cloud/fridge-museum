@@ -13,6 +13,8 @@ struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var path = NavigationPath()
     @State private var showSettings = false
+    /// One-time iCloud sync explanation for Full Version users (CloudSync).
+    @State private var showSyncIntro = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
 
@@ -60,6 +62,9 @@ struct RootView: View {
             SettingsView()
         }
         .onboardingTutorial()
+        .sheet(isPresented: $showSyncIntro) {
+            SyncIntroSheet()
+        }
         .alert(Text("為每位小朋友建立相簿？"), isPresented: Binding(get: { app.photosPrimer != nil }, set: { if !$0 { app.photosPrimer = nil } }),
                presenting: app.photosPrimer) { primer in
             Button { app.continueSave(after: primer, albums: true, context: modelContext) } label: { Text("建立相簿") }
@@ -85,11 +90,35 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { app.store.refresh() }
         }
+        .onChange(of: app.store.isUnlocked) { offerSyncIntroIfNeeded() }
+        .onChange(of: app.paywall) { offerSyncIntroIfNeeded() }
+        .onChange(of: showSettings) { offerSyncIntroIfNeeded() }
+        .onChange(of: path) { offerSyncIntroIfNeeded() }
+        .onChange(of: OnboardingCoordinator.shared.isPresented) { offerSyncIntroIfNeeded() }
         .task {
             await app.store.load()
             app.processUnfinished(context: modelContext)
+            // iCloud: merge duplicates / render synced artworks now and after every import (only when syncing).
+            let model = app, context = modelContext
+            app.sync.setMaintenance { model.runSyncMaintenance(context: context) }
+            offerSyncIntroIfNeeded()
             await DemoMode.prepare(app: app, context: modelContext, path: $path, showSettings: $showSettings)
         }
+    }
+
+    /// Full Version and never asked: explain iCloud sync once, on the home screen with nothing else open.
+    private func offerSyncIntroIfNeeded() {
+        guard canOfferSyncIntro else { return }
+        Task {
+            try? await Task.sleep(for: .milliseconds(700))
+            if canOfferSyncIntro { showSyncIntro = true }
+        }
+    }
+
+    private var canOfferSyncIntro: Bool {
+        !DemoMode.isActive && !showSyncIntro && !showSettings && app.paywall == nil && app.photosPrimer == nil
+            && !OnboardingCoordinator.shared.isPresented
+            && path.isEmpty && app.sync.shouldOfferIntro(isFullVersion: app.store.isUnlocked)
     }
 
     private func open(_ route: Route) {

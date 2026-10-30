@@ -108,11 +108,12 @@ struct PaywallView: View {
     }
 
     private var perks: some View {
-        let dots = [Palette.blue, Palette.red, Palette.teal, Palette.yellow]
+        let dots = [Palette.blue, Palette.red, Palette.teal, Palette.yellow, Palette.green]
         let flat = PaywallText.perkFlat(QuotaTracker.freeFlatPerDay)
         let craft = PaywallText.perkCraft(QuotaTracker.craftFreeTrial)
         // The limit the person just hit comes first.
-        let items: [String] = (isCraft ? [craft, flat] : [flat, craft]) + [PaywallText.perkFamily, PaywallText.perkUpdates]
+        let items: [String] = (isCraft ? [craft, flat] : [flat, craft])
+            + [PaywallText.perkICloud, PaywallText.perkFamily, PaywallText.perkUpdates]
         return VStack(alignment: .leading, spacing: 12) {
             Text(PaywallText.perksTitle)
                 .font(.fm(15, bold: true))
@@ -121,7 +122,7 @@ struct PaywallView: View {
                 .accessibilityAddTraits(.isHeader)
             ForEach(Array(items.enumerated()), id: \.offset) { i, perk in
                 HStack(alignment: .firstTextBaseline, spacing: 14) {
-                    Circle().fill(dots[i]).frame(width: 18, height: 18)
+                    Circle().fill(dots[i % dots.count]).frame(width: 18, height: 18)
                         .shadow(color: Palette.shadow, radius: 1, y: 1)
                         .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 5 }
                     Text(perk).font(.fm(16)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
@@ -348,6 +349,7 @@ enum PaywallText {
     static var perksTitle: String { text("paywall.perks.title") }
     static func perkFlat(_ n: Int) -> String { text("paywall.perk.flat \(n)") }
     static func perkCraft(_ n: Int) -> String { text("paywall.perk.craft \(n)") }
+    static var perkICloud: String { text("paywall.perk.icloud") }
     static var perkFamily: String { text("paywall.perk.family") }
     static var perkUpdates: String { text("paywall.perk.updates") }
     static var ticketKicker: String { text("paywall.ticketKicker") }

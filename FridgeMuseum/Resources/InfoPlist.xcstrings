@@ -41,13 +41,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Take photos of your kid’s drawings and crafts. Photos stay on this phone."
+            "value" : "Take photos of your kid’s drawings and crafts. Photos are processed on this phone; with iCloud Sync on, they’re kept only in your own iCloud."
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "用相機拍下孩子的畫作和勞作。照片只會存在這支手機裡。"
+            "value" : "用相機拍下孩子的畫作和勞作。照片在手機上處理；開啟 iCloud 同步時，只存到你自己的 iCloud。"
           }
         }
       }
@@ -75,13 +75,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Record your kid talking about their artwork. Recordings stay on this phone."
+            "value" : "Record your kid talking about their artwork. Recordings stay on this phone; with iCloud Sync on, they’re kept only in your own iCloud."
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "錄下孩子介紹自己作品的聲音，錄音只會存在這支手機裡。"
+            "value" : "錄下孩子介紹自己作品的聲音。錄音存在這支手機；開啟 iCloud 同步時，只存到你自己的 iCloud。"
           }
         }
       }

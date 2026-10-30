@@ -1,9 +1,12 @@
 import Foundation
 import SwiftData
 
-// SwiftData models, kept CloudKit-compatible for a future sync option:
-// every attribute optional or defaulted, no @Attribute(.unique), relationships optional.
-// Images are stored with .externalStorage (SwiftData writes them as separate files, and CloudKit would sync them as assets).
+// SwiftData models. CloudKit-compatible (1.2.0 iCloud sync, ArchiveStore + App/CloudSync.swift), checked against the
+// NSPersistentCloudKitContainer rules: every attribute optional or defaulted, no @Attribute(.unique), every
+// relationship optional with an inverse and no .deny delete rule, no ordered relationships. Images use .externalStorage
+// (CloudKit assets). Small binary attributes (recipeData, fingerprintData < 1 KB) stay well under the 1 MB record limit.
+// Adding attributes later is fine (defaulted → lightweight migration; CloudKit only ever adds fields), but never rename or
+// delete one once the schema is deployed to the CloudKit Production environment.
 
 enum ProcessingState: String, Codable, Sendable {
     case pending, processing, done, failed
@@ -18,6 +21,9 @@ final class Child {
     /// Optional photo avatar: a small square JPEG (≤ 512 px, made by `AvatarImage.make`). nil = the colour circle.
     @Attribute(.externalStorage) var avatarImageData: Data?
     var createdAt: Date = Date()
+    /// The device that created this profile (`DeviceIdentity`); "" = made before 1.2.0 and not stamped yet.
+    /// Only used to resolve copies that arrive from several devices (SyncDedupe).
+    var originDeviceID: String = ""
 
     // Nullify: removing a child profile keeps the artworks (they become 未分類).
     @Relationship(deleteRule: .nullify, inverse: \Artwork.child)
@@ -29,6 +35,7 @@ final class Child {
         self.birthday = birthday
         self.avatarColorHex = avatarColorHex
         self.createdAt = Date()
+        self.originDeviceID = DeviceIdentity.storedID
     }
 
     var displayName: String { name.isEmpty ? String(localized: "小朋友") : name }
@@ -82,6 +89,11 @@ final class Artwork {
     // Photos
     var lastSavedToPhotosAt: Date?
 
+    // iCloud sync (1.2.0)
+    /// The device that captured it (`DeviceIdentity`); "" = made before 1.2.0 and not stamped yet. A pending capture
+    /// (isKept == false) belongs to that device: other devices leave it alone (SyncOrigin.ownsPending).
+    var originDeviceID: String = ""
+
     init(kind: ArtworkKind, child: Child?, capturedAt: Date, originalImageData: Data) {
         self.id = UUID()
         self.kindRaw = kind.rawValue
@@ -90,6 +102,7 @@ final class Artwork {
         self.capturedAt = capturedAt
         self.originalImageData = originalImageData
         self.recipeData = try? ProcessingRecipe.default(for: kind).encoded()
+        self.originDeviceID = DeviceIdentity.storedID
     }
 
     var kind: ArtworkKind {

@@ -1,5 +1,8 @@
 # 雲端打包用：用 App Store Connect API 金鑰，自動準備「上架用」的簽名憑證和描述檔（不需要登記 iPhone 裝置）。
-# 改自「星光小冒險」已在使用的 ci_sign.py，多了一件事：App 識別碼（Bundle ID）不存在時會自動登記。
+# 改自「星光小冒險」已在使用的 ci_sign.py，多了兩件事：App 識別碼（Bundle ID）不存在時會自動登記；
+# 1.2.0 起會確認 App 識別碼已開啟 iCloud（CloudKit）和推播（Push Notifications）功能，沒開就用 API 開。
+# 注意：iCloud 容器 iCloud.tw.starlight.fridgemuseum 的「建立」和「指派給 App 識別碼」Apple 沒有開放 API，
+#       要在 developer.apple.com 手動做一次（步驟見 HANDOFF.md「1.2.0 iCloud 同步」）。沒指派的話，打包會因描述檔缺少容器而失敗。
 #
 # 用法：
 #   python3 ci/ci_sign.py <輸出資料夾>        準備憑證 + 描述檔（會先確認／登記 App 識別碼）
@@ -22,6 +25,14 @@ BUNDLE = os.environ.get('APP_BUNDLE_ID') or 'tw.starlight.fridgemuseum'
 PROFILE_NAME = os.environ.get('PROFILE_NAME') or 'FridgeMuseum AppStore CI'
 # Apple 的 Identifier 名稱只接受英數字和空白，所以用英文名；App 顯示名稱「冰箱美術館」在 Info.plist。
 BUNDLE_NAME = 'Fridge Museum'
+ICLOUD_CONTAINER = 'iCloud.tw.starlight.fridgemuseum'
+# App 識別碼需要的功能（App Store Connect API bundleIdCapabilities）。
+# ICLOUD 的 ICLOUD_VERSION = XCODE_6 就是「Include CloudKit support」（Xcode 6 以後的 iCloud）。
+# PUSH_NOTIFICATIONS：CloudKit 用無聲推播通知「別台裝置改了東西」（aps-environment）。
+CAPABILITIES = [
+    ('ICLOUD', [{'key': 'ICLOUD_VERSION', 'options': [{'key': 'XCODE_6'}]}]),
+    ('PUSH_NOTIFICATIONS', None),
+]
 API = 'https://api.appstoreconnect.apple.com/v1'
 
 
@@ -74,6 +85,24 @@ def ensure_bundle_id():
     print(f'已登記新的 App 識別碼：{BUNDLE}')
     print(f'::notice::已登記 App 識別碼 {BUNDLE}。下一步：到 https://appstoreconnect.apple.com/apps 用這個識別碼新增 App。')
     return created['id']
+
+
+def ensure_capabilities(bid):
+    """App 識別碼沒開的功能用 POST /bundleIdCapabilities 打開（已開的跳過）。描述檔是每次重做的，會帶上這些功能。"""
+    have = {c['attributes'].get('capabilityType') for c in call('GET', f'/bundleIds/{bid}/bundleIdCapabilities')['data']}
+    for ctype, settings in CAPABILITIES:
+        if ctype in have:
+            print(f'App 識別碼功能已開啟：{ctype}')
+            continue
+        attrs = {'capabilityType': ctype}
+        if settings:
+            attrs['settings'] = settings
+        call('POST', '/bundleIdCapabilities', {'data': {
+            'type': 'bundleIdCapabilities', 'attributes': attrs,
+            'relationships': {'bundleId': {'data': {'type': 'bundleIds', 'id': bid}}}}})
+        print(f'已開啟 App 識別碼功能：{ctype}')
+    print(f'::notice::iCloud 容器 {ICLOUD_CONTAINER} 要在 developer.apple.com 手動建立並指派給 {BUNDLE}'
+          '（Apple 沒有開放 API；做過一次就好，步驟見 HANDOFF.md「1.2.0 iCloud 同步」）。沒指派的話，下一步打包會失敗。')
 
 
 def prepare_signing(out, bid):
@@ -134,6 +163,7 @@ def main():
         raise SystemExit(2)
     need_env()
     bid = ensure_bundle_id()
+    ensure_capabilities(bid)
     if sys.argv[1] != '--register-only':
         prepare_signing(sys.argv[1], bid)
 

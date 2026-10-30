@@ -12,7 +12,8 @@ enum OnboardingPage: Int, CaseIterable, Identifiable {
         case .welcome: "寶貝的畫，一張都不用丟"
         case .capture: "放平，拍一張"
         case .keep: "收進這次，掛上冰箱"
-        case .privacy: "照片只在這支手機上處理，不會上傳"
+        // Neutral wording: true with iCloud sync off or on (the tutorial can be replayed from Settings while syncing).
+        case .privacy: "照片只在手機上處理"
         case .start: "先加一位小朋友吧"
         }
     }
@@ -22,7 +23,7 @@ enum OnboardingPage: Int, CaseIterable, Identifiable {
         case .welcome: "我是冰冰。拍下孩子的畫和勞作，我幫你整理乾淨，掛上冰箱。"
         case .capture: "紙會自動拉正、底色變白；勞作會自動去背。一整疊要收？打開「連拍」，一張接一張拍。"
         case .keep: "作品會依孩子、學期、年齡收進美術館。存到手機時，可以依孩子分相簿。"
-        case .privacy: "App 不蒐集任何個人資料，也不用註冊帳號。"
+        case .privacy: "App 不蒐集任何個人資料，也不用註冊帳號；開啟 iCloud 同步時，作品只存在你自己的 iCloud。"
         case .start: "填上名字和生日，每張作品都會記下當時幾歲。也可以先看看範例。"
         }
     }

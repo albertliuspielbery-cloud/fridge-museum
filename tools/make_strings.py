@@ -457,8 +457,8 @@ EN_ONBOARDING = {
     "下一步": "Next",
     "第 %lld 頁，共 %lld 頁": "Page %1$lld of %2$lld",
     "使用教學": "How It Works",
-    # Pages (Bibi says the title; one line under it). Page 4's title reuses the home line
-    # "照片只在這支手機上處理，不會上傳" from the table above.
+    # Pages (Bibi says the title; one line under it). Page 4 (privacy) is in EN_ICLOUD (wording that stays true
+    # with iCloud sync on).
     "寶貝的畫，一張都不用丟": "Keep every drawing they make",
     "我是冰冰。拍下孩子的畫和勞作，我幫你整理乾淨，掛上冰箱。":
         "I’m Bibi. Snap your kid’s drawings and crafts, and I’ll tidy them up and hang them on the fridge.",
@@ -490,18 +490,98 @@ EN_SHARE_CARD = {
 }
 EN.update(EN_SHARE_CARD)
 # ---- end feat/share-card
+# ---- feat/icloud (1.2.0): iCloud 同步 (Settings section, status, one-time explanation, privacy copy when syncing).
+# New strings only, kept apart for merging. Paywall perk is in StoreKit/Paywall.xcstrings (paywall.perk.icloud).
+EN_ICLOUD = {
+    # Settings section
+    "iCloud 同步": "iCloud Sync",
+    "iCloud 同步（完整版）": "iCloud Sync (Full Version)",
+    "狀態": "Status",
+    "上次同步": "Last Synced",
+    "用同一個 Apple 帳號的 iPhone、iPad 都看得到作品。照片只在這支手機上處理；作品存在你自己的 iCloud，開發者看不到。開關在下次打開 App 時生效，關掉同步不會刪掉手機上的作品。":
+        "See your artworks on any iPhone or iPad signed in to the same Apple Account. Photos are processed on this "
+        "phone; artworks are kept in your own iCloud, where the developer can’t see them. Changes apply the next time "
+        "you open the app, and turning sync off never deletes anything on this phone.",
+    "完整版可以把作品同步到你自己的 iCloud，換手機、用 iPad 都看得到。":
+        "With the Full Version, artworks sync to your own iCloud, so you can see them on a new iPhone or your iPad.",
+    # Status (SyncStatus.label)
+    "完整版功能": "Full Version feature",
+    "已關閉": "Off",
+    "下次打開 App 時開始同步": "Starts the next time you open the app",
+    "下次打開 App 時停止同步": "Stops the next time you open the app",
+    "iCloud 未登入": "Not signed in to iCloud",
+    "iCloud 暫時無法使用": "iCloud isn’t available right now",
+    "iCloud 帳號不同，已暫停": "Different iCloud account, paused",
+    "iCloud 帳號有變動，請重新打開 App": "Your iCloud account changed. Reopen the app.",
+    "這次無法開啟同步": "Couldn’t turn on sync this time",
+    "準備中…": "Getting ready…",
+    "同步中…": "Syncing…",
+    "已同步": "Up to date",
+    "等待網路連線": "Waiting for a connection",
+    "iCloud 空間不足": "iCloud storage is full",
+    "暫時無法同步，稍後會自動再試": "Can’t sync right now. It will try again later.",
+    # Status details (SyncStatus.detail)
+    "從背景把 App 滑掉再打開就會生效。手機上的作品都會留著。":
+        "Swipe the app away and open it again to apply. Everything on this phone stays.",
+    "到 iPhone「設定」登入 Apple 帳號並開啟 iCloud，再重新打開 App。作品都還在手機上。":
+        "Sign in to your Apple Account and turn on iCloud in the iPhone’s Settings, then reopen the app. "
+        "Your artworks are still on this phone.",
+    "這支手機現在登入的 Apple 帳號，和上次同步時不同。為了不刪掉手機上的作品，先暫停同步；換回原本的帳號就會繼續。":
+        "This phone is signed in to a different Apple Account than the last time it synced. To keep the artworks on "
+        "this phone safe, syncing is paused. Switch back to the original account to continue.",
+    "iCloud 空間滿了，新作品先留在手機上。到「設定 › Apple 帳號 › iCloud」整理空間後會自動繼續。":
+        "Your iCloud storage is full, so new artworks stay on this phone for now. Free up space in "
+        "Settings › Apple Account › iCloud and syncing picks up again.",
+    "作品都還在 iCloud。重新打開 App 後會再檢查一次。":
+        "Your artworks are still in iCloud. The app checks again when you reopen it.",
+    # One-time explanation (SyncIntroSheet)
+    "作品會同步到你自己的 iCloud，用同一個 Apple 帳號的 iPhone、iPad 都看得到，換手機也不怕。":
+        "Artworks sync to your own iCloud. See them on any iPhone or iPad signed in to the same Apple Account, "
+        "even after you switch phones.",
+    "照片還是只在手機上處理；作品存在你自己的 iCloud，開發者看不到。":
+        "Photos are still processed only on this phone. Artworks are kept in your own iCloud, where the developer "
+        "can’t see them.",
+    "會用到你的 iCloud 空間。下次打開 App 時開始同步，隨時可以在「設定」關掉；關掉不會刪掉手機上的作品。":
+        "It uses your iCloud storage. Syncing starts the next time you open the app. You can turn it off in Settings "
+        "anytime, and turning it off never deletes anything on this phone.",
+    "開啟 iCloud 同步": "Turn On iCloud Sync",
+    "先不要": "Not Now",
+    # Privacy copy while syncing (the on-device wording stays for everyone else)
+    "照片只在手機上處理，作品存在你自己的 iCloud": "Photos are processed on this phone and kept in your own iCloud",
+    "所有處理都在這支手機上完成；作品同步到你自己的 iCloud，開發者看不到。":
+        "Everything is processed on this phone. Artworks sync to your own iCloud, where the developer can’t see them.",
+    "照片只在這支手機上處理；開啟 iCloud 同步時，作品存在你自己的 iCloud，開發者看不到。App 不蒐集任何個人資料。":
+        "Photos are processed only on this phone. With iCloud Sync on, artworks are kept in your own iCloud, where the "
+        "developer can’t see them. The app collects no personal data.",
+    "作品也同步在你自己的 iCloud。再存一份到照片，更安心。":
+        "Artworks are also in your own iCloud. Save a copy to Photos for extra peace of mind.",
+    "頭像只存在你的裝置和你自己的 iCloud。": "The avatar stays on your devices and in your own iCloud.",
+    # Onboarding page 4 (replaces the 1.1 home line there)
+    "照片只在手機上處理": "Photos are processed on your phone",
+    "App 不蒐集任何個人資料，也不用註冊帳號；開啟 iCloud 同步時，作品只存在你自己的 iCloud。":
+        "The app collects no personal data, and there’s no account to sign up for. With iCloud Sync on, artworks are "
+        "kept only in your own iCloud.",
+    "這是掛在冰箱上的作品說明牌。名字和生日只記在你的裝置和你自己的 iCloud，下次不用再填。":
+        "This is the museum label that hangs with the artwork. The name and birthday are saved only on your devices "
+        "and in your own iCloud, so you won’t have to enter them again.",
+}
+EN.update(EN_ICLOUD)
+# ---- end feat/icloud
 
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),
     "CFBundleName": ("冰箱美術館", "My Fridge Museum"),
     "NSHumanReadableCopyright": ("© 星光工作室 Starlight Studio", "© Starlight Studio"),
-    "NSCameraUsageDescription": ("用相機拍下孩子的畫作和勞作。照片只會存在這支手機裡。",
-                                 "Take photos of your kid’s drawings and crafts. Photos stay on this phone."),
+    # 1.2.0 (iCloud sync): also true when sync is on — keep in step with project.yml.
+    "NSCameraUsageDescription": ("用相機拍下孩子的畫作和勞作。照片在手機上處理；開啟 iCloud 同步時，只存到你自己的 iCloud。",
+                                 "Take photos of your kid’s drawings and crafts. Photos are processed on this phone; "
+                                 "with iCloud Sync on, they’re kept only in your own iCloud."),
     "NSPhotoLibraryAddUsageDescription": ("把整理好的作品存到「照片」。", "Save finished artworks to Photos."),
     "NSPhotoLibraryUsageDescription": ("為每位小朋友建立「冰箱美術館」相簿，並把整理好的作品放進去。",
                                        "Create a My Fridge Museum album for each child and add finished artworks to it."),
-    "NSMicrophoneUsageDescription": ("錄下孩子介紹自己作品的聲音，錄音只會存在這支手機裡。",
-                                     "Record your kid talking about their artwork. Recordings stay on this phone."),
+    "NSMicrophoneUsageDescription": ("錄下孩子介紹自己作品的聲音。錄音存在這支手機；開啟 iCloud 同步時，只存到你自己的 iCloud。",
+                                     "Record your kid talking about their artwork. Recordings stay on this phone; "
+                                     "with iCloud Sync on, they’re kept only in your own iCloud."),
     "NSSpeechRecognitionUsageDescription": ("在手機上把孩子的錄音轉成文字備註，不會上傳到網路。",
                                             "Turn your kid’s recording into a text note on this phone. Nothing is uploaded."),
 }

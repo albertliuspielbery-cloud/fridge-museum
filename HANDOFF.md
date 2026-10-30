@@ -58,7 +58,7 @@
 ## 4. iOS App（`/`）
 
 - Bundle ID `tw.starlight.fridgemuseum`，iOS 18+，Swift 6，Xcode 26（App Store 規定 iOS 26 SDK）。XcodeGen：`project.yml`。
-- 結構：`FridgeMuseum/App`（AppModel、RootView、DemoMode 只在 Debug）、`UI/`、`ArchiveKit/`（SwiftData：Child、Artwork；CloudKit 目前關）、`CaptureKit/`、`ProcessingKit/`（API 見 `ProcessingKit/API.md`）、`StoreKit/`（API 見 `StoreKit/API.md`）、`Resources/`（素材、字型 Huninn + Chiron GoRound TC 子集，OFL）。
+- 結構：`FridgeMuseum/App`（AppModel、RootView、DemoMode 只在 Debug）、`UI/`、`ArchiveKit/`（SwiftData：Child、Artwork；1.2.0 起完整版可開 iCloud 同步，見「1.2.0 iCloud 同步」）、`CaptureKit/`、`ProcessingKit/`（API 見 `ProcessingKit/API.md`）、`StoreKit/`（API 見 `StoreKit/API.md`）、`Resources/`（素材、字型 Huninn + Chiron GoRound TC 子集，OFL）。
 - 字串：`Localizable.xcstrings`、`InfoPlist.xcstrings`、`StoreKit/Paywall.xcstrings`（zh-Hant + en）。工具：`tools/make_strings.py`、`tools/l10n_scan.py`、`tools/sprite_to_assets.py`、`tools/subset_fonts.py`。
 - 勞作去背用 Apple `VNGenerateForegroundInstanceMaskRequest`（每個 instance = 一個可點選部件），失敗退回顏色法，再退回原照片。
 
@@ -102,6 +102,28 @@
 - 版面全在 `UI/ShareCardLayout.swift`（純計算，`ShareCardTests` 測）：薄荷冰箱門＋白相紙＋水果磁鐵（依作品 id 固定選 lemon/tomato/berry）＋奶油色說明牌＋冰冰標誌；說明牌優先，畫縮小、字不縮。繪製與 ImageRenderer（1080 寬、不透明、sRGB、JPEG 0.9）在 `UI/ShareCardView.swift`。
 - 字型：Huninn／Chiron 是子集，**沒有全形空白 U+3000**——卡片文字一律把空白、換行、U+3000 換成半形空白；子集缺的字（罕見名字）靠 cascade list 退到系統圓體／PingFang，不會變豆腐。新增文字前先查字型 cmap。
 - DemoMode 場景 `share-card`（全螢幕顯示卡片，給截圖用）。實機待測：分享選單在 SE／mini 與大字體下的樣子、LINE 收圖。
+
+### 1.2.0 iCloud 同步（`feat/icloud`，已併入 `fix/1.2.0`）
+- 完整版功能。只用使用者自己 Apple 帳號的 **CloudKit 私人資料庫**（容器 `iCloud.tw.starlight.fridgemuseum`），同一個 Apple 帳號的裝置之間同步；不同 Apple 帳號之間不分享（之後的版本再說）。免費版完全照舊只在手機上，設定頁有「iCloud 同步（完整版）」一行，點了開付費頁。
+- 程式：`App/CloudSync.swift`（開店、帳號檢查、狀態、事件監看）、`ArchiveKit/SyncPolicy.swift`（決策、待收作品歸屬、重複合併，全部可單元測試）、`UI/SyncIntroSheet.swift`（第一次說明）、`ArchiveKit/ArchiveStore.swift`（`.private(容器)` 或 `.none`，同一個檔案）。測試：`FridgeMuseumTests/CloudSyncTests.swift`。
+- **每次開 App 只決定一次**要不要同步（完整版 + 開關 + 看過說明 + iCloud 帳號可用）；開關、購買、退款、登入登出都是「下次打開 App 生效」。同一個檔案不會同時有兩個 container。關掉同步＝同一個檔案用 `.none` 開，手機上的資料一筆都不刪。
+- 已知、改不了的 Apple 行為：同步開著而 App 正在執行時登出 iCloud（或在 iOS 設定關掉這個 App 的 iCloud），NSPersistentCloudKitContainer 會把已同步的資料從手機移除（Apple 說是隱私設計），重新登入同一個帳號會回來；還沒上傳的修改可能遺失。啟動前先查帳號狀態，能避開「App 關著時登出」這種情況。隱私權頁、支援頁有寫。
+- 待收作品（還沒收進的）也會同步，但只屬於拍它的那台裝置（`originDeviceID`）：別台的便利貼、全部不要、全部收進、繼續都不會碰它；超過 7 天沒人處理才當成無主。帶著成品圖同步過來的作品不會重算；沒帶成品圖的，10 分鐘後在這台算一次。
+- 重複：新手機用舊手機備份還原、兩台都開同步，會各上傳一份（同 id）→ 依「裝置 id 字串最小的那份」合併，每台結果一樣；兩台各自新增同名的小朋友（生日相同或其中一個沒填）也會合併。
+
+**擁有者要手動做的（送 1.2.0 之前，照順序；做過一次就好）**
+1. 建 iCloud 容器：https://developer.apple.com/account/resources/identifiers/list/cloudContainer → 右上「＋」→ 選「iCloud Containers」→ Continue → Description 填 `Fridge Museum`、Identifier 填 `iCloud.tw.starlight.fridgemuseum` → Continue → Register。
+2. App 識別碼開 iCloud 和推播：（已完成）跑「準備 App 識別碼」流程https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/bundle-id.yml ，`ci_sign.py` 會用 API 打開 iCloud（含 CloudKit）和 Push Notifications。（或手動：下一步的頁面勾 iCloud、Push Notifications）
+3. 把容器指派給 App（Apple 沒有開放 API）：https://developer.apple.com/account/resources/identifiers/list → 點 `tw.starlight.fridgemuseum` → iCloud 那一列按「Edit」（或 Configure）→ 勾 `iCloud.tw.starlight.fridgemuseum` → Continue → Save（會提示描述檔失效，沒關係，雲端打包每次重做）。
+4. 建 CloudKit 資料結構到「開發」環境（沒有 Mac 的做法）：
+   - https://icloud.developer.apple.com/dashboard/ → 右上帳號 → Settings → Tokens → 新增 Management Token → 複製（只顯示一次）
+   - 貼到 GitHub Secret `CLOUDKIT_MANAGEMENT_TOKEN`：https://github.com/albertliuspielbery-cloud/fridge-museum/settings/secrets/actions
+   - 跑「CloudKit 資料結構（開發環境）」流程：https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/cloudkit-schema.yml
+   - （有 Mac 的話更準：Debug 版加啟動參數 `-FMInitCloudKitSchema`，用 SwiftData 模型自動建立。）
+5. 部署到「正式」環境：https://icloud.developer.apple.com/dashboard/ → 選容器 → Development → Schema 確認有 `CD_Artwork`、`CD_Child` → 「Deploy Schema Changes…」→ Deploy。**TestFlight 和 App Store 版本都用正式環境**，所以要在上傳第一個 1.2.0 TestFlight 之前做完，不然同步會失敗（設定頁顯示「暫時無法同步」）。之後只要改了資料模型（新增欄位）就要重做 4、5；已部署的欄位不能改名或刪除。
+6. 照常跑「iOS App」上傳 TestFlight。1–3 沒做完的話打包會因描述檔缺 iCloud 容器而失敗——**合併到 main 之後，連 1.1.x 的修正版也會受影響**，所以 1–3 要在合併前做。
+
+**只能實機驗證的**：兩台裝置同一個 Apple 帳號互相出現作品、刪除同步、推播即時更新；從 1.1.0 升級後舊作品是否全部上傳；關同步後資料還在、再開能補上傳關閉期間的作品；iCloud 未登入／空間不足的狀態顯示；購買後說明頁、退款後下次開 App 停止同步；備份還原的新手機重複合併；同步中登出 iCloud 的行為。CloudKit 本身沒辦法在 CI 測（模擬器版本沒簽名、沒有 Apple 帳號）。
 
 ---
 
