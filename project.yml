@@ -18,7 +18,7 @@ settings:
     # the classic Swift 6 rules (explicit @MainActor), so pin them; older Xcode ignores these keys.
     SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
     SWIFT_APPROACHABLE_CONCURRENCY: NO
-    MARKETING_VERSION: "1.2.0"
+    MARKETING_VERSION: "1.2.1"
     CURRENT_PROJECT_VERSION: "1"
     # Overridden by CI (APPLE_TEAM_ID). Leave empty for simulator builds.
     DEVELOPMENT_TEAM: ""
