@@ -52,6 +52,7 @@ struct MuseumView: View {
     @State private var contentWidth: CGFloat = 0
     @State private var viewer: MuseumViewerStart?
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var editingChild: Child?
     @State private var showNewChild = false
     // 選取: change several artworks at once.
@@ -136,13 +137,13 @@ struct MuseumView: View {
         }
         .scrollIndicators(.hidden)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { contentWidth = $0 }
-        // Pinch the wall: in → smaller prints, out → bigger (one step per pinch).
-        .simultaneousGesture(
-            MagnifyGesture().onEnded { value in
-                let next = viewMode.afterPinch(scale: value.magnification)
-                if next != viewMode { setViewMode(next) }
-            }
-        )
+        // Pinch the wall: in → smaller prints, out → bigger (one step per pinch). A UIKit pinch recognizer that
+        // recognizes alongside the scroll view's pan, instead of a SwiftUI MagnifyGesture on the ScrollView
+        // (reported to break scrolling on iOS 18).
+        .gesture(WallPinchGesture { scale in
+            let next = viewMode.afterPinch(scale: scale)
+            if next != viewMode { setViewMode(next) }
+        })
         .sensoryFeedback(.selection, trigger: viewModeRaw)
         .background(Wallpaper())
         .navigationTitle(selecting ? Text("已選 \(selectedArtworks.count) 件") : Text("美術館"))
@@ -453,7 +454,7 @@ struct MuseumView: View {
     }
 
     private func setViewMode(_ mode: MuseumViewMode) {
-        withAnimation(.snappy(duration: 0.3)) { viewModeRaw = mode.rawValue }
+        withAnimation(reduceMotion ? nil : .snappy(duration: 0.3)) { viewModeRaw = mode.rawValue }
     }
 
     @ViewBuilder
@@ -551,7 +552,8 @@ struct MuseumView: View {
                     .buttonStyle(.plain)
                     .overlay(alignment: .topTrailing) {
                         if mode == .large && !selecting {
-                            FullScreenButton { viewer = MuseumViewerStart(id: a.id, artworks: filtered) }
+                            // Wall order (grouping can reorder sections, e.g. 依年齡 with several children).
+                            FullScreenButton { viewer = MuseumViewerStart(id: a.id, artworks: sections(filtered).flatMap(\.items)) }
                                 .padding(14)
                         }
                     }
