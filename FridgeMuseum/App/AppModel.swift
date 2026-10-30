@@ -349,17 +349,11 @@ final class AppModel {
         defer { processingIDs.remove(id) }
         if artwork.recipe.kind == .flat && artwork.recipe.corners == nil {
             let corners = await processor.detectCorners(id: id, originalData: data)
-            // One-time upright check, written together with the corners (EditModel.autoOrientIfNeeded mirrors it).
-            var upright: AutoOrientation?
-            if artwork.recipe.autoTurns == nil && !artwork.isSample && !DemoMode.isActive {
-                upright = await processor.estimateOrientation(id: id, originalData: data, corners: corners)
-            }
             guard !Task.isCancelled, Self.isAlive(artwork) else { return }
             // Re-read: the editor may have written its recipe while the corners were being found.
             var recipe = artwork.recipe
             if recipe.kind == .flat && recipe.corners == nil {
                 recipe.corners = corners
-                if let upright { recipe = recipe.applyingAutoOrientation(upright) }
                 artwork.recipe = recipe
             }
         }
@@ -370,8 +364,29 @@ final class AppModel {
             try? context.save()
             return
         }
+        // One-time upright check, right before the export rather than at capture: a burst or an import then runs
+        // Vision for one artwork at a time in the drain, and a capture opened in the editor gets it from the editor
+        // (EditModel.autoOrientIfNeeded; ImageProcessor caches the result, so Vision runs once either way).
+        if Self.owesOrientationCheck(artwork) {
+            let estimate = await processor.estimateOrientation(id: id, originalData: data, corners: artwork.recipe.corners)
+            guard !Task.isCancelled, Self.isAlive(artwork) else { return }
+            if artwork.recipe.autoTurns == nil { artwork.recipe = artwork.recipe.applyingAutoOrientation(estimate) }
+            if renderingIDs.contains(id) || artwork.renderVersion != startVersion { return }
+            if isEditorBusy {
+                deferredIDs.insert(id)
+                try? context.save()
+                return
+            }
+        }
         artwork.processingState = .processing
         await rerender(artwork, context: context)
+    }
+
+    /// The one-time upright check (ProcessingRecipe.autoTurns) is still owed: a flat capture that has never been
+    /// rendered. Artworks from before 1.2.0 (all rendered) and samples are left as they are.
+    static func owesOrientationCheck(_ artwork: Artwork) -> Bool {
+        artwork.recipe.kind == .flat && artwork.recipe.autoTurns == nil && artwork.renderedImageData == nil
+            && !artwork.isSample && !DemoMode.isActive
     }
 
     /// Full-resolution render from the original + recipe; stores rendered JPEG + thumbnail.

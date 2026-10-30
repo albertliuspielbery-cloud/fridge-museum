@@ -117,8 +117,12 @@ Vision text recognition in all four turns where each read line votes by its own 
 fast first, two accurate passes on the winning axis only when fast is unclear (decisive when one turn clearly wins), plus weak cues — upright drawn
 faces and a colour prior (sky blue / sun yellow along the top, grass green along the bottom). Weak cues only count when
 ≥ 2 agree including a non-colour one, or all 3 colour cues agree, and none disagrees. `AutoOrientation.shouldApply`
-is the go signal. Run once at intake (`AppModel.autoProcess`, or `EditModel.autoOrientIfNeeded` when the editor
-opens first) and stored in `recipe.autoTurns`. The capture angle itself comes from gravity
+is the go signal. Text alone needs ≥ 2 lines or ≥ 6 characters behind it and no colour cue against it. Run once per
+never-rendered flat capture (`AppModel.owesOrientationCheck`): in `AppModel.autoProcess` right before the export
+(so bursts / imports run it one artwork at a time in the drain), or by the editor after its first preview
+(`EditModel.autoOrientIfNeeded`, re-renders only if it turned). `estimateOrientation` is cached per artwork + sheet,
+so Vision runs once. Stored in `recipe.autoTurns`. Capture angle: `CaptureOrientationFilter` (first answer from a
+≥ 7° tilt; switching needs ≥ 0.3 g in-plane and 0.3 s). The capture angle itself comes from gravity
 (`CaptureKit/CaptureOrientation.swift`).
 
 `recipe.corners == nil` on a flat render → the processor detects the paper itself (and may add `.paperNotFound`).

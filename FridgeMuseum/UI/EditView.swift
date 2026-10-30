@@ -163,9 +163,10 @@ struct EditView: View {
         .onChange(of: brushSize) { _, _ in flashSizePreview() }
         .onAppear { app.beginEditing(artwork.id) }
         .task {
-            await model.autoOrientIfNeeded(allowed: !artwork.isSample && !DemoMode.isActive)
             model.render()
             if DemoMode.isActive { DemoMode.configure(editor: model, tool: $tool, compare: $compare, activeCorner: $activeCorner, showLabel: $showLabel) }
+            // Preview first; the one-time upright check follows and re-renders only if it turned the artwork.
+            if await model.autoOrientIfNeeded(allowed: AppModel.owesOrientationCheck(artwork)) { model.render() }
         }
         .sheet(isPresented: $showLabel) {
             LabelSheet(artwork: artwork, model: model)

@@ -36,7 +36,8 @@ struct AutoOrientation: Sendable, Hashable {
 /// - faces: `VNDetectFaceRectanglesRequest`; drawn faces are sometimes found, upright (small roll) only. Weak.
 /// - layout: blue (sky) and yellow (sun) along the top, green (grass) along the bottom. Weak, three separate cues.
 /// Weak cues only turn the artwork when at least two agree with one of them not from the colour layout, or all
-/// three colour cues agree — and none disagrees.
+/// three colour cues agree — and none disagrees. Text decides alone only with ≥ 2 lines or ≥ 6 characters behind it
+/// and no colour cue against it.
 enum AutoOrienter {
     /// Long edge of the copy the Vision requests see.
     static let visionEdge = 720
@@ -52,22 +53,32 @@ enum AutoOrienter {
     /// 96 px colour sample.
     static func estimate(cgImage: CGImage) -> AutoOrientation {
         guard let small = scaled(cgImage, maxEdge: visionEdge) else { return .none }
-        let text = textScores(small)
+        let text = textAnalysis(small)
         let faces = (0..<4).map { faceScore(small, turns: $0) }
         let layout = layoutSample(cgImage).map { LayoutCues.votes($0) } ?? []
-        return decide(text: text, faces: faces, layoutVotes: layout)
+        return decide(text: text.scores, textLines: text.lines, textChars: text.chars, faces: faces, layoutVotes: layout)
     }
 
     // MARK: Decision (pure)
 
-    /// Combines the per-turn scores. `text` and `faces` have 4 entries (turns 0...3); `layoutVotes` holds the turn
-    /// each colour cue voted for (cues without a clear vote are left out).
-    static func decide(text: [Double], faces: [Double], layoutVotes: [Int]) -> AutoOrientation {
+    /// Combines the per-turn scores. `text`, `textLines` (text lines voting for each turn), `textChars` (letters /
+    /// digits in them) and `faces` have 4 entries (turns 0...3); `layoutVotes` holds the turn each colour cue voted
+    /// for (cues without a clear vote are left out).
+    ///
+    /// Text decides alone only with a clear winner backed by ≥ 2 separate lines or ≥ 6 characters (one short name
+    /// written along the side edge must not turn a landscape drawing), and never against a colour cue.
+    static func decide(text: [Double], textLines: [Int], textChars: [Int], faces: [Double],
+                       layoutVotes: [Int]) -> AutoOrientation {
         var votes: [Int] = []
         var nonLayoutVote = false
+        let colourVotes = layoutVotes.filter { (0..<4).contains($0) }
         if let w = winner(text) {
             let (best, score, second) = w
-            if score >= 4, score >= 2.5 * second {
+            let lines = textLines.count == 4 ? textLines[best] : 0
+            let chars = textChars.count == 4 ? textChars[best] : 0
+            if score >= 4, score >= 2.5 * second, lines >= 2 || chars >= 6 {
+                // Colour cues disagree with a turn the text wants: keep the capture orientation.
+                if best != 0, colourVotes.contains(where: { $0 != best }) { return .none }
                 let confidence = min(0.95, 0.7 + score / 60)
                 return AutoOrientation(quarterTurns: best, confidence: confidence, basis: .text)
             }
@@ -80,7 +91,7 @@ enum AutoOrienter {
             votes.append(w.best)
             nonLayoutVote = true
         }
-        votes += layoutVotes.filter { (0..<4).contains($0) }
+        votes += colourVotes
         guard let first = votes.first, votes.allSatisfy({ $0 == first }) else { return .none }
         let needed = nonLayoutVote ? 2 : 3
         guard votes.count >= needed else { return .none }
@@ -113,6 +124,8 @@ enum AutoOrienter {
         /// Clockwise quarter turns this line says the image needs: the pass's turn plus the line's own angle.
         var impliedTurns: Int
         var weight: Double
+        /// Letters / digits read.
+        var chars: Int
 
         var description: String {
             let level = accurate ? "A" : "F"
@@ -135,26 +148,47 @@ enum AutoOrienter {
         textAnalysis(image).scores
     }
 
-    /// Scores plus every line read, for diagnostics.
-    static func textAnalysis(_ image: CGImage) -> (scores: [Double], reads: [TextRead]) {
-        var reads = (0..<4).flatMap { readText(image, turns: $0, accurate: false) }
-        let fast = tally(reads)
-        guard fast.reduce(0, +) > 0 else { return (fast, reads) }
-        if let w = winner(fast), w.score >= 4, w.score >= 2.5 * w.second { return (fast, reads) }
+    /// Per-turn text evidence plus every line read (diagnostics).
+    struct TextEvidence: Sendable {
+        var scores: [Double]
+        /// Lines (with a vote) supporting each turn.
+        var lines: [Int]
+        /// Letters / digits in those lines.
+        var chars: [Int]
+        var reads: [TextRead]
+    }
+
+    static func textAnalysis(_ image: CGImage) -> TextEvidence {
+        let fastReads = (0..<4).flatMap { readText(image, turns: $0, accurate: false) }
+        let fast = tally(fastReads)
+        guard fast.reduce(0, +) > 0 else { return evidence(fast, used: fastReads, all: fastReads) }
+        if let w = winner(fast), w.score >= 4, w.score >= 2.5 * w.second {
+            return evidence(fast, used: fastReads, all: fastReads)
+        }
         let axis = fast[0] + fast[2] >= fast[1] + fast[3] ? 0 : 1
         let precise = [axis, axis + 2].flatMap { readText(image, turns: $0, accurate: true) }
-        reads += precise
         var scores = tally(precise)
         // The other axis keeps half its fast evidence, so a wrong axis guess can still lose cleanly.
-        for t in [(axis + 1) % 4, (axis + 3) % 4] { scores[t] = fast[t] * 0.5 }
-        return (scores, reads)
+        let others = [(axis + 1) % 4, (axis + 3) % 4]
+        for t in others { scores[t] = fast[t] * 0.5 }
+        let used = precise + fastReads.filter { others.contains($0.impliedTurns) }
+        return evidence(scores, used: used, all: fastReads + precise)
+    }
+
+    private static func evidence(_ scores: [Double], used: [TextRead], all: [TextRead]) -> TextEvidence {
+        var lines = [Int](repeating: 0, count: 4), chars = lines
+        for r in used where r.weight > 0 {
+            lines[r.impliedTurns] += 1
+            chars[r.impliedTurns] += r.chars
+        }
+        return TextEvidence(scores: scores, lines: lines, chars: chars, reads: all)
     }
 
     /// Human-readable list of what Vision read (test failure messages).
     static func textDiagnostics(_ image: CGImage) -> String {
         let a = textAnalysis(image)
         let scores = a.scores.map { String(format: "%.1f", $0) }.joined(separator: ", ")
-        return "text scores [\(scores)] reads: " + a.reads.map(\.description).joined(separator: " | ")
+        return "text scores [\(scores)] lines \(a.lines) chars \(a.chars) reads: " + a.reads.map(\.description).joined(separator: " | ")
     }
 
     private static func tally(_ reads: [TextRead]) -> [Double] {
@@ -194,7 +228,7 @@ enum AutoOrienter {
             let weight = usable ? base * Double(candidate.confidence) : 0
             out.append(TextRead(pass: turns, accurate: accurate, string: candidate.string,
                                 confidence: Double(candidate.confidence), angle: angle, aspect: aspect,
-                                impliedTurns: (turns + own) % 4, weight: weight))
+                                impliedTurns: (turns + own) % 4, weight: weight, chars: chars))
         }
         return out
     }

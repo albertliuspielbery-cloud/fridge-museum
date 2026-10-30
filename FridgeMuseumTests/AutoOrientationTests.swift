@@ -41,6 +41,51 @@ struct CaptureOrientationTests {
         #expect(angle(cos(a40), sin(a40), previous: 90) == 90)
         #expect(angle(cos(a20), sin(a20), previous: 90) == 0)
     }
+
+    /// Gravity for a phone tilted `side` degrees toward its right edge and `forward` degrees toward its top edge
+    /// from lying face up (small-angle sines; z dominant).
+    private func flat(side: Double, forward: Double) -> (x: Double, y: Double) {
+        (sin(side * .pi / 180), sin(forward * .pi / 180))
+    }
+
+    @Test func portraitOverATableStaysPortrait() {
+        var f = CaptureOrientationFilter()
+        f.update(gravityX: 0, gravityY: -1, time: 0)                 // lifted in portrait
+        #expect(f.angle == 90)
+        // Laid over the drawing: 8° to the right and 3° forward (in-plane ≈ 0.15 g, raw angle 166° → 180) …
+        let wobble = flat(side: 8, forward: 3)
+        for i in 1...20 { f.update(gravityX: wobble.x, gravityY: wobble.y, time: Double(i) * 0.07) }
+        #expect(f.angle == 90)
+        // … or leaning forward 10° (raw → 270, upside down).
+        let lean = flat(side: 0, forward: 10)
+        for i in 21...40 { f.update(gravityX: lean.x, gravityY: lean.y, time: Double(i) * 0.07) }
+        #expect(f.angle == 90)
+    }
+
+    @Test func clearLandscapeTiltSwitchesAfterAMoment() {
+        var f = CaptureOrientationFilter(angle: 90)
+        let tilt = flat(side: 30, forward: 0)                          // 0.5 g toward the right edge → 180
+        f.update(gravityX: tilt.x, gravityY: tilt.y, time: 0)
+        f.update(gravityX: tilt.x, gravityY: tilt.y, time: 0.1)
+        #expect(f.angle == 90)                                         // not yet: needs to hold 0.3 s
+        f.update(gravityX: tilt.x, gravityY: tilt.y, time: 0.35)
+        #expect(f.angle == 180)
+        // A brief swing that doesn't hold changes nothing.
+        let back = flat(side: -30, forward: 0)
+        f.update(gravityX: back.x, gravityY: back.y, time: 1.0)
+        f.update(gravityX: 0.02, gravityY: 0.01, time: 1.2)            // flat again
+        f.update(gravityX: back.x, gravityY: back.y, time: 1.4)
+        #expect(f.angle == 180)
+    }
+
+    @Test func firstAnswerMayComeFromASmallTilt() {
+        var f = CaptureOrientationFilter()
+        f.update(gravityX: 0.02, gravityY: 0.01, time: 0)              // flat: no answer yet
+        #expect(f.angle == nil)
+        let tilt = flat(side: 9, forward: 0)                           // ≈ 0.16 g toward the right edge
+        f.update(gravityX: tilt.x, gravityY: tilt.y, time: 0.1)
+        #expect(f.angle == 180)
+    }
 }
 
 struct AutoOrientationTests {
@@ -181,22 +226,33 @@ struct AutoOrientationTests {
     }
 
     @Test func decisionIsConservative() {
-        let none = [0.0, 0, 0, 0]
-        // Clear text wins on its own, even against the colour cues.
-        let text = AutoOrienter.decide(text: [0, 0, 11, 1], faces: none, layoutVotes: [1, 1, 1])
+        func decide(_ text: [Double] = [0, 0, 0, 0], lines: [Int] = [0, 0, 0, 0], chars: [Int] = [0, 0, 0, 0],
+                    faces: [Double] = [0, 0, 0, 0], layout: [Int] = []) -> AutoOrientation {
+            AutoOrienter.decide(text: text, textLines: lines, textChars: chars, faces: faces, layoutVotes: layout)
+        }
+        // Clear text from two lines wins on its own.
+        let text = decide([0, 0, 11, 1], lines: [0, 0, 2, 0], chars: [0, 0, 14, 1])
         #expect(text.quarterTurns == 2 && text.basis == .text && text.shouldApply)
+        // One long line (≥ 6 characters) is enough too.
+        #expect(decide([0, 9, 0, 0], lines: [0, 1, 0, 0], chars: [0, 8, 0, 0]).quarterTurns == 1)
+        // A short name along the side edge (one line, < 6 characters) is not decisive.
+        #expect(!decide([0, 5, 0, 0], lines: [0, 1, 0, 0], chars: [0, 4, 0, 0]).shouldApply)
+        // Colour cues against the text verdict: keep the capture orientation.
+        #expect(!decide([0, 0, 11, 1], lines: [0, 0, 2, 0], chars: [0, 0, 14, 1], layout: [1]).shouldApply)
+        // Colour cues agreeing with the text are fine.
+        #expect(decide([0, 0, 11, 1], lines: [0, 0, 2, 0], chars: [0, 0, 14, 1], layout: [2]).quarterTurns == 2)
         // Two colour cues alone are not enough; all three are.
-        #expect(!AutoOrienter.decide(text: none, faces: none, layoutVotes: [3, 3]).shouldApply)
-        #expect(AutoOrienter.decide(text: none, faces: none, layoutVotes: [3, 3, 3]).quarterTurns == 3)
+        #expect(!decide(layout: [3, 3]).shouldApply)
+        #expect(decide(layout: [3, 3, 3]).quarterTurns == 3)
         // A drawn face plus one colour cue agreeing is enough.
-        let face = AutoOrienter.decide(text: none, faces: [0, 0.9, 0, 0], layoutVotes: [1])
+        let face = decide(faces: [0, 0.9, 0, 0], layout: [1])
         #expect(face.quarterTurns == 1 && face.shouldApply)
         // Any disagreement → keep the capture orientation.
-        #expect(!AutoOrienter.decide(text: none, faces: [0, 0.9, 0, 0], layoutVotes: [1, 3]).shouldApply)
+        #expect(!decide(faces: [0, 0.9, 0, 0], layout: [1, 3]).shouldApply)
         // Faces found in every turn say nothing.
-        #expect(!AutoOrienter.decide(text: none, faces: [0.9, 0.9, 0.9, 0.9], layoutVotes: [1]).shouldApply)
+        #expect(!decide(faces: [0.9, 0.9, 0.9, 0.9], layout: [1]).shouldApply)
         // Text that only slightly prefers one turn is a weak cue.
-        #expect(!AutoOrienter.decide(text: [0, 5, 3.5, 0], faces: none, layoutVotes: []).shouldApply)
+        #expect(!decide([0, 5, 3.5, 0], lines: [0, 2, 1, 0], chars: [0, 8, 6, 0]).shouldApply)
     }
 
     @Test func dateShapedTextScoresHigher() {

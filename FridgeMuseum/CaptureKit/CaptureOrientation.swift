@@ -35,6 +35,53 @@ enum CaptureOrientation {
     }
 }
 
+/// Turns raw gravity readings into a steady capture angle.
+///
+/// The first answer may come from a small tilt (≥ `CaptureOrientation.flatThreshold`, about 7°): a phone held flat
+/// over a table still has the edge nearest the person a little lower. Leaving an established angle is much harder —
+/// the in-plane gravity must be ≥ `switchMagnitude` (about 17° from flat) and the new angle must hold for
+/// `switchDelay` — so a phone held portrait over a table, wobbling a few degrees sideways or forward, stays portrait
+/// (1.1.0 behaviour), while a deliberate turn to landscape still switches.
+struct CaptureOrientationFilter: Sendable {
+    static let switchMagnitude = 0.3
+    static let switchDelay: TimeInterval = 0.3
+
+    private(set) var angle: Int?
+    private var pendingAngle: Int?
+    private var pendingSince: TimeInterval = 0
+
+    init(angle: Int? = nil) {
+        self.angle = angle
+    }
+
+    /// Feeds one reading (CoreMotion gravity in the device frame, `time` in seconds) and returns the current angle.
+    @discardableResult
+    mutating func update(gravityX x: Double, gravityY y: Double, time: TimeInterval) -> Int? {
+        guard let raw = CaptureOrientation.rotationAngle(gravityX: x, gravityY: y, previous: angle) else {
+            pendingAngle = nil          // too flat to tell: keep the last angle
+            return angle
+        }
+        guard let current = angle else {
+            angle = raw
+            return raw
+        }
+        guard raw != current, (x * x + y * y).squareRoot() >= Self.switchMagnitude else {
+            pendingAngle = nil
+            return current
+        }
+        if pendingAngle == raw {
+            if time - pendingSince >= Self.switchDelay {
+                angle = raw
+                pendingAngle = nil
+            }
+        } else {
+            pendingAngle = raw
+            pendingSince = time
+        }
+        return angle
+    }
+}
+
 /// Follows gravity while the camera is open and remembers the last confident capture angle (so a phone laid flat
 /// keeps the orientation it had while it was still tilted). Device motion needs no permission.
 /// Mutable state is guarded by `lock`; CoreMotion calls back on its own serial queue, hence @unchecked Sendable.
@@ -47,7 +94,7 @@ final class GravityOrientationTracker: @unchecked Sendable {
         return q
     }()
     private let lock = NSLock()
-    private var angle: Int?
+    private var filter = CaptureOrientationFilter()
 
     deinit {
         manager.stopDeviceMotionUpdates()
@@ -57,8 +104,8 @@ final class GravityOrientationTracker: @unchecked Sendable {
         guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
         manager.deviceMotionUpdateInterval = 1.0 / 15
         manager.startDeviceMotionUpdates(to: queue) { [weak self] motion, _ in
-            guard let self, let gravity = motion?.gravity else { return }
-            self.update(x: gravity.x, y: gravity.y)
+            guard let self, let motion else { return }
+            self.update(x: motion.gravity.x, y: motion.gravity.y, time: motion.timestamp)
         }
     }
 
@@ -69,12 +116,12 @@ final class GravityOrientationTracker: @unchecked Sendable {
     /// Last confident angle; nil before the phone was ever held at a readable tilt (or without device motion,
     /// e.g. in the Simulator) — the caller then falls back to the RotationCoordinator.
     var currentAngle: Int? {
-        lock.withLock { angle }
+        lock.withLock { filter.angle }
     }
 
-    private func update(x: Double, y: Double) {
+    private func update(x: Double, y: Double, time: TimeInterval) {
         lock.withLock {
-            if let a = CaptureOrientation.rotationAngle(gravityX: x, gravityY: y, previous: angle) { angle = a }
+            _ = filter.update(gravityX: x, gravityY: y, time: time)
         }
     }
 }

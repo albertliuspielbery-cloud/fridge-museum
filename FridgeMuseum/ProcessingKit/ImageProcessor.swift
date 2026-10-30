@@ -116,6 +116,8 @@ actor ImageProcessor {
     private var partsCache: [String: (sensitivity: Double, analysis: PartAnalysis?)] = [:]
     private var detections: [String: PaperDetection] = [:]
     private var smallCache: [String: RGBA8Image] = [:]
+    /// Upright check per artwork + sheet: the intake queue and the editor may both ask; Vision runs once.
+    private var orientationCache: [String: AutoOrientation] = [:]
 
     init() {
         let space = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
@@ -151,9 +153,19 @@ actor ImageProcessor {
     }
 
     /// Which quarter turn makes a flat artwork upright (`AutoOrienter`), judged on a small perspective-corrected copy
-    /// of the sheet inside `corners` (nil = detect). Cheap: reuses the cached 1600 px working copy.
+    /// of the sheet inside `corners` (nil = detect). Cheap: reuses the cached 1600 px working copy. Cached per artwork
+    /// and sheet (synchronous on the actor, so a second caller waits for the first result instead of re-running Vision).
     func estimateOrientation(id: UUID, originalData: Data, corners: Quad?) -> AutoOrientation {
         let quad = (corners ?? detectPaperSync(id: id, data: originalData).quad).clampedToUnit()
+        let key = "\(id.uuidString)|\(quad.hashValue)"
+        if let cached = orientationCache[key] { return cached }
+        let result = uncachedOrientation(id: id, originalData: originalData, quad: quad)
+        if orientationCache.count >= 16 { orientationCache.removeAll() }
+        orientationCache[key] = result
+        return result
+    }
+
+    private func uncachedOrientation(id: UUID, originalData: Data, quad: Quad) -> AutoOrientation {
         guard let src = try? source(id: id, data: originalData, maxEdge: Self.previewMaxEdge) else { return .none }
         let focalPx = focalPixels(id: id, data: originalData, width: Double(src.extent.width), height: Double(src.extent.height))
         let warped = perspectiveCorrect(src, quad: quad, maxEdge: AutoOrienter.visionEdge, focalPixels: focalPx)
@@ -210,6 +222,7 @@ actor ImageProcessor {
         partsCache = partsCache.filter { !$0.key.hasPrefix(prefix) }
         detections = detections.filter { !$0.key.hasPrefix(prefix) }
         smallCache = smallCache.filter { !$0.key.hasPrefix(prefix) }
+        orientationCache = orientationCache.filter { !$0.key.hasPrefix(prefix) }
         focal = focal.filter { !$0.key.hasPrefix(prefix) }
     }
 
