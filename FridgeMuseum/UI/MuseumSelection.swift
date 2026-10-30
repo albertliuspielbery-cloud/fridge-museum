@@ -18,7 +18,7 @@ struct SelectionMark: View {
     }
 }
 
-/// The bottom action bar while selecting: 設定孩子 / 加標籤 / 日期 / 最愛 / 存到手機 / 刪除.
+/// The bottom action bar while selecting: 設定孩子 / 加標籤 / 日期 / 最愛 / 轉向 / 存到手機 / 刪除.
 struct MuseumSelectionBar: View {
     let count: Int
     let children: [Child]
@@ -27,6 +27,8 @@ struct MuseumSelectionBar: View {
     let onTags: () -> Void
     let onDate: () -> Void
     let onFavorite: (Bool) -> Void
+    /// 轉向: clockwise?
+    let onRotate: (Bool) -> Void
     let onSave: () -> Void
     let onDelete: () -> Void
 
@@ -66,6 +68,12 @@ struct MuseumSelectionBar: View {
             Button { onFavorite(false) } label: { Label("取消最愛", systemImage: "star.slash") }
         } label: {
             barLabel("最愛", systemImage: "star")
+        }
+        Menu {
+            Button { onRotate(false) } label: { Label("向左轉", systemImage: "rotate.left") }
+            Button { onRotate(true) } label: { Label("向右轉", systemImage: "rotate.right") }
+        } label: {
+            barLabel("轉向", systemImage: "rotate.right")
         }
         Button(action: onSave) {
             if saving {

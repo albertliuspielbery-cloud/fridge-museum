@@ -70,10 +70,10 @@ final class CameraModel {
         isCapturing = true
         shutterCount += 1
         defer { isCapturing = false }
-        // Gravity first: the coordinator's horizon-level angle does not follow the phone while it lies flat
-        // (table shots), so it kept portrait and landscape drawings arrived sideways.
-        let angle: CGFloat = gravity.currentAngle.map { CGFloat($0) }
-            ?? rotationCoordinator?.videoRotationAngleForHorizonLevelCapture ?? 90
+        // Gravity only from moments the phone was clearly tilted (≥ 30°) in this session; otherwise the coordinator
+        // (1.1.0), otherwise portrait. A near-flat reading never decides (see CaptureOrientation).
+        let angle = captureRotationAngle(gravityAngle: gravity.currentAngle,
+                                         coordinatorAngle: rotationCoordinator?.videoRotationAngleForHorizonLevelCapture)
         return try? await controller.capturePhoto(rotationAngle: angle)
     }
 

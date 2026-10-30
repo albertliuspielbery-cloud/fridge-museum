@@ -51,6 +51,30 @@ extension AppModel {
         batchEdit(artworks, context: context) { $0.isFavorite = on }
     }
 
+    /// 轉向: turns every artwork a quarter turn (recipe.quarterTurns, both kinds) — e.g. to fix photos that came out
+    /// sideways. Marks the automatic upright check as done so it never undoes the turn, and queues the re-renders
+    /// through the deferred drain (one at a time, oldest first — never all at once).
+    @discardableResult
+    func rotateAll(_ artworks: [Artwork], clockwise: Bool, context: ModelContext) -> Int {
+        let alive = artworks.filter { Self.isAlive($0) }
+        for artwork in alive {
+            artwork.recipe = Self.turned(artwork.recipe, clockwise: clockwise)
+            artwork.touch()
+        }
+        guard !alive.isEmpty else { return 0 }
+        try? context.save()
+        for artwork in alive { renderLater(artwork, context: context, stale: true) }
+        return alive.count
+    }
+
+    /// One quarter turn, with the automatic upright check settled (left as it was if it already ran).
+    static func turned(_ recipe: ProcessingRecipe, clockwise: Bool) -> ProcessingRecipe {
+        var r = recipe
+        if clockwise { r.rotateClockwise() } else { r.rotateCounterClockwise() }
+        if r.autoTurns == nil { r.autoTurns = 0 }
+        return r
+    }
+
     /// 刪除: deletes them all (same bookkeeping as a single delete), saving once.
     @discardableResult
     func deleteAll(_ artworks: [Artwork], context: ModelContext) -> Int {

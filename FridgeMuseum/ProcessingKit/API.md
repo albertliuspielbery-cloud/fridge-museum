@@ -123,9 +123,10 @@ never-rendered flat capture (`AppModel.owesOrientationCheck`): `AppModel.settleO
 one artwork at a time in the drain), and the editor runs it after its first preview has arrived (`EditModel.autoOrient`,
 memoized; keep / save await it; re-renders only if it turned). `estimateOrientation` is cached per artwork + sheet
 and runs the Vision passes in a detached task (only the small warp is on the actor), so Vision runs once and
-previews don't wait. Text line / character support is counted per pass (best pass), not summed. Stored in `recipe.autoTurns`. Capture angle: `CaptureOrientationFilter` (first answer from a
-≥ 7° tilt; switching needs ≥ 0.3 g in-plane and 0.3 s). The capture angle itself comes from gravity
-(`CaptureKit/CaptureOrientation.swift`).
+previews don't wait. Text line / character support is counted per pass (best pass), not summed. Stored in `recipe.autoTurns`. Capture angle (`CaptureKit/CaptureOrientation.swift`): gravity only
+when the phone is clearly tilted (≥ 0.5 g in-plane, ≈ 30° from flat; a switch must hold 0.3 s); when flatter, the angle
+from the last clearly tilted moment of this camera session, else the RotationCoordinator (1.1.0), else portrait.
+Batch fix: museum 選取 → 轉向 (`AppModel.rotateAll`).
 
 `recipe.corners == nil` on a flat render → the processor detects the paper itself (and may add `.paperNotFound`).
 

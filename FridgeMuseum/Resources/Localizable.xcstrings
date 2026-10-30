@@ -2401,6 +2401,29 @@
         }
       }
     },
+    "已把 %lld 件作品轉向" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rotated 1 artwork"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rotated %lld artworks"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "已把 %lld 張掛上冰箱。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4219,6 +4242,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adjust Avatar"
+          }
+        }
+      }
+    },
+    "轉向" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rotate"
           }
         }
       }

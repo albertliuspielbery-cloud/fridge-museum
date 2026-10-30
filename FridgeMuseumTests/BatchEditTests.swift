@@ -107,4 +107,46 @@ struct BatchEditTests {
         #expect(app.setFavorite(true, for: list, context: context) == 0)
         #expect(app.assignChild(nil, to: [], context: context) == 0)
     }
+
+    // MARK: 轉向
+
+    /// A quarter turn for each selected artwork, the automatic check settled, edit time bumped, and the re-render
+    /// queued (held while an editor is open — the drain then runs them one at a time).
+    @Test func rotatesSelectedArtworksAndQueuesTheirRenders() throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let list = makeArtworks(3, in: context)
+        for a in list {
+            a.renderedImageData = Data([9])
+            a.processingState = .done
+            a.modifiedAt = day(2026, 1, 1)
+        }
+        try context.save()
+        app.delete(list[2], context: context)
+        app.beginEditing(UUID())                                   // hold the queue so we can look at it
+
+        #expect(app.rotateAll(list, clockwise: true, context: context) == 2)
+        for a in list.prefix(2) {
+            #expect(a.recipe.quarterTurns == 1)
+            #expect(a.recipe.autoTurns == 0)
+            #expect(!AppModel.owesOrientationCheck(a))
+            #expect((a.modifiedAt ?? .distantPast) > day(2026, 1, 1))
+            #expect(a.processingState == .pending)                  // owed a re-render, not started yet
+        }
+        #expect(app.rotateAll(list, clockwise: false, context: context) == 2)
+        #expect(app.rotateAll(list, clockwise: false, context: context) == 2)
+        #expect(list[0].recipe.quarterTurns == 3)
+        #expect(app.rotateAll([], clockwise: true, context: context) == 0)
+    }
+
+    @Test func turningKeepsAnEarlierAutomaticResult() {
+        var r = ProcessingRecipe(kind: .flat)
+        r.quarterTurns = 1
+        r.autoTurns = 1
+        let t = AppModel.turned(r, clockwise: true)
+        #expect(t.quarterTurns == 2 && t.autoTurns == 1 && !t.isAutoTurned)
+        let fresh = AppModel.turned(ProcessingRecipe(kind: .craft), clockwise: false)
+        #expect(fresh.quarterTurns == 3 && fresh.autoTurns == 0)
+    }
 }

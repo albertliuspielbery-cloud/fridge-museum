@@ -573,6 +573,14 @@ EN_ICLOUD = {
 EN.update(EN_ICLOUD)
 # ---- end feat/icloud
 
+# ---- fix/flat-capture: 美術館「選取」轉向 (batch quarter turn). New strings only, kept apart for merging.
+EN_BATCH_ROTATE = {
+    "轉向": "Rotate",
+    "已把 %lld 件作品轉向": {"one": "Rotated 1 artwork", "other": "Rotated %lld artworks"},
+}
+EN.update(EN_BATCH_ROTATE)
+# ---- end fix/flat-capture
+
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),
     "CFBundleName": ("冰箱美術館", "My Fridge Museum"),

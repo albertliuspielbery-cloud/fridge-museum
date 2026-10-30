@@ -18,11 +18,31 @@ struct CaptureOrientationTests {
         #expect(angle(0, 1) == 270)      // upside down
     }
 
-    @Test func heldAlmostFlatOverATable() {
-        // Face up, near edge a little lower: the small in-plane gravity still tells which edge is "down".
-        #expect(angle(0.25, 0.02) == 180)
-        #expect(angle(-0.15, -0.05) == 0)
-        #expect(angle(0.03, -0.2) == 90)
+    /// The gravity mapping agrees with Apple's videoRotationAngle convention for the four upright poses
+    /// (CoreMotion gravity, device frame: x toward the right edge, y toward the top edge as held in portrait).
+    @Test func mappingMatchesAVFoundationConvention() {
+        let poses: [(UIDeviceOrientation, x: Double, y: Double)] = [
+            (.portrait, 0, -1),            // bottom edge down
+            (.portraitUpsideDown, 0, 1),   // top edge down
+            (.landscapeLeft, -1, 0),       // home button / bottom edge on the right: left edge down
+            (.landscapeRight, 1, 0),       // home button / bottom edge on the left: right edge down
+        ]
+        for (pose, x, y) in poses {
+            let apple = CaptureOrientation.videoRotationAngle(for: pose)
+            #expect(apple != nil)
+            #expect(CaptureOrientation.nearestAngle(gravityX: x, gravityY: y) == apple, "\(pose.rawValue)")
+            #expect(angle(x, y) == apple, "\(pose.rawValue)")
+        }
+        #expect(CaptureOrientation.videoRotationAngle(for: .portrait) == 90)
+        #expect(CaptureOrientation.videoRotationAngle(for: .faceUp) == nil)
+    }
+
+    @Test func nearlyFlatNeverDecides() {
+        // Up to ~29° from flat, the in-plane direction is not trusted at all.
+        #expect(angle(0.25, 0.02) == nil)
+        #expect(angle(-0.15, -0.05) == nil)
+        #expect(angle(0.4, 0.2) == nil)
+        #expect(angle(0.6, 0.0) == 180)
     }
 
     @Test func flatKeepsTheLastAnswer() {
@@ -65,27 +85,72 @@ struct CaptureOrientationTests {
 
     @Test func clearLandscapeTiltSwitchesAfterAMoment() {
         var f = CaptureOrientationFilter(angle: 90)
-        let tilt = flat(side: 30, forward: 0)                          // 0.5 g toward the right edge → 180
+        let tilt = flat(side: 40, forward: 0)                          // 0.64 g toward the right edge → 180
         f.update(gravityX: tilt.x, gravityY: tilt.y, time: 0)
         f.update(gravityX: tilt.x, gravityY: tilt.y, time: 0.1)
         #expect(f.angle == 90)                                         // not yet: needs to hold 0.3 s
         f.update(gravityX: tilt.x, gravityY: tilt.y, time: 0.35)
         #expect(f.angle == 180)
         // A brief swing that doesn't hold changes nothing.
-        let back = flat(side: -30, forward: 0)
+        let back = flat(side: -40, forward: 0)
         f.update(gravityX: back.x, gravityY: back.y, time: 1.0)
         f.update(gravityX: 0.02, gravityY: 0.01, time: 1.2)            // flat again
         f.update(gravityX: back.x, gravityY: back.y, time: 1.4)
         #expect(f.angle == 180)
     }
 
-    @Test func firstAnswerMayComeFromASmallTilt() {
+    /// The TestFlight 1.2.0 report: camera opened with the phone already flat over the table, held portrait with a
+    /// small sideways roll. No clear tilt ever → no gravity answer → the coordinator (1.1.0) or portrait decides.
+    @Test func cameraOpenedAlreadyFlatUsesCoordinatorOrPortrait() {
         var f = CaptureOrientationFilter()
-        f.update(gravityX: 0.02, gravityY: 0.01, time: 0)              // flat: no answer yet
+        for (i, roll) in [9.0, 12, 7, 15, 20, 11].enumerated() {
+            let g = flat(side: roll, forward: 4)
+            f.update(gravityX: g.x, gravityY: g.y, time: Double(i) * 0.07)
+        }
         #expect(f.angle == nil)
-        let tilt = flat(side: 9, forward: 0)                           // ≈ 0.16 g toward the right edge
+        #expect(captureRotationAngle(gravityAngle: f.angle, coordinatorAngle: 90) == 90)
+        #expect(captureRotationAngle(gravityAngle: f.angle, coordinatorAngle: nil) == 90)
+    }
+
+    /// 連拍 over a table: the tracker keeps running between shots and every shot asks it afresh (same path as a
+    /// single shot). Flat the whole time with rolls up to 25° and a bounce → every shot stays portrait.
+    @Test func burstShotsWhileFlatAllStayPortrait() {
+        var f = CaptureOrientationFilter()
+        var angles: [CGFloat] = []
+        var t = 0.0
+        for shot in 0..<20 {
+            for step in 0..<10 {                                       // ~0.7 s between shots at 15 Hz
+                let roll = Double((shot * 7 + step * 3) % 51) - 25     // −25…25° sideways
+                let g = flat(side: roll, forward: Double(step % 5))
+                f.update(gravityX: g.x, gravityY: g.y, time: t)
+                t += 1.0 / 15
+            }
+            angles.append(captureRotationAngle(gravityAngle: f.angle, coordinatorAngle: 90))
+        }
+        #expect(angles.allSatisfy { $0 == 90 }, "\(angles)")
+    }
+
+    @Test func firstAnswerNeedsAClearTilt() {
+        var f = CaptureOrientationFilter()
+        let small = flat(side: 20, forward: 0)                         // ≈ 0.34 g: not enough
+        f.update(gravityX: small.x, gravityY: small.y, time: 0)
+        #expect(f.angle == nil)
+        let tilt = flat(side: 45, forward: 0)                          // ≈ 0.71 g toward the right edge
         f.update(gravityX: tilt.x, gravityY: tilt.y, time: 0.1)
         #expect(f.angle == 180)
+        // Remembered while laid flat afterwards, and it wins over the coordinator.
+        f.update(gravityX: 0.05, gravityY: -0.1, time: 0.5)
+        #expect(captureRotationAngle(gravityAngle: f.angle, coordinatorAngle: 90) == 180)
+    }
+
+    @Test func liftedPortraitThenLaidFlatStaysPortrait() {
+        var f = CaptureOrientationFilter()
+        f.update(gravityX: 0, gravityY: -0.9, time: 0)                 // lifted, clearly portrait
+        for i in 1...30 {
+            let g = flat(side: Double(i % 7) * 3 - 9, forward: 5)      // flat, rolling −9…9°
+            f.update(gravityX: g.x, gravityY: g.y, time: Double(i) * 0.07)
+        }
+        #expect(f.angle == 90)
     }
 }
 

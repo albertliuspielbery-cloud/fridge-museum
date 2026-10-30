@@ -1,33 +1,54 @@
 import CoreMotion
 import Foundation
+import UIKit
 
 /// Which way the still should be turned, from the phone's physical attitude.
 ///
-/// The UI is portrait-locked, so the photo's orientation has to come from the hardware. `AVCaptureDevice.
-/// RotationCoordinator.videoRotationAngleForHorizonLevelCapture` follows the device's coarse orientation, which has no
-/// answer while the phone lies face-up / face-down — exactly how parents shoot a drawing lying on a table — so it keeps
-/// the angle from before the phone was laid down (usually portrait) and landscape table shots came out sideways.
-/// Gravity still has a small in-plane component when the phone is held almost flat (the edge nearest the person is a
-/// little lower), and that component points to the bottom of the scene as the person sees it.
+/// The UI is portrait-locked, so the photo's orientation has to come from the hardware. Gravity is only trusted while
+/// the phone is clearly tilted (in-plane gravity ≥ `tiltThreshold`, about 30° from flat). Nearly flat — the usual
+/// pose over a drawing on a table — the in-plane direction is mostly noise (1.2.0 took its first answer from a 7°
+/// roll and turned flat portrait shots sideways), so the tracker keeps the angle from the last moment the phone was
+/// clearly tilted in this camera session, and without one the caller uses the RotationCoordinator (1.1.0) or portrait.
 enum CaptureOrientation {
-    /// In-plane gravity (in g) below this — about 7° from flat — is too flat to tell; the last answer is kept.
-    static let flatThreshold = 0.12
+    /// In-plane gravity (in g) needed to trust its direction: about 30° from flat.
+    static let tiltThreshold = 0.5
     /// Degrees past the 45° boundary before switching away from the previous angle (no flicker at the diagonal).
     static let hysteresis = 12.0
 
-    /// `AVCaptureConnection.videoRotationAngle` (0, 90, 180 or 270) for the back camera, from CoreMotion gravity in
-    /// the device frame (x toward the right edge, y toward the top edge, in portrait). nil when the phone is too flat.
-    ///   portrait (0, −1) → 90 · landscapeLeft, home button right (−1, 0) → 0
-    ///   landscapeRight, home button left (1, 0) → 180 · portraitUpsideDown (0, 1) → 270
+    /// Apple's convention for `AVCaptureConnection.videoRotationAngle` with the back camera (the values the
+    /// RotationCoordinator reports for these device orientations); nil for faceUp / faceDown / unknown.
+    static func videoRotationAngle(for orientation: UIDeviceOrientation) -> Int? {
+        switch orientation {
+        case .portrait: return 90
+        case .portraitUpsideDown: return 270
+        case .landscapeLeft: return 0          // home button / bottom edge on the right = the sensor's own orientation
+        case .landscapeRight: return 180       // home button / bottom edge on the left
+        default: return nil
+        }
+    }
+
+    /// The mapping itself, with no thresholds: CoreMotion gravity in the device frame (x toward the right edge,
+    /// y toward the top edge, as held in portrait; units of g) → nearest videoRotationAngle.
+    ///   portrait (0, −1) → 90 · landscapeLeft (−1, 0) → 0 · landscapeRight (1, 0) → 180 · upside down (0, 1) → 270
+    static func nearestAngle(gravityX x: Double, gravityY y: Double) -> Int {
+        (Int((degrees(x, y) / 90).rounded()) % 4) * 90
+    }
+
+    /// Gravity's in-plane direction as a videoRotationAngle in degrees, 0..<360.
+    private static func degrees(_ x: Double, _ y: Double) -> Double {
+        var d = atan2(y, x) * 180 / .pi + 180
+        if d >= 360 { d -= 360 }
+        return d
+    }
+
+    /// The angle gravity points to when the phone is clearly tilted, with hysteresis around `previous`;
+    /// nil when it is flatter than `tiltThreshold` (then the direction says nothing).
     static func rotationAngle(gravityX x: Double, gravityY y: Double, previous: Int?) -> Int? {
         guard x.isFinite, y.isFinite else { return nil }
-        let magnitude = (x * x + y * y).squareRoot()
-        guard magnitude >= flatThreshold else { return nil }
-        var degrees = atan2(y, x) * 180 / .pi + 180          // 0...360
-        if degrees >= 360 { degrees -= 360 }
-        let nearest = (Int((degrees / 90).rounded()) % 4) * 90
+        guard (x * x + y * y).squareRoot() >= tiltThreshold else { return nil }
+        let nearest = nearestAngle(gravityX: x, gravityY: y)
         if let previous, previous != nearest, [0, 90, 180, 270].contains(previous) {
-            var d = abs(degrees - Double(previous)).truncatingRemainder(dividingBy: 360)
+            var d = abs(degrees(x, y) - Double(previous)).truncatingRemainder(dividingBy: 360)
             if d > 180 { d = 360 - d }
             if d < 45 + hysteresis { return previous }
         }
@@ -37,13 +58,10 @@ enum CaptureOrientation {
 
 /// Turns raw gravity readings into a steady capture angle.
 ///
-/// The first answer may come from a small tilt (≥ `CaptureOrientation.flatThreshold`, about 7°): a phone held flat
-/// over a table still has the edge nearest the person a little lower. Leaving an established angle is much harder —
-/// the in-plane gravity must be ≥ `switchMagnitude` (about 17° from flat) and the new angle must hold for
-/// `switchDelay` — so a phone held portrait over a table, wobbling a few degrees sideways or forward, stays portrait
-/// (1.1.0 behaviour), while a deliberate turn to landscape still switches.
+/// Only clearly tilted readings (≥ `CaptureOrientation.tiltThreshold`) count — never a first answer from a
+/// near-flat phone. The first clear reading sets the angle; a different angle must then hold for `switchDelay`
+/// before it replaces it. Flat readings keep whatever was last decided (nil until the phone was clearly tilted once).
 struct CaptureOrientationFilter: Sendable {
-    static let switchMagnitude = 0.3
     static let switchDelay: TimeInterval = 0.3
 
     private(set) var angle: Int?
@@ -58,14 +76,14 @@ struct CaptureOrientationFilter: Sendable {
     @discardableResult
     mutating func update(gravityX x: Double, gravityY y: Double, time: TimeInterval) -> Int? {
         guard let raw = CaptureOrientation.rotationAngle(gravityX: x, gravityY: y, previous: angle) else {
-            pendingAngle = nil          // too flat to tell: keep the last angle
+            pendingAngle = nil          // not clearly tilted: keep the last angle
             return angle
         }
         guard let current = angle else {
             angle = raw
             return raw
         }
-        guard raw != current, (x * x + y * y).squareRoot() >= Self.switchMagnitude else {
+        guard raw != current else {
             pendingAngle = nil
             return current
         }
@@ -82,8 +100,15 @@ struct CaptureOrientationFilter: Sendable {
     }
 }
 
-/// Follows gravity while the camera is open and remembers the last confident capture angle (so a phone laid flat
-/// keeps the orientation it had while it was still tilted). Device motion needs no permission.
+/// The still's rotation: the gravity tracker's angle when the phone was clearly tilted at some point in this camera
+/// session, else the RotationCoordinator's horizon-level angle (1.1.0 behaviour), else portrait.
+func captureRotationAngle(gravityAngle: Int?, coordinatorAngle: CGFloat?) -> CGFloat {
+    if let gravityAngle { return CGFloat(gravityAngle) }
+    return coordinatorAngle ?? 90
+}
+
+/// Follows gravity while the camera is open and remembers the angle from the last time the phone was clearly tilted
+/// (so a phone laid flat keeps the orientation it had). Device motion needs no permission.
 /// Mutable state is guarded by `lock`; CoreMotion calls back on its own serial queue, hence @unchecked Sendable.
 final class GravityOrientationTracker: @unchecked Sendable {
     private let manager = CMMotionManager()
@@ -113,8 +138,8 @@ final class GravityOrientationTracker: @unchecked Sendable {
         manager.stopDeviceMotionUpdates()
     }
 
-    /// Last confident angle; nil before the phone was ever held at a readable tilt (or without device motion,
-    /// e.g. in the Simulator) — the caller then falls back to the RotationCoordinator.
+    /// Angle from the last time the phone was clearly tilted in this session; nil before that (or without device
+    /// motion, e.g. in the Simulator) — the caller then falls back to the RotationCoordinator.
     var currentAngle: Int? {
         lock.withLock { filter.angle }
     }

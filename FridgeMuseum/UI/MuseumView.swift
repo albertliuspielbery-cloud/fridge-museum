@@ -190,6 +190,7 @@ struct MuseumView: View {
                     onTags: { batchSheet = .tags },
                     onDate: { batchSheet = .date },
                     onFavorite: batchFavorite,
+                    onRotate: batchRotate,
                     onSave: batchSave,
                     onDelete: { confirmBatchDelete = true }
                 )
@@ -612,6 +613,13 @@ struct MuseumView: View {
         let n = app.setFavorite(on, for: selectedArtworks, context: modelContext)
         guard n > 0 else { return }
         app.show(on ? String(localized: "已把 \(n) 件作品加到最愛") : String(localized: "已把 \(n) 件作品取消最愛"))
+    }
+
+    /// 轉向: a quarter turn for every selected artwork; the new pictures render one at a time in the background.
+    private func batchRotate(_ clockwise: Bool) {
+        let n = app.rotateAll(selectedArtworks, clockwise: clockwise, context: modelContext)
+        guard n > 0 else { return }
+        app.show(String(localized: "已把 \(n) 件作品轉向"))
     }
 
     /// Same path as saving one artwork (quota, Photos primer / permission, per-child albums). saveAll stops at the
