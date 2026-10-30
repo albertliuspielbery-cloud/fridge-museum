@@ -220,6 +220,28 @@ enum SyncOrigin {
     }
 }
 
+/// The fields batch edits change, to tell a real edit from a no-op (`touch()` only on a real one).
+struct ArtworkEdits: Equatable {
+    var childID: UUID?
+    var tags: [String]
+    var capturedAt: Date
+    var isFavorite: Bool
+    var title: String
+    var note: String
+    var medium: String
+
+    @MainActor
+    init(_ artwork: Artwork) {
+        childID = artwork.child?.id
+        tags = artwork.tags
+        capturedAt = artwork.capturedAt
+        isFavorite = artwork.isFavorite
+        title = artwork.title
+        note = artwork.note
+        medium = artwork.medium
+    }
+}
+
 extension Artwork {
     /// On this device's sticky note (pending, not a sample, captured here or abandoned elsewhere).
     var isOwnPending: Bool {
@@ -237,18 +259,21 @@ enum LaunchRender: Equatable, Sendable {
     /// Has a render, but it is outdated (the recipe changed after it): render again.
     case rerender
 
-    /// A synced artwork usually brings its render along; only give it one if it arrived without, and not right away
-    /// (the device that captured it is probably rendering it now and its render will arrive shortly).
+    /// A synced artwork usually brings its render along; only render it here if it is still unfinished a while after
+    /// its last edit (the device that edited it is probably rendering it now and its render will arrive shortly).
     static let foreignGrace: TimeInterval = 10 * 60
 
-    /// For an artwork whose processing state is unfinished (pending / processing).
+    /// For an artwork whose processing state is unfinished (pending / processing). `age`: since its last edit
+    /// (`modifiedAt`, else `createdAt`).
     static func action(isLocal: Bool, ownsPending: Bool, isKept: Bool, hasRender: Bool, age: TimeInterval) -> LaunchRender {
         if isLocal { return hasRender ? .rerender : .render }
         // Another device's capture still in its editor: that device renders it.
         if !isKept && !ownsPending { return .skip }
-        // Arrived with a render: never re-render (the other device owns its recipe changes).
-        if hasRender { return .skip }
-        return age > foreignGrace ? .render : .skip
+        // Synced and unfinished: the other device is normally rendering it right now (its render arrives with
+        // state .done). Still unfinished well after its last edit (that device was closed mid-render, or a merge
+        // left an outdated render): render it here — with or without an old render — so it never stays stale.
+        guard age > foreignGrace else { return .skip }
+        return hasRender ? .rerender : .render
     }
 }
 
@@ -269,6 +294,8 @@ enum SyncDedupe {
         var removedArtworks = 0
         /// Child profile id → the profile it was merged into (only for different ids; same-id copies keep their id).
         var childRemap: [UUID: UUID] = [:]
+        /// Merged artworks whose render no longer matches their recipe: render them on this device.
+        var needsRender: [UUID] = []
     }
 
     /// Copies of one record (same `id`): which one to keep and which to remove. The copy from the lexicographically
@@ -352,7 +379,7 @@ enum SyncDedupe {
             let loser = remaining[pair.remove], keeper = remaining[pair.into]
             guard !removed.contains(loser.persistentModelID) else { continue }
             report.childRemap[loser.id] = keeper.id
-            merge(child: loser, into: keeper)
+            merge(child: loser, into: keeper, sameRecord: false)
             removed.insert(loser.persistentModelID)
             context.delete(loser)
             report.removedChildren += 1
@@ -363,11 +390,13 @@ enum SyncDedupe {
         for group in Dictionary(grouping: artworks, by: \.id).values where group.count > 1 {
             guard let first = group.first, !busy.contains(first.id),
                   let plan = resolve(origins: group.map(\.originDeviceID), createdAt: group.map(\.createdAt)) else { continue }
+            var redo = false
             for i in plan.remove {
-                merge(artwork: group[i], into: group[plan.keep])
+                if merge(artwork: group[i], into: group[plan.keep]) { redo = true }
                 context.delete(group[i])
                 report.removedArtworks += 1
             }
+            if redo { report.needsRender.append(group[plan.keep].id) }
         }
 
         if report.removedChildren + report.removedArtworks > 0 { try? context.save() }
@@ -380,36 +409,41 @@ enum SyncDedupe {
         (a ?? .distantPast, ra) > (b ?? .distantPast, rb)
     }
 
-    /// Folds a removed child copy into the one that stays: its artworks move over; the profile fields come from the
-    /// copy edited last (a rename or a new colour on the other device wins). Missing details are only filled in from
-    /// the older copy when the staying one was never edited since 1.2.0 (an empty field is then missing data, not a
-    /// deliberate removal).
+    /// Folds a removed child profile into the one that stays; its artworks move over.
+    /// - `sameRecord` (two copies of one profile, same `id`): the profile fields come from the copy edited last — a
+    ///   rename, a new colour, a removed photo or birthday on the other device wins. When the staying copy was never
+    ///   edited since 1.2.0, missing details are filled in from the other (empty there = missing data).
+    /// - Two profiles created separately with the same name (`sameRecord` false): only empty fields are filled in.
+    ///   `modifiedAt` says nothing here — the profile created later is "newer" without being an edit of the other —
+    ///   so its default colour or missing photo must never replace the staying profile's.
     @MainActor
-    static func merge(child loser: Child, into keeper: Child) {
+    static func merge(child loser: Child, into keeper: Child, sameRecord: Bool = true) {
         let moving = loser.artworks ?? []
         for artwork in moving { artwork.child = keeper }
-        if (loser.modifiedAt ?? .distantPast) > (keeper.modifiedAt ?? .distantPast) {
+        if sameRecord, (loser.modifiedAt ?? .distantPast) > (keeper.modifiedAt ?? .distantPast) {
             if !loser.name.isEmpty || keeper.name.isEmpty { keeper.name = loser.name }
-            keeper.birthday = loser.birthday ?? keeper.birthday
+            keeper.birthday = loser.birthday
             keeper.avatarColorHex = loser.avatarColorHex
             keeper.avatarImageData = loser.avatarImageData
             keeper.modifiedAt = loser.modifiedAt
-        } else if keeper.modifiedAt == nil {
+        } else if !sameRecord || keeper.modifiedAt == nil {
             if keeper.name.isEmpty { keeper.name = loser.name }
             if keeper.birthday == nil { keeper.birthday = loser.birthday }
             if keeper.avatarImageData == nil, let avatar = loser.avatarImageData { keeper.avatarImageData = avatar }
         }
     }
 
-    /// Folds a removed artwork copy into the one that stays.
-    /// - Facts are never lost: kept (and the earliest keptAt), the latest save to Photos.
-    /// - Everything the parent edits (recipe, kind, placard text, date, medium, favorite, child, tags, voice note)
-    ///   comes from the copy edited last, so a stale copy can't undo newer edits. Tags: the newer copy's set — not a
-    ///   union, which would bring back deleted tags — unless it is empty and the other isn't.
+    /// Folds a removed artwork copy (same `id`) into the one that stays. Returns true when the staying copy's render
+    /// no longer matches its recipe (it is then marked unfinished and rendered again on this device).
+    /// - Facts are never lost: kept (and the earliest keptAt), the latest save to Photos, a voice recording.
+    /// - Everything the parent edits (recipe, kind, placard text, date, medium, favorite, child, tags) comes from the
+    ///   copy edited last — including a cleared child or an emptied tag list — so a stale copy can't undo newer edits
+    ///   or bring back deleted tags. Only when the staying copy was never edited since 1.2.0 are its empty fields
+    ///   filled in from the other.
     /// - The render goes with the recipe: taken over with the newer copy's recipe; otherwise only when the recipes
-    ///   match. A newer recipe without a render marks the artwork unfinished, so it is rendered again.
-    @MainActor
-    static func merge(artwork loser: Artwork, into keeper: Artwork) {
+    ///   match. A render that isn't known to match (state not .done) is redone.
+    @MainActor @discardableResult
+    static func merge(artwork loser: Artwork, into keeper: Artwork) -> Bool {
         if loser.isKept && !keeper.isKept {
             keeper.isKept = true
             keeper.keptAt = loser.keptAt ?? keeper.keptAt
@@ -418,6 +452,10 @@ enum SyncDedupe {
         }
         if let saved = loser.lastSavedToPhotosAt, keeper.lastSavedToPhotosAt.map({ saved > $0 }) ?? true {
             keeper.lastSavedToPhotosAt = saved
+        }
+        if keeper.voiceNoteData == nil, let voice = loser.voiceNoteData {
+            keeper.voiceNoteData = voice
+            keeper.voiceTranscript = loser.voiceTranscript
         }
         let sameRecipe = loser.recipeData == keeper.recipeData
         if isNewer(modifiedAt: loser.modifiedAt, renderVersion: loser.renderVersion,
@@ -429,10 +467,14 @@ enum SyncDedupe {
             keeper.kindRaw = loser.kindRaw
             keeper.recipeData = loser.recipeData
             keeper.isFavorite = loser.isFavorite
-            if !loser.tags.isEmpty { keeper.tags = loser.tags }
-            if let child = loser.child, !child.isDeleted { keeper.child = child }
-            if let voice = loser.voiceNoteData {
-                keeper.voiceNoteData = voice
+            keeper.tags = loser.tags
+            if let child = loser.child {
+                if !child.isDeleted { keeper.child = child }
+            } else {
+                keeper.child = nil
+            }
+            if loser.voiceNoteData != nil {
+                keeper.voiceNoteData = loser.voiceNoteData
                 keeper.voiceTranscript = loser.voiceTranscript
             }
             if loser.renderedImageData != nil {
@@ -442,13 +484,9 @@ enum SyncDedupe {
             }
             keeper.modifiedAt = loser.modifiedAt
         } else {
-            if keeper.tags.isEmpty { keeper.tags = loser.tags }
-            if keeper.child == nil, let child = loser.child, !child.isDeleted { keeper.child = child }
-            if keeper.voiceNoteData == nil, let voice = loser.voiceNoteData {
-                keeper.voiceNoteData = voice
-                keeper.voiceTranscript = loser.voiceTranscript
-            }
             if keeper.modifiedAt == nil {
+                if keeper.tags.isEmpty { keeper.tags = loser.tags }
+                if keeper.child == nil, let child = loser.child, !child.isDeleted { keeper.child = child }
                 if keeper.title.isEmpty { keeper.title = loser.title }
                 if keeper.note.isEmpty { keeper.note = loser.note }
             }
@@ -456,6 +494,13 @@ enum SyncDedupe {
                 takeRender(from: loser, into: keeper)
             }
         }
+        // A render not known to match the recipe (pending / processing) is redone here — whatever device the
+        // artwork came from — unless it is another device's capture still in its editor.
+        let done = ProcessingState.done.rawValue, failed = ProcessingState.failed.rawValue
+        guard keeper.processingStateRaw != done, keeper.processingStateRaw != failed,
+              keeper.isKept || keeper.isOwnPending else { return false }
+        keeper.processingStateRaw = ProcessingState.pending.rawValue
+        return true
     }
 
     @MainActor

@@ -160,11 +160,15 @@ struct ChildEditorView: View {
     private func save() {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         if let child {
+            let newBirthday: Date? = hasBirthday ? birthday : nil
+            // Only a real change counts as an edit (iCloud: the newer copy's edits win in SyncDedupe).
+            let changed = child.name != trimmed || child.birthday != newBirthday || child.avatarColorHex != colorHex
+                || child.avatarImageData != avatarData
             child.name = trimmed
-            child.birthday = hasBirthday ? birthday : nil
+            child.birthday = newBirthday
             child.avatarColorHex = colorHex
             if child.avatarImageData != avatarData { child.avatarImageData = avatarData }
-            child.touch()
+            if changed { child.touch() }
         } else {
             let c = Child(name: trimmed, birthday: hasBirthday ? birthday : nil, avatarColorHex: colorHex)
             c.avatarImageData = avatarData

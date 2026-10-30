@@ -153,8 +153,10 @@ struct CloudSyncTests {
         // This device's work: as before 1.2.0.
         #expect(LaunchRender.action(isLocal: true, ownsPending: true, isKept: true, hasRender: false, age: fresh) == .render)
         #expect(LaunchRender.action(isLocal: true, ownsPending: true, isKept: true, hasRender: true, age: fresh) == .rerender)
-        // Synced with its render: never re-rendered here.
-        #expect(LaunchRender.action(isLocal: false, ownsPending: false, isKept: true, hasRender: true, age: old) == .skip)
+        // Synced and unfinished with an old render: the other device is rendering it — redone here only if it
+        // stays unfinished well after its last edit.
+        #expect(LaunchRender.action(isLocal: false, ownsPending: false, isKept: true, hasRender: true, age: fresh) == .skip)
+        #expect(LaunchRender.action(isLocal: false, ownsPending: false, isKept: true, hasRender: true, age: old) == .rerender)
         // Synced without a render: rendered once, after the grace period.
         #expect(LaunchRender.action(isLocal: false, ownsPending: false, isKept: true, hasRender: false, age: old) == .render)
         #expect(LaunchRender.action(isLocal: false, ownsPending: false, isKept: true, hasRender: false, age: fresh) == .skip)
@@ -297,6 +299,91 @@ struct CloudSyncTests {
         #expect(left.first?.isFavorite == false)
         #expect(SyncDedupe.isNewer(modifiedAt: nil, renderVersion: 2, than: nil, renderVersion: 1))
         #expect(!SyncDedupe.isNewer(modifiedAt: nil, renderVersion: 0, than: nil, renderVersion: 0))
+    }
+
+    /// Two profiles created separately with the same name: the later one's default colour / missing photo never
+    /// replace the staying profile's; only empty fields are filled in.
+    @Test func sameNameMergeOnlyFillsEmptyFields() throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let first = Child(name: "小明", avatarColorHex: "#00AA00")
+        first.originDeviceID = "A"
+        first.avatarImageData = Data([7, 7])
+        first.createdAt = day(2026, 1, 1)
+        first.modifiedAt = day(2026, 1, 1)
+        let later = Child(name: "小明", birthday: day(2020, 5, 3))     // made on the iPad before it synced
+        later.originDeviceID = "B"
+        later.createdAt = day(2026, 2, 1)
+        later.modifiedAt = day(2026, 2, 1)
+        context.insert(first)
+        context.insert(later)
+        try context.save()
+        let laterID = later.id, firstID = first.id
+
+        let report = SyncDedupe.run(context: context)
+
+        #expect(report.childRemap[laterID] == firstID)
+        let kids = try context.fetch(FetchDescriptor<Child>())
+        #expect(kids.count == 1)
+        #expect(kids.first?.avatarImageData == Data([7, 7]))
+        #expect(kids.first?.avatarColorHex == "#00AA00")
+        #expect(kids.first?.birthday == day(2020, 5, 3))              // filled in
+    }
+
+    /// Same record, newer copy cleared the child and the tags: that sticks. Its render state wasn't .done, so the
+    /// merged artwork is marked unfinished and listed for a render on this device.
+    @Test func newerClearedChildAndTagsStickAndUnfinishedRenderIsRedone() throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let kid = Child(name: "小美")
+        kid.originDeviceID = "A"
+        context.insert(kid)
+        let a = Artwork(kind: .flat, child: kid, capturedAt: day(2026, 5, 1), originalImageData: Data([1]))
+        a.originDeviceID = "A"
+        a.isKept = true
+        a.tags = ["恐龍"]
+        a.renderedImageData = Data([1])
+        a.processingState = .done
+        a.modifiedAt = day(2026, 5, 1)
+        let b = Artwork(kind: .flat, child: nil, capturedAt: day(2026, 5, 1), originalImageData: Data([1]))
+        b.id = a.id
+        b.originDeviceID = "B"
+        b.isKept = true
+        b.tags = []
+        b.renderedImageData = Data([2])
+        b.processingState = .pending                                  // new recipe saved, render not finished
+        b.modifiedAt = day(2026, 5, 2)
+        context.insert(a)
+        context.insert(b)
+        try context.save()
+        let id = a.id
+
+        let report = SyncDedupe.run(context: context)
+
+        let left = try context.fetch(FetchDescriptor<Artwork>())
+        #expect(left.count == 1)
+        let merged = try #require(left.first)
+        #expect(merged.child == nil)
+        #expect(merged.tags.isEmpty)
+        #expect(merged.processingState == .pending)
+        #expect(report.needsRender == [id])
+    }
+
+    /// Batch edits only mark real changes as edits.
+    @Test func batchEditTouchesOnlyRealChanges() throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let a = Artwork(kind: .flat, child: nil, capturedAt: day(2026, 6, 1), originalImageData: Data([1]))
+        a.tags = ["恐龍"]
+        a.modifiedAt = day(2026, 6, 1)
+        context.insert(a)
+        try context.save()
+
+        app.addTags(["恐龍"], to: [a], context: context)               // already there
+        #expect(a.modifiedAt == day(2026, 6, 1))
+        app.setFavorite(true, for: [a], context: context)
+        #expect(a.modifiedAt != day(2026, 6, 1))
     }
 
     /// Busy artworks (being edited / rendered) are left for a later run.

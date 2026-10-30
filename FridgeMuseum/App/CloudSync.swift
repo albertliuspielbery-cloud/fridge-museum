@@ -132,11 +132,23 @@ final class CloudSync {
         var inputs = SyncInputs(isSupported: Self.isSupportedEnvironment, isFullVersion: isFullVersion,
                                 introShown: introShown, wantsSync: wantsSync)
         if SyncPolicy.needsAccountCheck(inputs) {
-            inputs.account = await Self.fetchAccount()
+            // Account status and (once this phone has synced) the current Apple Account, asked at the same time with
+            // one shared time limit, so a slow network delays the launch by at most `launchCheckSeconds`.
+            let last = defaults.string(forKey: Keys.userRecordName)
+            let wantsUser = last != nil
+            async let status = Self.withTimeout(seconds: Self.launchCheckSeconds) { () async -> SyncAccount in
+                await Self.accountStatusNow()
+            }
+            async let user = Self.withTimeout(seconds: Self.launchCheckSeconds) { () async -> String? in
+                guard wantsUser else { return nil }
+                return await Self.userRecordNameNow()
+            }
+            inputs.account = await status ?? .unknown
+            let current: String? = (await user) ?? nil
             // Synced before: confirm it's the same Apple Account at every launch (SyncPolicy.decide).
-            if inputs.account == .available, let last = defaults.string(forKey: Keys.userRecordName) {
+            if inputs.account == .available, let last {
                 inputs.hasStoredAccount = true
-                if let current = await Self.fetchUserRecordName() { inputs.sameAccountAsLastSync = current == last }
+                if let current { inputs.sameAccountAsLastSync = current == last }
             }
         }
         let previouslySynced = defaults.bool(forKey: Keys.lastLaunchCloud) || defaults.string(forKey: Keys.userRecordName) != nil
@@ -250,22 +262,29 @@ final class CloudSync {
 
     // MARK: CloudKit calls (each with a time limit: the launch waits for them)
 
-    nonisolated static func fetchAccount() async -> SyncAccount {
-        let result = await withTimeout(seconds: 4) { () async -> SyncAccount in
-            do {
-                let status = try await CKContainer(identifier: containerID).accountStatus()
-                return SyncAccount(status)
-            } catch {
-                return .unknown
-            }
+    /// The launch waits this long at most for the account checks (both run at once).
+    nonisolated static let launchCheckSeconds: Double = 3
+
+    nonisolated static func accountStatusNow() async -> SyncAccount {
+        do {
+            let status = try await CKContainer(identifier: containerID).accountStatus()
+            return SyncAccount(status)
+        } catch {
+            return .unknown
         }
+    }
+
+    nonisolated static func userRecordNameNow() async -> String? {
+        try? await CKContainer(identifier: containerID).userRecordID().recordName
+    }
+
+    nonisolated static func fetchAccount() async -> SyncAccount {
+        let result = await withTimeout(seconds: 4) { () async -> SyncAccount in await accountStatusNow() }
         return result ?? .unknown
     }
 
     nonisolated static func fetchUserRecordName() async -> String? {
-        let result = await withTimeout(seconds: 4) { () async -> String? in
-            try? await CKContainer(identifier: containerID).userRecordID().recordName
-        }
+        let result = await withTimeout(seconds: 4) { () async -> String? in await userRecordNameNow() }
         return result ?? nil
     }
 
@@ -402,7 +421,7 @@ extension SyncStatus {
         case .noAccount:
             String(localized: "到 iPhone「設定」登入 Apple 帳號並開啟 iCloud，再重新打開 App。作品都還在手機上。")
         case .accountChanged:
-            String(localized: "這支手機現在登入的 Apple 帳號，和上次同步時不同。為了不刪掉手機上的作品，先暫停同步；換回原本的帳號就會繼續。")
+            String(localized: "這支手機現在登入的 Apple 帳號，和上次同步時不同。為了不刪掉手機上的作品，先暫停同步；換回原本的帳號就會繼續。要改用新帳號，請先關閉 iCloud 同步，再到「支援與意見回饋」聯絡我們。")
         case .accountUnverified:
             String(localized: "這支手機同步過，要先確認登入的還是同一個 Apple 帳號才會同步（保護手機上還沒上傳的作品）。連上網路後重新打開 App 就會繼續。")
         case .quotaFull:

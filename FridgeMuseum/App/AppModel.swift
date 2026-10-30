@@ -336,7 +336,8 @@ final class AppModel {
             if syncedOnly && isLocal { continue }
             let owns = SyncOrigin.ownsPending(origin: artwork.originDeviceID, createdAt: artwork.createdAt, device: device, now: now)
             switch LaunchRender.action(isLocal: isLocal, ownsPending: owns, isKept: artwork.isKept,
-                                       hasRender: artwork.renderedImageData != nil, age: now.timeIntervalSince(artwork.createdAt)) {
+                                       hasRender: artwork.renderedImageData != nil,
+                                       age: now.timeIntervalSince(artwork.modifiedAt ?? artwork.createdAt)) {
             case .skip:
                 continue
             case .render:
@@ -363,7 +364,14 @@ final class AppModel {
         guard !isEditorBusy, saveAllProgress == nil, !isWalkingPending else { return false }
         let report = SyncDedupe.run(context: context, skipping: busyArtworkIDs)
         if let current = currentChildID, let merged = report.childRemap[current] { setCaptureChild(merged) }
-        queueUnfinished(context: context, syncedOnly: true)
+        // Merged copies whose render no longer matches their recipe: render here, whatever device they came from.
+        for id in report.needsRender {
+            guard let artwork = fetchArtwork(id, context: context), Self.isAlive(artwork),
+                  !processingIDs.contains(id), !renderingIDs.contains(id), processTasks[id] == nil else { continue }
+            if artwork.renderedImageData != nil { staleIDs.insert(id) }
+            deferredIDs.insert(id)
+        }
+        queueUnfinished(context: context, syncedOnly: true)   // also starts the queue
         return true
     }
 

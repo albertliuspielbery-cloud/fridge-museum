@@ -530,9 +530,10 @@ EN_ICLOUD = {
     "到 iPhone「設定」登入 Apple 帳號並開啟 iCloud，再重新打開 App。作品都還在手機上。":
         "Sign in to your Apple Account and turn on iCloud in the iPhone’s Settings, then reopen the app. "
         "Your artworks are still on this phone.",
-    "這支手機現在登入的 Apple 帳號，和上次同步時不同。為了不刪掉手機上的作品，先暫停同步；換回原本的帳號就會繼續。":
+    "這支手機現在登入的 Apple 帳號，和上次同步時不同。為了不刪掉手機上的作品，先暫停同步；換回原本的帳號就會繼續。要改用新帳號，請先關閉 iCloud 同步，再到「支援與意見回饋」聯絡我們。":
         "This phone is signed in to a different Apple Account than the last time it synced. To keep the artworks on "
-        "this phone safe, syncing is paused. Switch back to the original account to continue.",
+        "this phone safe, syncing is paused. Switch back to the original account to continue. To use the new "
+        "account instead, turn off iCloud Sync first and contact us from Support & Feedback.",
     "iCloud 空間滿了，新作品先留在手機上。到「設定 › Apple 帳號 › iCloud」整理空間後會自動繼續。":
         "Your iCloud storage is full, so new artworks stay on this phone for now. Free up space in "
         "Settings › Apple Account › iCloud and syncing picks up again.",

@@ -8,8 +8,10 @@ extension AppModel {
     func batchEdit(_ artworks: [Artwork], context: ModelContext, _ change: (Artwork) -> Void) -> Int {
         var count = 0
         for artwork in artworks where Self.isAlive(artwork) {
+            let before = ArtworkEdits(artwork)
             change(artwork)
-            artwork.touch()
+            // Only a real change counts as an edit (e.g. 加標籤 with tags it already has doesn't).
+            if ArtworkEdits(artwork) != before { artwork.touch() }
             count += 1
         }
         if count > 0 { try? context.save() }

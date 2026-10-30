@@ -6,7 +6,8 @@ import UIKit
 struct FridgeMuseumApp: App {
     @State private var appModel = AppModel()
     /// Opened once per launch, after CloudSync has decided whether this launch syncs with iCloud (it may ask
-    /// CloudKit for the account status first, usually a fraction of a second; at most a few seconds).
+    /// CloudKit for the account status — and, once this phone has synced, which Apple Account is signed in — first:
+    /// both at once, usually a fraction of a second, at most `CloudSync.launchCheckSeconds` (3 s)).
     @State private var container: ModelContainer?
 
     init() {

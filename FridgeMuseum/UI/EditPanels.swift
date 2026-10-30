@@ -275,12 +275,14 @@ struct LabelSheet: View {
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(30)
         .overlay(alignment: .topLeading) { if DemoMode.scene("label") { ReadyMarker() } }
-        // Every placard edit marks the artwork edited (iCloud: the newer copy's edits win in SyncDedupe).
-        .onChange(of: artwork.capturedAt) { artwork.touch(); try? modelContext.save() }
-        .onChange(of: artwork.title) { artwork.touch(); try? modelContext.save() }
-        .onChange(of: artwork.medium) { artwork.touch(); try? modelContext.save() }
-        .onChange(of: artwork.tags) { artwork.touch(); try? modelContext.save() }
-        .onChange(of: artwork.note) { artwork.touch(); try? modelContext.save() }
+        // A placard edit marks the artwork edited (iCloud: the newer copy's edits win in SyncDedupe). Values that
+        // arrive from another device through iCloud also fire onChange, but they are already saved (no unsaved
+        // changes), so they don't count as an edit here.
+        .onChange(of: artwork.capturedAt) { savePlacardEdit() }
+        .onChange(of: artwork.title) { savePlacardEdit() }
+        .onChange(of: artwork.medium) { savePlacardEdit() }
+        .onChange(of: artwork.tags) { savePlacardEdit() }
+        .onChange(of: artwork.note) { savePlacardEdit() }
         .onChange(of: model.recipe.caption) { _, on in
             // The caption band only matters on export, so persist it right away (no re-render needed).
             var r = artwork.recipe
@@ -338,9 +340,15 @@ struct LabelSheet: View {
         }
     }
 
+    private func savePlacardEdit() {
+        if artwork.hasChanges { artwork.touch() }
+        try? modelContext.save()
+    }
+
     private func setChild(_ child: Child?) {
+        let changed = artwork.child?.persistentModelID != child?.persistentModelID
         artwork.child = child
-        artwork.touch()
+        if changed { artwork.touch() }
         try? modelContext.save()
         // Picked for a fresh capture: the next captures go to this child too (拍給 on the home screen and camera).
         if !artwork.isKept, !artwork.isSample { app.setCaptureChild(child?.id) }
@@ -354,7 +362,7 @@ struct BirthdayEditor: View {
     var body: some View {
         HStack {
             if let b = child.birthday {
-                DatePicker("生日", selection: Binding(get: { b }, set: { child.birthday = $0; child.touch(); try? modelContext.save() }),
+                DatePicker("生日", selection: Binding(get: { b }, set: { if child.birthday != $0 { child.birthday = $0; child.touch() }; try? modelContext.save() }),
                            in: ...Date(), displayedComponents: .date)
                     .labelsHidden()
                     .tint(Palette.teal)

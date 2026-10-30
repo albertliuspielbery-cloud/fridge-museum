@@ -929,6 +929,9 @@ struct EditView: View {
         if model.isDirty {
             artwork.recipe = model.recipe
             artwork.kind = model.recipe.kind
+            // Saved (and synced) together with the new recipe: the stored render is outdated until the render below
+            // finishes and sets .done — another device never sees the new recipe with the old render marked done.
+            artwork.processingState = .pending
             artwork.touch()
             model.markSaved()
             if render {
