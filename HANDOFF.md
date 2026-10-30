@@ -70,7 +70,7 @@
 | App 內購買項目 | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/ios-iap.yml | Albert |
 | App Store 上架資料（文字、類別、年齡分級、審查備註、截圖；不送審；可勾「只預覽」） | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/ios-metadata.yml | Albert |
 | 準備 App 識別碼 | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/bundle-id.yml | 已完成 |
-| iOS Screenshots（模擬器拍 14 畫面 × 中英 × 淺深，推到 `ci-shots` 分支） | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/ios-shots.yml | Claude 可跑 |
+| iOS Screenshots（模擬器拍 18 畫面 × 中英 × 淺深，推到 `ci-shots` 分支） | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/ios-shots.yml | Claude 可跑 |
 
 - Secrets：`ASC_KEY_ID`、`ASC_ISSUER_ID`、`ASC_KEY_P8`、`APPLE_TEAM_ID`（Albert 設的，Admin 權限金鑰）。
 - 沒有 Mac：CI 是唯一的編譯器。雲端環境的 proxy 擋掉 Actions log 和 artifact 下載，看錯誤用 annotations（`ci/annotate_log.py`），看畫面用 `git fetch origin ci-shots`。
@@ -96,6 +96,12 @@
 ### 1.1.0 連拍與備份提醒（`feat/burst`）
 - 連拍：相機快門上方「連拍」開關。每張直接成為待收作品（給目前「拍給」的孩子），不開編輯器；照樣找紙角，匯出等連拍結束才一張一張跑（AppModel `beginBurst/endBurst`，沿用 deferral；`runDeferred` 現在一次只跑一張、編輯器一開就暫停）。「完成」回廚房，便利貼「繼續」從最舊的一張開始，收進／存到手機／不要這張後自動開下一張（逐張時上一張的完整算圖排到佇列，等沒有編輯器開著才跑；改過的作品標成 processingState = pending，App 被關掉時下次開啟會重算）。開 App 時沒處理完的作品也走同一個佇列。「全部存到照片」在編輯器開著時暫停，單張存到手機排在批次目前那張後面（`ExportGate`，先來先做，一次只做一張 4096 匯出）。
 - 備份提醒：首頁沒有便利貼時，若有 ≥10 件沒存到照片、或最舊的一件超過 14 天，顯示「還有 N 張只在 App 裡」；「之後再說」隱藏 14 天（UserDefaults `backupSnoozedUntil`）；這次開 App 才收的作品不算（第一次使用不會跳）。設定頁「備份到照片」顯示已存 X／Y 件。用既有的 `Artwork.lastSavedToPhotosAt`，沒改資料模型。
+
+### 1.2.0 分享卡片（`feat/share-card`）
+- 作品頁「分享」鈕改成選單：分享照片（原本的匯出）／分享卡片 直式 4:5／方形；「更多」選單也有分享卡片。免費、不算額度，只輸出一張 JPEG（不附文字，LINE 收到乾淨的圖）。
+- 版面全在 `UI/ShareCardLayout.swift`（純計算，`ShareCardTests` 測）：薄荷冰箱門＋白相紙＋水果磁鐵（依作品 id 固定選 lemon/tomato/berry）＋奶油色說明牌＋冰冰標誌；說明牌優先，畫縮小、字不縮。繪製與 ImageRenderer（1080 寬、不透明、sRGB、JPEG 0.9）在 `UI/ShareCardView.swift`。
+- 字型：Huninn／Chiron 是子集，**沒有全形空白 U+3000**——卡片文字一律把空白、換行、U+3000 換成半形空白；子集缺的字（罕見名字）靠 cascade list 退到系統圓體／PingFang，不會變豆腐。新增文字前先查字型 cmap。
+- DemoMode 場景 `share-card`（全螢幕顯示卡片，給截圖用）。實機待測：分享選單在 SE／mini 與大字體下的樣子、LINE 收圖。
 
 ---
 

@@ -152,14 +152,7 @@ struct ArtworkDetailView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("編輯"))
-            if let shareItem {
-                ShareLink(item: shareItem, preview: SharePreview(artwork.placardTitle, image: shareImage)) {
-                    RoundKnob(systemImage: "square.and.arrow.up", size: 54)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("分享"))
-            }
-            ShareCardButton(artwork: artwork, preview: shareImage)
+            ShareMenuKnob(artwork: artwork, photoItem: shareItem, preview: shareImage)
             Button {
                 isSaving = true
                 Task {

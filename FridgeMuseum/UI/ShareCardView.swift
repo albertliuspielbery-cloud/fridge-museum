@@ -238,20 +238,28 @@ extension ShareCardItem {
 
 // MARK: Entry points (ArtworkDetailView)
 
-/// Action-bar knob: tap shares the 4:5 card; long-press offers 直式 4:5 / 方形.
-struct ShareCardButton: View {
+/// The detail action bar's single 分享 knob: a menu with 分享照片 (the plain export, as in 1.1.0) and the 分享卡片
+/// formats. One knob keeps the 1.1.0 bar (edit · share · 存到手機), so the capsule doesn't truncate on 375 pt phones.
+struct ShareMenuKnob: View {
     let artwork: Artwork
+    let photoItem: ShareableArtwork?
     var preview: Image
 
     var body: some View {
-        if let item = ShareCardItem(artwork: artwork, format: .portrait) {
-            ShareLink(item: item, preview: SharePreview(artwork.placardTitle, image: preview)) {
-                RoundKnob(systemImage: "photo.artframe", size: 54)
+        Menu {
+            if let photoItem {
+                ShareLink(item: photoItem, preview: SharePreview(artwork.placardTitle, image: preview)) {
+                    Label("分享照片", systemImage: "photo")
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("分享卡片"))
-            .contextMenu { ShareCardMenuItems(artwork: artwork, preview: preview) }
+            ShareCardMenuItems(artwork: artwork, preview: preview)
+        } label: {
+            RoundKnob(systemImage: "square.and.arrow.up", size: 54)
         }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuOrder(.fixed)
+        .accessibilityLabel(Text("分享"))
     }
 }
 
