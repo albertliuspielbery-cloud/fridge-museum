@@ -123,8 +123,10 @@ final class EditModel {
             corners = await processor.detectCorners(id: artworkID, originalData: originalData)
         }
         let estimate = await processor.estimateOrientation(id: artworkID, originalData: originalData, corners: corners)
-        guard recipe.kind == .flat, recipe.autoTurns == nil else { return false }
-        if recipe.corners == nil { recipe.corners = corners }
+        guard recipe.autoTurns == nil else { return false }
+        // Always record the check (also when the kind was switched meanwhile: a craft records 0), so the editor and
+        // the stored recipe agree.
+        if recipe.kind == .flat, recipe.corners == nil { recipe.corners = corners }
         guard recipe.quarterTurns == turnsBefore else {
             recipe.autoTurns = 0      // turned by hand meanwhile: their choice sticks
             return false

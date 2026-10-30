@@ -163,7 +163,7 @@ actor ImageProcessor {
         if let cached = orientationCache[key] { return cached }
         if let running = orientationTasks[key] { return await running.value }
         guard let image = orientationImage(id: id, originalData: originalData, quad: quad) else { return .none }
-        let task = Task.detached(priority: .userInitiated) { AutoOrienter.estimate(cgImage: image.cgImage) }
+        let task = Task.detached(priority: Task.currentPriority) { AutoOrienter.estimate(cgImage: image.cgImage) }
         orientationTasks[key] = task
         let result = await task.value
         orientationTasks[key] = nil

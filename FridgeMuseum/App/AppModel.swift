@@ -366,7 +366,7 @@ final class AppModel {
         }
         // The one-time upright check runs inside rerender, right before the export reads the recipe.
         artwork.processingState = .processing
-        await rerender(artwork, context: context)
+        await rerender(artwork, context: context, yieldsToEditor: true)
     }
 
     /// The one-time upright check (ProcessingRecipe.autoTurns) is still owed: a flat capture that has never been
@@ -388,13 +388,22 @@ final class AppModel {
     }
 
     /// Full-resolution render from the original + recipe; stores rendered JPEG + thumbnail.
-    func rerender(_ artwork: Artwork, context: ModelContext) async {
+    /// `yieldsToEditor`: a background export (autoProcess) — if an editor opened while the upright check waited on
+    /// Vision, go back to the queue instead of running the export under the editor's first preview (the check's
+    /// result is cached, so the retry costs nothing extra).
+    func rerender(_ artwork: Artwork, context: ModelContext, yieldsToEditor: Bool = false) async {
         guard Self.isAlive(artwork), let data = artwork.originalImageData else { return }
         let id = artwork.id
         renderingIDs.insert(id)
         defer { renderingIDs.remove(id) }
         await settleOrientation(artwork)
         guard Self.isAlive(artwork) else { return }
+        if yieldsToEditor && isEditorBusy {
+            artwork.processingState = .pending
+            deferredIDs.insert(id)
+            try? context.save()
+            return
+        }
         let recipe = artwork.recipe
         // This render uses the current recipe, so a render owed by renderLater is paid.
         staleIDs.remove(id)

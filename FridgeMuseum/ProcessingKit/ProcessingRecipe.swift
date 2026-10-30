@@ -172,6 +172,15 @@ struct ProcessingRecipe: Codable, Sendable, Hashable {
         return r
     }
 
+    /// `recipe` with the owed one-time upright check applied (not stored) — for exports that render a never-rendered
+    /// artwork outside AppModel (share sheet, share card). The estimate is cached per artwork, so usually free.
+    static func settlingUpright(_ recipe: ProcessingRecipe, owed: Bool, id: UUID, originalData: Data) async -> ProcessingRecipe {
+        guard owed, recipe.kind == .flat, recipe.autoTurns == nil else { return recipe }
+        let estimate = await ImageProcessor.shared.estimateOrientation(id: id, originalData: originalData,
+                                                                       corners: recipe.corners)
+        return recipe.applyingAutoOrientation(estimate)
+    }
+
     /// The automatic turn is in effect (applied and not changed by hand since).
     var isAutoTurned: Bool {
         guard let autoTurns, autoTurns != 0 else { return false }

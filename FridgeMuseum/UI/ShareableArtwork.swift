@@ -21,16 +21,18 @@ struct ShareableArtwork: Transferable, Sendable {
         .suggestedFileName(String(localized: "冰箱美術館") + ".jpg")
     }
 
-    private func originalData() throws -> Data {
+    /// The original, and whether the one-time upright check is still owed (never rendered, not a sample).
+    private func originalData() throws -> (data: Data, owesUprightCheck: Bool) {
         let context = ModelContext(container)
         guard let artwork = context.model(for: persistentID) as? Artwork, let data = artwork.originalImageData else {
             throw ProcessingError.decodeFailed
         }
-        return data
+        return (data, artwork.renderedImageData == nil && !artwork.isSample)
     }
 
     func jpeg() async throws -> Data {
-        let data = try originalData()
+        let (data, owes) = try originalData()
+        let recipe = await ProcessingRecipe.settlingUpright(self.recipe, owed: owes, id: id, originalData: data)
         let out = try await ImageProcessor.shared.export(id: id, originalData: data, recipe: recipe,
                                                          maxEdge: ImageProcessor.finalExportMaxEdge(for: recipe.kind))
         guard recipe.caption else { return out.imageData }

@@ -52,6 +52,8 @@ struct EditView: View {
     @State private var liveStroke: [CGPoint] = []
     /// Its radius (fraction of the output's long edge), fixed when the stroke starts: slider size ÷ zoom.
     @State private var liveStrokeRadius: Double = 0
+    /// Output mapping when the live stroke began (its points are in that picture's coordinates).
+    @State private var liveStrokeMapping: OutputMapping?
     /// 筆刷 / 對比: two-finger pinch & pan, double tap (view only — strokes stay in artwork space).
     @State private var stageZoom = StageZoom()
     @State private var pinchStart: PinchStart?
@@ -162,9 +164,9 @@ struct EditView: View {
         .onChange(of: compare) { _, _ in resetZoom() }
         .onChange(of: artwork.id) { _, _ in resetZoom() }
         .onChange(of: brushSize) { _, _ in flashSizePreview() }
-        // The picture changed geometry under a stroke in progress (the automatic upright turn landed): its points
+        // The picture turned under a stroke in progress (the automatic upright turn landed): its points
         // were recorded on the old picture, so drop it rather than paint in the wrong place.
-        .onChange(of: model.result?.mapping) { _, _ in liveStroke = [] }
+        .onChange(of: model.recipe.quarterTurns) { _, _ in liveStroke = [] }
         .onAppear { app.beginEditing(artwork.id) }
         .task {
             if DemoMode.isActive {
@@ -175,7 +177,7 @@ struct EditView: View {
             // First preview first (awaited, so the check's warp doesn't get onto the processor ahead of it); then the
             // one-time upright check, re-rendering only if it turned the artwork.
             await model.renderAndWait()
-            if await model.autoOrient() { model.render() }
+            if await model.autoOrient(), !Task.isCancelled { model.render() }
         }
         .sheet(isPresented: $showLabel) {
             LabelSheet(artwork: artwork, model: model)
@@ -535,6 +537,7 @@ struct EditView: View {
         case .strokeBegan(let p):
             if tool == .brush {
                 liveStrokeRadius = StageZoom.strokeRadius(sliderSize: brushSize, scale: stageZoom.scale)
+                liveStrokeMapping = model.result?.mapping
                 liveStroke = [stageZoom.imagePoint(fromView: p, fit: fit)]
             } else if compare {
                 split = stageZoom.imagePoint(fromView: p, fit: fit).x.clamped(0, 1)
@@ -568,7 +571,8 @@ struct EditView: View {
     private func commitStroke() {
         let points = liveStroke
         liveStroke = []
-        guard !points.isEmpty, let mapping = model.result?.mapping else { return }
+        // The mapping of the picture the stroke was drawn on (a craft's crop box follows the mask after each stroke).
+        guard !points.isEmpty, let mapping = liveStrokeMapping ?? model.result?.mapping else { return }
         // Points are output-normalized; strokes live unturned (flat: corrected sheet, craft: original photo).
         let norm = points.map { v -> NormPoint in
             let s = mapping.toStrokeSpace(v)

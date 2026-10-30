@@ -199,15 +199,15 @@ struct ShareCardItem: Transferable, Sendable {
     }
 
     /// The stored render when it's current; otherwise the original, to render with the current recipe.
-    private func storedImage() throws -> (rendered: Data?, original: Data?) {
+    private func storedImage() throws -> (rendered: Data?, original: Data?, owesUprightCheck: Bool) {
         let context = ModelContext(container)
         guard let artwork = context.model(for: persistentID) as? Artwork else { throw ProcessingError.decodeFailed }
-        if artwork.processingState == .done, let rendered = artwork.renderedImageData { return (rendered, nil) }
+        if artwork.processingState == .done, let rendered = artwork.renderedImageData { return (rendered, nil, false) }
         guard let original = artwork.originalImageData else {
-            if let rendered = artwork.renderedImageData { return (rendered, nil) }
+            if let rendered = artwork.renderedImageData { return (rendered, nil, false) }
             throw ProcessingError.decodeFailed
         }
-        return (nil, original)
+        return (nil, original, artwork.renderedImageData == nil && !artwork.isSample)
     }
 
     func jpeg() async throws -> Data {
@@ -216,7 +216,9 @@ struct ShareCardItem: Transferable, Sendable {
         if let rendered = stored.rendered {
             artData = rendered
         } else if let original = stored.original {
-            artData = try await ImageProcessor.shared.export(id: content.id, originalData: original, recipe: recipe).imageData
+            let upright = await ProcessingRecipe.settlingUpright(recipe, owed: stored.owesUprightCheck, id: content.id,
+                                                                  originalData: original)
+            artData = try await ImageProcessor.shared.export(id: content.id, originalData: original, recipe: upright).imageData
         } else {
             throw ProcessingError.decodeFailed
         }
