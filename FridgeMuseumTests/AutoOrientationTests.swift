@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import SwiftData
 import Testing
 import UIKit
 @testable import FridgeMuseum
@@ -258,6 +259,87 @@ struct AutoOrientationTests {
     @Test func dateShapedTextScoresHigher() {
         #expect(AutoOrienter.stringScore("2026.3.14") > AutoOrienter.stringScore("9202'E'hl"))
         #expect(AutoOrienter.stringScore("l") == 0)
+    }
+
+    // MARK: Intake — every stored render pays the owed check
+
+    private func flatArtwork(_ image: CGImage, in context: ModelContext, sample: Bool = false) throws -> Artwork {
+        let jpeg = try #require(ImageEncoding.jpegData(image, quality: 0.9))
+        let a = Artwork(kind: .flat, child: nil, capturedAt: Date(), originalImageData: jpeg)
+        a.isSample = sample
+        context.insert(a)
+        try context.save()
+        return a
+    }
+
+    /// 收進 before the editor's check landed: the editor commit's rerender pays it on the stored recipe.
+    @MainActor @Test func rerenderPaysTheOwedCheck() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let a = try flatArtwork(try render { _ in }, in: context)
+        #expect(a.recipe.autoTurns == nil && AppModel.owesOrientationCheck(a))
+        await app.rerender(a, context: context)
+        #expect(a.renderedImageData != nil)
+        #expect(a.recipe.autoTurns == 0 && a.recipe.quarterTurns == 0)      // blank sheet: checked, left as is
+        #expect(!AppModel.owesOrientationCheck(a))
+    }
+
+    /// 存到手機 (also from the museum, on a kept artwork still waiting in the queue) pays it too.
+    @MainActor @Test func finalJPEGPaysTheOwedCheck() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let a = try flatArtwork(try render { _ in }, in: context)
+        a.isKept = true
+        let jpeg = await app.finalJPEG(for: a, context: context)
+        #expect(jpeg != nil)
+        #expect(a.recipe.autoTurns == 0)
+    }
+
+    /// A sideways name-and-date sheet stored without the editor comes out turned (when Vision reads text here).
+    @MainActor @Test func storedRenderIsTurnedUpright() async throws {
+        let sideways = try rotatedClockwise(try textSheet(), turns: 1)
+        guard !AutoOrienter.textAnalysis(sideways).reads.isEmpty else { return }
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let a = try flatArtwork(sideways, in: context)
+        await app.rerender(a, context: context)
+        #expect(a.recipe.autoTurns == 3 && a.recipe.quarterTurns == 3, "\(AutoOrienter.textDiagnostics(sideways))")
+        #expect(a.pixelWidth > a.pixelHeight)                               // landscape sheet again
+    }
+
+    /// Already rendered (artworks from before 1.2.0) and samples are never checked.
+    @MainActor @Test func renderedAndSamplesAreLeftAlone() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let app = AppModel()
+        let old = try flatArtwork(try render { _ in }, in: context)
+        old.renderedImageData = Data([1])
+        old.processingState = .done
+        _ = await app.finalJPEG(for: old, context: context)
+        #expect(old.recipe.autoTurns == nil)
+        let sample = try flatArtwork(try render { _ in }, in: context, sample: true)
+        await app.rerender(sample, context: context)
+        #expect(sample.recipe.autoTurns == nil)
+    }
+
+    /// The editor's check runs once (later calls — keep / save — get the same answer) and writes its own copy.
+    @MainActor @Test func editorCheckRunsOnce() async throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let a = try flatArtwork(try render { _ in }, in: context)
+        let model = EditModel(artwork: a)
+        let first = await model.autoOrient()
+        let again = await model.autoOrient()
+        #expect(!first && !again)
+        #expect(model.recipe.autoTurns == 0)
+        // A sample's editor never checks.
+        let sample = try flatArtwork(try render { _ in }, in: context, sample: true)
+        let sampleModel = EditModel(artwork: sample)
+        _ = await sampleModel.autoOrient()
+        #expect(sampleModel.recipe.autoTurns == nil)
     }
 
     // MARK: Recipe

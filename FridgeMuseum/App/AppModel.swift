@@ -364,20 +364,7 @@ final class AppModel {
             try? context.save()
             return
         }
-        // One-time upright check, right before the export rather than at capture: a burst or an import then runs
-        // Vision for one artwork at a time in the drain, and a capture opened in the editor gets it from the editor
-        // (EditModel.autoOrientIfNeeded; ImageProcessor caches the result, so Vision runs once either way).
-        if Self.owesOrientationCheck(artwork) {
-            let estimate = await processor.estimateOrientation(id: id, originalData: data, corners: artwork.recipe.corners)
-            guard !Task.isCancelled, Self.isAlive(artwork) else { return }
-            if artwork.recipe.autoTurns == nil { artwork.recipe = artwork.recipe.applyingAutoOrientation(estimate) }
-            if renderingIDs.contains(id) || artwork.renderVersion != startVersion { return }
-            if isEditorBusy {
-                deferredIDs.insert(id)
-                try? context.save()
-                return
-            }
-        }
+        // The one-time upright check runs inside rerender, right before the export reads the recipe.
         artwork.processingState = .processing
         await rerender(artwork, context: context)
     }
@@ -389,13 +376,26 @@ final class AppModel {
             && !artwork.isSample && !DemoMode.isActive
     }
 
+    /// Pays the owed one-time upright check before a render reads the recipe — every path that stores a render
+    /// (background export, editor commit, 收進 / 存到手機 before the editor's check landed, saves from the museum)
+    /// goes through rerender or finalJPEG, so no artwork gets a render without it. The estimate is cached per
+    /// artwork, so this is free when the editor already ran it.
+    func settleOrientation(_ artwork: Artwork) async {
+        guard Self.owesOrientationCheck(artwork), let data = artwork.originalImageData else { return }
+        let estimate = await processor.estimateOrientation(id: artwork.id, originalData: data, corners: artwork.recipe.corners)
+        guard Self.isAlive(artwork), Self.owesOrientationCheck(artwork) else { return }
+        artwork.recipe = artwork.recipe.applyingAutoOrientation(estimate)
+    }
+
     /// Full-resolution render from the original + recipe; stores rendered JPEG + thumbnail.
     func rerender(_ artwork: Artwork, context: ModelContext) async {
         guard Self.isAlive(artwork), let data = artwork.originalImageData else { return }
         let id = artwork.id
-        let recipe = artwork.recipe
         renderingIDs.insert(id)
         defer { renderingIDs.remove(id) }
+        await settleOrientation(artwork)
+        guard Self.isAlive(artwork) else { return }
+        let recipe = artwork.recipe
         // This render uses the current recipe, so a render owed by renderLater is paid.
         staleIDs.remove(id)
         do {
@@ -508,7 +508,8 @@ final class AppModel {
         if storeCopy { renderingIDs.insert(id) }
         defer { if storeCopy { renderingIDs.remove(id) } }
         var jpeg: Data?
-        if let data = artwork.originalImageData {
+        await settleOrientation(artwork)
+        if Self.isAlive(artwork), let data = artwork.originalImageData {
             let recipe = artwork.recipe
             jpeg = try? await processor.export(id: id, originalData: data, recipe: recipe,
                                                maxEdge: ImageProcessor.finalExportMaxEdge(for: recipe.kind)).imageData

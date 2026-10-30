@@ -118,6 +118,7 @@ actor ImageProcessor {
     private var smallCache: [String: RGBA8Image] = [:]
     /// Upright check per artwork + sheet: the intake queue and the editor may both ask; Vision runs once.
     private var orientationCache: [String: AutoOrientation] = [:]
+    private var orientationTasks: [String: Task<AutoOrientation, Never>] = [:]
 
     init() {
         let space = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
@@ -153,24 +154,31 @@ actor ImageProcessor {
     }
 
     /// Which quarter turn makes a flat artwork upright (`AutoOrienter`), judged on a small perspective-corrected copy
-    /// of the sheet inside `corners` (nil = detect). Cheap: reuses the cached 1600 px working copy. Cached per artwork
-    /// and sheet (synchronous on the actor, so a second caller waits for the first result instead of re-running Vision).
-    func estimateOrientation(id: UUID, originalData: Data, corners: Quad?) -> AutoOrientation {
+    /// of the sheet inside `corners` (nil = detect). Only the small warp happens on this actor (it reuses the cached
+    /// 1600 px working copy); the Vision passes run in a detached task, so previews and slider renders don't queue
+    /// behind them. Cached per artwork + sheet, and a second caller while it runs awaits the same task.
+    func estimateOrientation(id: UUID, originalData: Data, corners: Quad?) async -> AutoOrientation {
         let quad = (corners ?? detectPaperSync(id: id, data: originalData).quad).clampedToUnit()
         let key = "\(id.uuidString)|\(quad.hashValue)"
         if let cached = orientationCache[key] { return cached }
-        let result = uncachedOrientation(id: id, originalData: originalData, quad: quad)
+        if let running = orientationTasks[key] { return await running.value }
+        guard let image = orientationImage(id: id, originalData: originalData, quad: quad) else { return .none }
+        let task = Task.detached(priority: .userInitiated) { AutoOrienter.estimate(cgImage: image.cgImage) }
+        orientationTasks[key] = task
+        let result = await task.value
+        orientationTasks[key] = nil
         if orientationCache.count >= 16 { orientationCache.removeAll() }
         orientationCache[key] = result
         return result
     }
 
-    private func uncachedOrientation(id: UUID, originalData: Data, quad: Quad) -> AutoOrientation {
-        guard let src = try? source(id: id, data: originalData, maxEdge: Self.previewMaxEdge) else { return .none }
+    /// The sheet, perspective-corrected, at ≤ AutoOrienter.visionEdge.
+    private func orientationImage(id: UUID, originalData: Data, quad: Quad) -> RenderedImage? {
+        guard let src = try? source(id: id, data: originalData, maxEdge: Self.previewMaxEdge) else { return nil }
         let focalPx = focalPixels(id: id, data: originalData, width: Double(src.extent.width), height: Double(src.extent.height))
         let warped = perspectiveCorrect(src, quad: quad, maxEdge: AutoOrienter.visionEdge, focalPixels: focalPx)
-        guard let cg = context.createCGImage(warped, from: warped.extent, format: .RGBA8, colorSpace: srgb) else { return .none }
-        return AutoOrienter.estimate(cgImage: cg)
+        guard let cg = context.createCGImage(warped, from: warped.extent, format: .RGBA8, colorSpace: srgb) else { return nil }
+        return RenderedImage(cgImage: cg)
     }
 
     /// Upright original (for the crop tool).

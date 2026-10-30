@@ -118,10 +118,12 @@ fast first, two accurate passes on the winning axis only when fast is unclear (d
 faces and a colour prior (sky blue / sun yellow along the top, grass green along the bottom). Weak cues only count when
 ≥ 2 agree including a non-colour one, or all 3 colour cues agree, and none disagrees. `AutoOrientation.shouldApply`
 is the go signal. Text alone needs ≥ 2 lines or ≥ 6 characters behind it and no colour cue against it. Run once per
-never-rendered flat capture (`AppModel.owesOrientationCheck`): in `AppModel.autoProcess` right before the export
-(so bursts / imports run it one artwork at a time in the drain), or by the editor after its first preview
-(`EditModel.autoOrientIfNeeded`, re-renders only if it turned). `estimateOrientation` is cached per artwork + sheet,
-so Vision runs once. Stored in `recipe.autoTurns`. Capture angle: `CaptureOrientationFilter` (first answer from a
+never-rendered flat capture (`AppModel.owesOrientationCheck`): `AppModel.settleOrientation` runs it inside
+`rerender` and `finalJPEG` right before the recipe is read (so every stored render has it — bursts / imports pay it
+one artwork at a time in the drain), and the editor runs it after its first preview has arrived (`EditModel.autoOrient`,
+memoized; keep / save await it; re-renders only if it turned). `estimateOrientation` is cached per artwork + sheet
+and runs the Vision passes in a detached task (only the small warp is on the actor), so Vision runs once and
+previews don't wait. Text line / character support is counted per pass (best pass), not summed. Stored in `recipe.autoTurns`. Capture angle: `CaptureOrientationFilter` (first answer from a
 ≥ 7° tilt; switching needs ≥ 0.3 g in-plane and 0.3 s). The capture angle itself comes from gravity
 (`CaptureKit/CaptureOrientation.swift`).
 

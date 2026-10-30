@@ -162,12 +162,20 @@ struct EditView: View {
         .onChange(of: compare) { _, _ in resetZoom() }
         .onChange(of: artwork.id) { _, _ in resetZoom() }
         .onChange(of: brushSize) { _, _ in flashSizePreview() }
+        // The picture changed geometry under a stroke in progress (the automatic upright turn landed): its points
+        // were recorded on the old picture, so drop it rather than paint in the wrong place.
+        .onChange(of: model.result?.mapping) { _, _ in liveStroke = [] }
         .onAppear { app.beginEditing(artwork.id) }
         .task {
-            model.render()
-            if DemoMode.isActive { DemoMode.configure(editor: model, tool: $tool, compare: $compare, activeCorner: $activeCorner, showLabel: $showLabel) }
-            // Preview first; the one-time upright check follows and re-renders only if it turned the artwork.
-            if await model.autoOrientIfNeeded(allowed: AppModel.owesOrientationCheck(artwork)) { model.render() }
+            if DemoMode.isActive {
+                model.render()
+                DemoMode.configure(editor: model, tool: $tool, compare: $compare, activeCorner: $activeCorner, showLabel: $showLabel)
+                return
+            }
+            // First preview first (awaited, so the check's warp doesn't get onto the processor ahead of it); then the
+            // one-time upright check, re-rendering only if it turned the artwork.
+            await model.renderAndWait()
+            if await model.autoOrient() { model.render() }
         }
         .sheet(isPresented: $showLabel) {
             LabelSheet(artwork: artwork, model: model)
@@ -849,6 +857,8 @@ struct EditView: View {
         let model = self.model, artwork = self.artwork, app = self.app, context = modelContext
         let wasPending = !artwork.isKept
         Task {
+            // The one-time upright check lands first, so the saved picture and the editor agree.
+            if await model.autoOrient() { model.render() }
             // Only write edits back here. A fresh capture with no working copy gets it from the save's own export
             // (AppModel.finalJPEG), so the tap runs one heavy render, not two.
             if model.isDirty {
@@ -906,6 +916,10 @@ struct EditView: View {
     /// stores one; if the save stops early, the commit on disappear still renders because `needsRender` is true).
     static func commit(model: EditModel, artwork: Artwork, app: AppModel, context: ModelContext,
                        render: Bool = true) async {
+        guard AppModel.isAlive(artwork) else { return }
+        // Keep / save right after opening: let the one-time upright check land first, so the editor's recipe and
+        // the stored one agree (rerender / finalJPEG would otherwise pay it on the stored recipe alone).
+        await model.autoOrient()
         guard AppModel.isAlive(artwork) else { return }
         if model.isDirty {
             artwork.recipe = model.recipe

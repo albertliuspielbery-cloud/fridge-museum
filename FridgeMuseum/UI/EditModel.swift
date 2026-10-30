@@ -26,8 +26,15 @@ final class EditModel {
     let processor = ImageProcessor.shared
     @ObservationIgnored private var renderTask: Task<Void, Never>?
 
+    /// The one-time upright check may run in this editor: a capture never rendered when it opened, not a sample.
+    /// Decided once from the editor's own copy (the background may write the turn later; the cached estimate then
+    /// gives the editor the same verdict).
+    private let mayAutoOrient: Bool
+    @ObservationIgnored private var orientTask: Task<Bool, Never>?
+
     init(artwork: Artwork) {
         artworkID = artwork.id
+        mayAutoOrient = artwork.renderedImageData == nil && !artwork.isSample && !DemoMode.isActive
         originalData = artwork.originalImageData ?? Data()
         var r = artwork.recipe
         r.kind = artwork.kind
@@ -38,6 +45,12 @@ final class EditModel {
     var isDirty: Bool { recipe != savedRecipe }
 
     func markSaved() { savedRecipe = recipe }
+
+    /// Starts a preview render and waits for it (the editor's first preview, before the upright check).
+    func renderAndWait() async {
+        render()
+        await renderTask?.value
+    }
 
     /// Debounced preview render; a newer call cancels the older one.
     func render(debounceMilliseconds: Int = 0) {
@@ -88,13 +101,20 @@ final class EditModel {
         render()
     }
 
-    /// The one-time upright check for a capture opened in the editor (`AppModel.owesOrientationCheck` decides
-    /// `allowed`). Runs after the first preview has been requested, so the preview isn't held up; returns true when
-    /// it turned the artwork (then render again). The background intake leaves this artwork to the editor, and
-    /// ImageProcessor caches the result, so Vision runs once. A manual turn made meanwhile wins.
+    /// The one-time upright check for a capture opened in the editor. Runs once (later calls await the same run —
+    /// keep / save wait for it so the stored recipe and the editor agree); returns true when it turned the artwork
+    /// (then render again). ImageProcessor caches the estimate, so Vision runs once even if the intake asks too.
+    /// A manual turn made meanwhile wins.
     @discardableResult
-    func autoOrientIfNeeded(allowed: Bool) async -> Bool {
-        guard allowed, recipe.kind == .flat, recipe.autoTurns == nil else { return false }
+    func autoOrient() async -> Bool {
+        if let orientTask { return await orientTask.value }
+        let task = Task { await self.runAutoOrient() }
+        orientTask = task
+        return await task.value
+    }
+
+    private func runAutoOrient() async -> Bool {
+        guard mayAutoOrient, recipe.kind == .flat, recipe.autoTurns == nil else { return false }
         let turnsBefore = recipe.quarterTurns
         let corners: Quad
         if let known = recipe.corners {

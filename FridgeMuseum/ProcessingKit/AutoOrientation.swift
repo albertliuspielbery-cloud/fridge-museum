@@ -175,11 +175,21 @@ enum AutoOrienter {
         return evidence(scores, used: used, all: fastReads + precise)
     }
 
+    /// Lines / characters behind each turn, counted within one pass and taking the best pass — the same line read
+    /// again in another pass (Vision re-orienting it) must not count twice.
     private static func evidence(_ scores: [Double], used: [TextRead], all: [TextRead]) -> TextEvidence {
         var lines = [Int](repeating: 0, count: 4), chars = lines
-        for r in used where r.weight > 0 {
-            lines[r.impliedTurns] += 1
-            chars[r.impliedTurns] += r.chars
+        let passes = Set(used.map { $0.pass * 2 + ($0.accurate ? 1 : 0) })
+        for pass in passes {
+            var passLines = [Int](repeating: 0, count: 4), passChars = passLines
+            for r in used where r.weight > 0 && r.pass * 2 + (r.accurate ? 1 : 0) == pass {
+                passLines[r.impliedTurns] += 1
+                passChars[r.impliedTurns] += r.chars
+            }
+            for t in 0..<4 {
+                lines[t] = max(lines[t], passLines[t])
+                chars[t] = max(chars[t], passChars[t])
+            }
         }
         return TextEvidence(scores: scores, lines: lines, chars: chars, reads: all)
     }
