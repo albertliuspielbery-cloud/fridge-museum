@@ -36,12 +36,26 @@ jobs:
           [ -n "$APPLE_TEAM_ID" ] || { echo "::error::缺少 GitHub Secret：APPLE_TEAM_ID"; exit 1; }
           xcrun cktool save-token --help || true
           # cktool 把 token 存在鑰匙圈。官方文件只寫了互動式用法，所以先試「token 當參數」，不行再試「從標準輸入讀」（未驗證）。
-          xcrun cktool save-token --type management "$CK_TOKEN" \
-            || printf '%s\n' "$CK_TOKEN" | xcrun cktool save-token --type management \
-            || { echo "::error::cktool 無法儲存 management token（請看上面 save-token --help 的用法）"; exit 1; }
-          xcrun cktool import-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER" \
+          # 失敗時把 cktool 的訊息放進 ::error 註解（token 會被遮掉），不用下載 log 也看得到原因。
+          ck() {
+            local out
+            if ! out=$("$@" 2>&1 < /dev/null); then
+              echo "$out"
+              echo "::error title=cktool $2 失敗::$(printf '%s' "$out" | sed "s|$CK_TOKEN|***|g" | tail -c 1800 | tr '\n' ' ')"
+              exit 1
+            fi
+            echo "$out"
+          }
+          if ! tok_out=$(xcrun cktool save-token --type management "$CK_TOKEN" 2>&1 < /dev/null); then
+            echo "save-token（參數）失敗，改用標準輸入：$(printf '%s' "$tok_out" | sed "s|$CK_TOKEN|***|g")"
+            if ! tok_out=$(printf '%s\n' "$CK_TOKEN" | xcrun cktool save-token --type management 2>&1); then
+              echo "::error title=cktool save-token 失敗::$(printf '%s' "$tok_out" | sed "s|$CK_TOKEN|***|g" | tail -c 1500 | tr '\n' ' ')"
+              exit 1
+            fi
+          fi
+          ck xcrun cktool import-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER" \
             --environment development --file ci/cloudkit/schema.ckdb
-          xcrun cktool export-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER" \
+          ck xcrun cktool export-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER" \
             --environment development --output-file "$RUNNER_TEMP/development.ckdb"
           echo "------ 開發環境目前的 schema ------"
           cat "$RUNNER_TEMP/development.ckdb"
