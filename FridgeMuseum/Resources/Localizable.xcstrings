@@ -3475,6 +3475,17 @@
         }
       }
     },
+    "無法確認 iCloud 帳號，這次先不同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t confirm your iCloud account, not syncing this time"
+          }
+        }
+      }
+    },
     "無法連線到 App Store，請稍後再試" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4331,6 +4342,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Couldn’t process this photo"
+          }
+        }
+      }
+    },
+    "這支手機同步過，要先確認登入的還是同一個 Apple 帳號才會同步（保護手機上還沒上傳的作品）。連上網路後重新打開 App 就會繼續。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This phone has synced before, so it first checks that you’re still signed in to the same Apple Account (this protects artworks not uploaded yet). Connect to the internet and reopen the app to continue."
           }
         }
       }

@@ -56,12 +56,22 @@ struct CloudSyncTests {
         #expect(SyncPolicy.needsAccountCheck(inputs))
     }
 
-    /// Switching back on under another Apple Account would make CloudKit drop the old account's data (including
-    /// artworks made while sync was off): stay local. Unknown (offline) doesn't block.
-    @Test func differentAppleAccountPausesSync() {
-        var other = buyer
-        other.sameAccountAsLastSync = false
-        #expect(SyncPolicy.decide(other) == .local(.accountChanged))
+    /// Once this phone has synced, every launch confirms the Apple Account: a different one would make CloudKit drop
+    /// this phone's data (including artworks not uploaded yet) — stay local, also when it can't be confirmed.
+    @Test func differentOrUnconfirmedAppleAccountStaysLocal() {
+        var synced = buyer
+        synced.hasStoredAccount = true
+        synced.sameAccountAsLastSync = true
+        #expect(SyncPolicy.decide(synced) == .cloud)
+        synced.sameAccountAsLastSync = false
+        #expect(SyncPolicy.decide(synced) == .local(.accountChanged))
+        synced.sameAccountAsLastSync = nil                     // offline: can't tell
+        #expect(SyncPolicy.decide(synced) == .local(.accountUnverified))
+        #expect(SyncPolicy.needsAccountCheck(synced))          // still asks CloudKit next time
+        // Never synced on this phone: nothing to protect yet, the first account is fine.
+        var first = buyer
+        first.sameAccountAsLastSync = nil
+        #expect(SyncPolicy.decide(first) == .cloud)
     }
 
     /// Turning sync off (toggle, refund, no account) opens the very same store file without mirroring.
@@ -88,6 +98,7 @@ struct CloudSyncTests {
         #expect(status(intro: false, .local(.introPending)) == .off)
         #expect(status(.local(.noAccount)) == .noAccount)
         #expect(status(.local(.accountChanged)) == .accountChanged)
+        #expect(status(.local(.accountUnverified)) == .accountUnverified)
         #expect(status(.local(.containerFailed)) == .unavailable)
         #expect(status(.cloud) == .starting)
         #expect(status(.cloud, synced: true) == .synced)
@@ -188,30 +199,38 @@ struct CloudSyncTests {
         #expect(SyncDedupe.nameMerges(unnamed, calendar: utc).isEmpty)
     }
 
-    /// A phone restored from another's backup uploads a second copy of everything (same ids). The merge keeps one,
-    /// folds the other's details into it, and loses nothing.
-    @Test func duplicateCopiesMergeWithoutLosingAnything() throws {
+    /// A phone restored from another's backup uploads a second copy of everything (same ids). The copy from device
+    /// "A" stays (fixed order), but the copy edited last wins the edited fields; facts from both are kept.
+    @Test func duplicateCopiesKeepTheNewerEdits() throws {
         let container = ArchiveStore.makeContainer(inMemory: true)
         let context = ModelContext(container)
 
         let kidA = Child(name: "小明")
         kidA.originDeviceID = "A"
-        let kidB = Child(name: "小明", birthday: day(2020, 5, 3))
+        kidA.modifiedAt = day(2026, 3, 1)
+        let kidB = Child(name: "小明明", birthday: day(2020, 5, 3))   // renamed later on device B
         kidB.id = kidA.id
         kidB.originDeviceID = "B"
+        kidB.avatarColorHex = "#FF0000"
+        kidB.modifiedAt = day(2026, 3, 2)
         context.insert(kidA)
         context.insert(kidB)
 
         let artA = Artwork(kind: .flat, child: kidA, capturedAt: day(2026, 3, 1), originalImageData: Data([1]))
         artA.originDeviceID = "A"
-        artA.tags = ["家人"]
+        artA.tags = ["家人", "舊標籤"]
+        artA.title = "舊名字"
+        artA.isKept = true
+        artA.keptAt = day(2026, 3, 1)
+        artA.modifiedAt = day(2026, 3, 1)
         let artB = Artwork(kind: .flat, child: kidB, capturedAt: day(2026, 3, 1), originalImageData: Data([1]))
         artB.id = artA.id
         artB.originDeviceID = "B"
-        artB.tags = ["生日"]
+        artB.tags = ["家人"]                       // 舊標籤 deleted on B: must not come back
         artB.isFavorite = true
         artB.title = "氣球派對"
         artB.lastSavedToPhotosAt = day(2026, 3, 2)
+        artB.modifiedAt = day(2026, 3, 3)
         context.insert(artA)
         context.insert(artB)
         // Only on device B: must survive (its child copy goes away, it moves to the one that stays).
@@ -226,22 +245,58 @@ struct CloudSyncTests {
         #expect(report.removedArtworks == 1)
         let children = try context.fetch(FetchDescriptor<Child>())
         #expect(children.count == 1)
-        #expect(children.first?.originDeviceID == "A")
-        #expect(children.first?.birthday == day(2020, 5, 3))        // filled in from B's copy
+        let kid = try #require(children.first)
+        #expect(kid.originDeviceID == "A")
+        #expect(kid.name == "小明明")
+        #expect(kid.avatarColorHex == "#FF0000")
+        #expect(kid.birthday == day(2020, 5, 3))
         let artworks = try context.fetch(FetchDescriptor<Artwork>())
         #expect(artworks.count == 2)
         let merged = try #require(artworks.first { $0.id == artA.id })
         #expect(merged.originDeviceID == "A")
-        #expect(Set(merged.tags) == ["家人", "生日"])
+        #expect(merged.tags == ["家人"])
         #expect(merged.isFavorite)
         #expect(merged.title == "氣球派對")
-        #expect(merged.lastSavedToPhotosAt == day(2026, 3, 2))
+        #expect(merged.isKept)                                   // a fact from A's copy
+        #expect(merged.keptAt == day(2026, 3, 1))
+        #expect(merged.lastSavedToPhotosAt == day(2026, 3, 2))  // a fact from B's copy
         let moved = try #require(artworks.first { $0.id == onlyB.id })
         #expect(moved.child?.originDeviceID == "A")
 
         // Running again changes nothing.
         let again = SyncDedupe.run(context: context)
         #expect(again == SyncDedupe.Report())
+    }
+
+    /// The staying copy edited last keeps its values; an older copy can't revive a deleted tag or old text.
+    @Test func olderCopyDoesNotUndoEdits() throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let a = Artwork(kind: .flat, child: nil, capturedAt: day(2026, 4, 1), originalImageData: Data([1]))
+        a.originDeviceID = "A"
+        a.title = "新名字"
+        a.tags = ["恐龍"]
+        a.modifiedAt = day(2026, 4, 5)
+        let b = Artwork(kind: .flat, child: nil, capturedAt: day(2026, 4, 1), originalImageData: Data([1]))
+        b.id = a.id
+        b.originDeviceID = "B"
+        b.title = "舊名字"
+        b.tags = ["恐龍", "已刪除"]
+        b.isFavorite = true
+        b.modifiedAt = day(2026, 4, 2)
+        context.insert(a)
+        context.insert(b)
+        try context.save()
+
+        SyncDedupe.run(context: context)
+
+        let left = try context.fetch(FetchDescriptor<Artwork>())
+        #expect(left.count == 1)
+        #expect(left.first?.title == "新名字")
+        #expect(left.first?.tags == ["恐龍"])
+        #expect(left.first?.isFavorite == false)
+        #expect(SyncDedupe.isNewer(modifiedAt: nil, renderVersion: 2, than: nil, renderVersion: 1))
+        #expect(!SyncDedupe.isNewer(modifiedAt: nil, renderVersion: 0, than: nil, renderVersion: 0))
     }
 
     /// Busy artworks (being edited / rendered) are left for a later run.
@@ -289,6 +344,27 @@ struct CloudSyncTests {
         #expect(try context.fetch(FetchDescriptor<Artwork>()).count == 3)
         // Once per device.
         #expect(SyncOrigin.stampLegacyRecords(context: context, defaults: defaults) == 0)
+    }
+
+    /// Restored from a phone that already synced: its records are its iCloud records, so only unstamped ones are
+    /// stamped (the other phone's pending captures stay its own).
+    @Test func stampingAfterRestoringASyncedPhoneLeavesItsRecords() throws {
+        let container = ArchiveStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let defaults = try #require(UserDefaults(suiteName: "CloudSyncTests-\(UUID().uuidString)"))
+        defaults.set("NEW", forKey: DeviceIdentity.key)
+        defaults.set("OLD", forKey: "sync.stampedDevice")
+        let legacy = Artwork(kind: .flat, child: nil, capturedAt: Date(), originalImageData: Data([1]))
+        legacy.originDeviceID = ""
+        let theirs = Artwork(kind: .flat, child: nil, capturedAt: Date(), originalImageData: Data([2]))
+        theirs.originDeviceID = "OLD"
+        context.insert(legacy)
+        context.insert(theirs)
+        try context.save()
+
+        #expect(SyncOrigin.stampLegacyRecords(context: context, defaults: defaults, previouslySynced: true) == 1)
+        #expect(legacy.originDeviceID == "NEW")
+        #expect(theirs.originDeviceID == "OLD")
     }
 
     /// The same store file opened again without mirroring (what "sync off at the next launch" does) still has every

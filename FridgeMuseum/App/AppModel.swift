@@ -510,6 +510,7 @@ final class AppModel {
         if !artwork.isKept {
             artwork.isKept = true
             artwork.keptAt = Date()
+            artwork.touch()
         }
         if addToSession, !sessionArtworkIDs.contains(artwork.id) { sessionArtworkIDs.append(artwork.id) }
         try? context.save()

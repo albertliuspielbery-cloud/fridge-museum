@@ -562,6 +562,7 @@ struct MuseumView: View {
                         if !selecting {
                             Button {
                                 a.isFavorite.toggle()
+                                a.touch()
                                 try? modelContext.save()
                             } label: {
                                 Label(a.isFavorite ? "取消最愛" as LocalizedStringKey : "加到最愛", systemImage: a.isFavorite ? "star.slash" : "star")

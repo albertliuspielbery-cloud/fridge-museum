@@ -95,6 +95,7 @@ struct RootView: View {
         .onChange(of: showSettings) { offerSyncIntroIfNeeded() }
         .onChange(of: path) { offerSyncIntroIfNeeded() }
         .onChange(of: OnboardingCoordinator.shared.isPresented) { offerSyncIntroIfNeeded() }
+        .onChange(of: OnboardingCoordinator.shared.isAddingChild) { offerSyncIntroIfNeeded() }
         .task {
             await app.store.load()
             app.processUnfinished(context: modelContext)
@@ -117,7 +118,7 @@ struct RootView: View {
 
     private var canOfferSyncIntro: Bool {
         !DemoMode.isActive && !showSyncIntro && !showSettings && app.paywall == nil && app.photosPrimer == nil
-            && !OnboardingCoordinator.shared.isPresented
+            && !OnboardingCoordinator.shared.isPresented && !OnboardingCoordinator.shared.isAddingChild
             && path.isEmpty && app.sync.shouldOfferIntro(isFullVersion: app.store.isUnlocked)
     }
 

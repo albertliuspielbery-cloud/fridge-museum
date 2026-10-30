@@ -75,6 +75,7 @@ struct ArtworkDetailView: View {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                     artwork.isFavorite.toggle()
+                    artwork.touch()
                     try? modelContext.save()
                 } label: {
                     Image(systemName: artwork.isFavorite ? "star.fill" : "star")

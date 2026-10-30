@@ -262,6 +262,7 @@ struct EditView: View {
         } else if artwork.isKept {
             Button {
                 artwork.isFavorite.toggle()
+                artwork.touch()
                 try? modelContext.save()
             } label: {
                 Image(systemName: artwork.isFavorite ? "star.fill" : "star")
@@ -928,6 +929,7 @@ struct EditView: View {
         if model.isDirty {
             artwork.recipe = model.recipe
             artwork.kind = model.recipe.kind
+            artwork.touch()
             model.markSaved()
             if render {
                 await app.rerender(artwork, context: context)

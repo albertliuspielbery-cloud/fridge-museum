@@ -27,6 +27,8 @@ enum SyncOffReason: Equatable, Sendable {
     case accountUnavailable
     /// A different Apple Account than the one this phone last synced with (sync stays paused; see `decide`).
     case accountChanged
+    /// This phone synced before, but the current Apple Account couldn't be confirmed (offline): not this launch.
+    case accountUnverified
     /// The CloudKit store couldn't be opened; the same file was opened without sync instead.
     case containerFailed
 }
@@ -44,8 +46,9 @@ struct SyncInputs: Equatable, Sendable {
     var introShown = false
     var wantsSync = true
     var account: SyncAccount = .available
-    /// Only checked when sync is switched back on after a launch without it: does the current Apple Account match
-    /// the one this phone last synced with? nil = not checked / couldn't tell (offline).
+    /// This phone has synced before (the Apple Account it synced with is remembered).
+    var hasStoredAccount = false
+    /// Does the current Apple Account match the remembered one? nil = couldn't tell (offline, no answer in time).
     var sameAccountAsLastSync: Bool?
 }
 
@@ -59,11 +62,16 @@ enum SyncPolicy {
         guard i.wantsSync else { return .local(.turnedOff) }
         switch i.account {
         case .available:
-            // Turning mirroring back on under a *different* Apple Account makes NSPersistentCloudKitContainer drop the
-            // previous account's data from the device — including artworks made while sync was off, which never
-            // reached iCloud. Stay local instead.
-            if i.sameAccountAsLastSync == false { return .local(.accountChanged) }
-            return .cloud
+            // Opening the mirrored store under a *different* Apple Account than last time makes
+            // NSPersistentCloudKitContainer drop the previous account's data from the device — including artworks
+            // that never reached iCloud (made offline, or while sync was off). So once this phone has synced, the
+            // account is confirmed at every launch; a different one, or one that can't be confirmed, stays local.
+            guard i.hasStoredAccount else { return .cloud }
+            switch i.sameAccountAsLastSync {
+            case .some(true): return .cloud
+            case .some(false): return .local(.accountChanged)
+            case .none: return .local(.accountUnverified)
+            }
         case .noAccount:
             return .local(.noAccount)
         case .restricted, .temporarilyUnavailable, .unknown:
@@ -75,6 +83,7 @@ enum SyncPolicy {
     static func needsAccountCheck(_ i: SyncInputs) -> Bool {
         var probe = i
         probe.account = .available
+        probe.hasStoredAccount = false
         probe.sameAccountAsLastSync = nil
         return decide(probe) == .cloud
     }
@@ -90,6 +99,8 @@ enum SyncStatus: Equatable, Sendable {
     case noAccount
     case accountUnavailable
     case accountChanged
+    /// Synced before, but the Apple Account couldn't be confirmed this launch (offline).
+    case accountUnverified
     /// The iCloud account changed while the app was open (CKAccountChanged): checked again at the next launch.
     case restartNeeded
     /// The CloudKit store couldn't be opened, or this build can't sync.
@@ -139,6 +150,7 @@ extension SyncPolicy {
         case .noAccount: return .noAccount
         case .accountUnavailable: return .accountUnavailable
         case .accountChanged: return .accountChanged
+        case .accountUnverified: return .accountUnverified
         case .containerFailed, .notSupported: return .unavailable
         }
     }
@@ -171,17 +183,24 @@ enum SyncOrigin {
         isLocal(origin, device: device) || now.timeIntervalSince(createdAt) > orphanAfter
     }
 
-    /// Gives every record made before 1.2.0 (origin "") this device's id, once per device. When the store came from a
-    /// backup of another phone (the saved stamp is a different device id), that phone's records are re-stamped as
-    /// this device's, so the two copies of the same artwork can be told apart if both phones sync (SyncDedupe).
+    /// Gives every record made before 1.2.0 (origin "") this device's id, once per device.
+    ///
+    /// Restored from another phone's backup (the saved stamp is that phone's device id):
+    /// - `previouslySynced` false — that phone never synced, so these records are a private *copy*; if both phones
+    ///   turn on sync each uploads its own. Its id is re-stamped as this device's so the two copies can be told
+    ///   apart (SyncDedupe).
+    /// - `previouslySynced` true — the backup came from a phone that already synced: these records *are* its iCloud
+    ///   records (same CloudKit record names), so re-stamping would rewrite the other phone's records and move its
+    ///   pending captures here. Only unstamped ("") records are stamped.
     /// Returns how many records changed.
     @MainActor @discardableResult
-    static func stampLegacyRecords(context: ModelContext, defaults: UserDefaults = .standard) -> Int {
+    static func stampLegacyRecords(context: ModelContext, defaults: UserDefaults = .standard,
+                                   previouslySynced: Bool = false) -> Int {
         guard let device = defaults.string(forKey: DeviceIdentity.key), !device.isEmpty else { return 0 }
         let stampedKey = "sync.stampedDevice"
         let previous = defaults.string(forKey: stampedKey)
         guard previous != device else { return 0 }
-        let old = previous ?? ""
+        let old = previouslySynced ? "" : (previous ?? "")
         var changed = 0
         for artwork in (try? context.fetch(FetchDescriptor<Artwork>())) ?? []
         where artwork.originDeviceID.isEmpty || artwork.originDeviceID == old {
@@ -239,6 +258,11 @@ enum LaunchRender: Equatable, Sendable {
 /// old one and both turn on sync: each uploads its own copy of every artwork and child (same `id`). Also, a child
 /// profile can be created on two devices before they sync. This merges them, deterministically, so every device
 /// keeps the same copy and deletes the same others (otherwise two devices could delete each other's copy).
+///
+/// Which copy *stays* is fixed (device id order) on purpose: if it followed recency, an edit made on one device
+/// while another is merging could make each device delete a different copy — and both copies would be gone. Which
+/// *values* stay is recency-aware instead: the copy edited last (`modifiedAt`, then `renderVersion`) wins the edited
+/// fields (merge(artwork:) / merge(child:)), so a stale copy never undoes newer edits.
 enum SyncDedupe {
     struct Report: Equatable {
         var removedChildren = 0
@@ -248,7 +272,8 @@ enum SyncDedupe {
     }
 
     /// Copies of one record (same `id`): which one to keep and which to remove. The copy from the lexicographically
-    /// smallest device id wins (the earliest created among those); copies from that same device are never removed.
+    /// smallest device id stays (the earliest created among those); copies from that same device are never removed.
+    /// The newer copy's edits are folded into it (merge), so this choice decides only which record survives.
     /// Waits (nil) while any copy is unstamped — its device stamps it at its next launch.
     static func resolve(origins: [String], createdAt: [Date]) -> (keep: Int, remove: [Int])? {
         guard origins.count > 1, origins.count == createdAt.count, !origins.contains(where: \.isEmpty),
@@ -299,8 +324,8 @@ enum SyncDedupe {
     }
 
     /// Merges duplicates in the store. `busy`: artworks being processed or edited right now (left for a later run).
-    /// Nothing is lost: a removed copy's tags, notes, voice note, favorite, kept/saved state and child are folded into
-    /// the copy that stays; a removed child's artworks move to the profile that stays.
+    /// The copy that stays takes the newer copy's edits and keeps facts from both (kept, saved to Photos); a removed
+    /// child's artworks move to the profile that stays.
     @MainActor @discardableResult
     static func run(context: ModelContext, skipping busy: Set<UUID> = []) -> Report {
         var report = Report()
@@ -349,39 +374,98 @@ enum SyncDedupe {
         return report
     }
 
+    /// Whose edits are newer: `modifiedAt` (every parent edit `touch()`es it), then `renderVersion` (recipe edits
+    /// re-render). Ties — e.g. two untouched copies from before 1.2.0 — count as not newer.
+    static func isNewer(modifiedAt a: Date?, renderVersion ra: Int, than b: Date?, renderVersion rb: Int) -> Bool {
+        (a ?? .distantPast, ra) > (b ?? .distantPast, rb)
+    }
+
+    /// Folds a removed child copy into the one that stays: its artworks move over; the profile fields come from the
+    /// copy edited last (a rename or a new colour on the other device wins). Missing details are only filled in from
+    /// the older copy when the staying one was never edited since 1.2.0 (an empty field is then missing data, not a
+    /// deliberate removal).
     @MainActor
     static func merge(child loser: Child, into keeper: Child) {
         let moving = loser.artworks ?? []
         for artwork in moving { artwork.child = keeper }
-        if keeper.name.isEmpty { keeper.name = loser.name }
-        if keeper.birthday == nil { keeper.birthday = loser.birthday }
-        if keeper.avatarImageData == nil, let avatar = loser.avatarImageData { keeper.avatarImageData = avatar }
+        if (loser.modifiedAt ?? .distantPast) > (keeper.modifiedAt ?? .distantPast) {
+            if !loser.name.isEmpty || keeper.name.isEmpty { keeper.name = loser.name }
+            keeper.birthday = loser.birthday ?? keeper.birthday
+            keeper.avatarColorHex = loser.avatarColorHex
+            keeper.avatarImageData = loser.avatarImageData
+            keeper.modifiedAt = loser.modifiedAt
+        } else if keeper.modifiedAt == nil {
+            if keeper.name.isEmpty { keeper.name = loser.name }
+            if keeper.birthday == nil { keeper.birthday = loser.birthday }
+            if keeper.avatarImageData == nil, let avatar = loser.avatarImageData { keeper.avatarImageData = avatar }
+        }
     }
 
+    /// Folds a removed artwork copy into the one that stays.
+    /// - Facts are never lost: kept (and the earliest keptAt), the latest save to Photos.
+    /// - Everything the parent edits (recipe, kind, placard text, date, medium, favorite, child, tags, voice note)
+    ///   comes from the copy edited last, so a stale copy can't undo newer edits. Tags: the newer copy's set — not a
+    ///   union, which would bring back deleted tags — unless it is empty and the other isn't.
+    /// - The render goes with the recipe: taken over with the newer copy's recipe; otherwise only when the recipes
+    ///   match. A newer recipe without a render marks the artwork unfinished, so it is rendered again.
     @MainActor
     static func merge(artwork loser: Artwork, into keeper: Artwork) {
         if loser.isKept && !keeper.isKept {
             keeper.isKept = true
             keeper.keptAt = loser.keptAt ?? keeper.keptAt
+        } else if loser.isKept, let lk = loser.keptAt, keeper.keptAt.map({ lk < $0 }) ?? true {
+            keeper.keptAt = lk
         }
-        if loser.isFavorite { keeper.isFavorite = true }
-        if keeper.title.isEmpty { keeper.title = loser.title }
-        if keeper.note.isEmpty { keeper.note = loser.note }
-        if keeper.voiceTranscript.isEmpty { keeper.voiceTranscript = loser.voiceTranscript }
-        if keeper.voiceNoteData == nil, let voice = loser.voiceNoteData { keeper.voiceNoteData = voice }
-        for tag in loser.tags where !keeper.tags.contains(tag) { keeper.tags.append(tag) }
         if let saved = loser.lastSavedToPhotosAt, keeper.lastSavedToPhotosAt.map({ saved > $0 }) ?? true {
             keeper.lastSavedToPhotosAt = saved
         }
-        if keeper.child == nil, let child = loser.child, !child.isDeleted { keeper.child = child }
-        if keeper.renderedImageData == nil, let rendered = loser.renderedImageData {
-            keeper.renderedImageData = rendered
-            keeper.thumbnailData = loser.thumbnailData
-            keeper.fingerprintData = loser.fingerprintData
-            keeper.pixelWidth = loser.pixelWidth
-            keeper.pixelHeight = loser.pixelHeight
-            keeper.renderVersion = max(keeper.renderVersion, loser.renderVersion) + 1
-            keeper.processingStateRaw = loser.processingStateRaw
+        let sameRecipe = loser.recipeData == keeper.recipeData
+        if isNewer(modifiedAt: loser.modifiedAt, renderVersion: loser.renderVersion,
+                   than: keeper.modifiedAt, renderVersion: keeper.renderVersion) {
+            keeper.title = loser.title
+            keeper.note = loser.note
+            keeper.medium = loser.medium
+            keeper.capturedAt = loser.capturedAt
+            keeper.kindRaw = loser.kindRaw
+            keeper.recipeData = loser.recipeData
+            keeper.isFavorite = loser.isFavorite
+            if !loser.tags.isEmpty { keeper.tags = loser.tags }
+            if let child = loser.child, !child.isDeleted { keeper.child = child }
+            if let voice = loser.voiceNoteData {
+                keeper.voiceNoteData = voice
+                keeper.voiceTranscript = loser.voiceTranscript
+            }
+            if loser.renderedImageData != nil {
+                takeRender(from: loser, into: keeper)
+            } else if !sameRecipe {
+                keeper.processingStateRaw = ProcessingState.pending.rawValue
+            }
+            keeper.modifiedAt = loser.modifiedAt
+        } else {
+            if keeper.tags.isEmpty { keeper.tags = loser.tags }
+            if keeper.child == nil, let child = loser.child, !child.isDeleted { keeper.child = child }
+            if keeper.voiceNoteData == nil, let voice = loser.voiceNoteData {
+                keeper.voiceNoteData = voice
+                keeper.voiceTranscript = loser.voiceTranscript
+            }
+            if keeper.modifiedAt == nil {
+                if keeper.title.isEmpty { keeper.title = loser.title }
+                if keeper.note.isEmpty { keeper.note = loser.note }
+            }
+            if keeper.renderedImageData == nil, loser.renderedImageData != nil, sameRecipe {
+                takeRender(from: loser, into: keeper)
+            }
         }
+    }
+
+    @MainActor
+    private static func takeRender(from loser: Artwork, into keeper: Artwork) {
+        keeper.renderedImageData = loser.renderedImageData
+        keeper.thumbnailData = loser.thumbnailData
+        keeper.fingerprintData = loser.fingerprintData
+        keeper.pixelWidth = loser.pixelWidth
+        keeper.pixelHeight = loser.pixelHeight
+        keeper.renderVersion = max(keeper.renderVersion, loser.renderVersion) + 1
+        keeper.processingStateRaw = loser.processingStateRaw
     }
 }

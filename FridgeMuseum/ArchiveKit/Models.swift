@@ -24,6 +24,9 @@ final class Child {
     /// The device that created this profile (`DeviceIdentity`); "" = made before 1.2.0 and not stamped yet.
     /// Only used to resolve copies that arrive from several devices (SyncDedupe).
     var originDeviceID: String = ""
+    /// Last edit of the profile (name, birthday, colour, avatar) — `touch()`; nil = not edited since 1.2.0. Decides
+    /// whose edits win when two devices' copies are merged (SyncDedupe).
+    var modifiedAt: Date?
 
     // Nullify: removing a child profile keeps the artworks (they become 未分類).
     @Relationship(deleteRule: .nullify, inverse: \Artwork.child)
@@ -36,7 +39,11 @@ final class Child {
         self.avatarColorHex = avatarColorHex
         self.createdAt = Date()
         self.originDeviceID = DeviceIdentity.storedID
+        self.modifiedAt = Date()
     }
+
+    /// Marks an edit (SyncDedupe keeps the newer copy's values).
+    func touch() { modifiedAt = Date() }
 
     var displayName: String { name.isEmpty ? String(localized: "小朋友") : name }
     var albumTitle: String { String(localized: "冰箱美術館 – \(displayName)") }
@@ -93,6 +100,9 @@ final class Artwork {
     /// The device that captured it (`DeviceIdentity`); "" = made before 1.2.0 and not stamped yet. A pending capture
     /// (isKept == false) belongs to that device: other devices leave it alone (SyncOrigin.ownsPending).
     var originDeviceID: String = ""
+    /// Last edit by the parent (recipe, placard, tags, favorite, child, voice note, kept) — `touch()`; nil = not
+    /// edited since 1.2.0. Decides whose edits win when two devices' copies are merged (SyncDedupe).
+    var modifiedAt: Date?
 
     init(kind: ArtworkKind, child: Child?, capturedAt: Date, originalImageData: Data) {
         self.id = UUID()
@@ -103,7 +113,11 @@ final class Artwork {
         self.originalImageData = originalImageData
         self.recipeData = try? ProcessingRecipe.default(for: kind).encoded()
         self.originDeviceID = DeviceIdentity.storedID
+        self.modifiedAt = Date()
     }
+
+    /// Marks an edit (SyncDedupe keeps the newer copy's values).
+    func touch() { modifiedAt = Date() }
 
     var kind: ArtworkKind {
         get { ArtworkKind(rawValue: kindRaw) ?? .flat }

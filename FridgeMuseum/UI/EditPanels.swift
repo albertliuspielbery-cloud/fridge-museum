@@ -275,16 +275,18 @@ struct LabelSheet: View {
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(30)
         .overlay(alignment: .topLeading) { if DemoMode.scene("label") { ReadyMarker() } }
-        .onChange(of: artwork.capturedAt) { try? modelContext.save() }
-        .onChange(of: artwork.title) { try? modelContext.save() }
-        .onChange(of: artwork.medium) { try? modelContext.save() }
-        .onChange(of: artwork.tags) { try? modelContext.save() }
-        .onChange(of: artwork.note) { try? modelContext.save() }
+        // Every placard edit marks the artwork edited (iCloud: the newer copy's edits win in SyncDedupe).
+        .onChange(of: artwork.capturedAt) { artwork.touch(); try? modelContext.save() }
+        .onChange(of: artwork.title) { artwork.touch(); try? modelContext.save() }
+        .onChange(of: artwork.medium) { artwork.touch(); try? modelContext.save() }
+        .onChange(of: artwork.tags) { artwork.touch(); try? modelContext.save() }
+        .onChange(of: artwork.note) { artwork.touch(); try? modelContext.save() }
         .onChange(of: model.recipe.caption) { _, on in
             // The caption band only matters on export, so persist it right away (no re-render needed).
             var r = artwork.recipe
             r.caption = on
             artwork.recipe = r
+            artwork.touch()
             try? modelContext.save()
         }
         .sheet(isPresented: $showNewChild) {
@@ -338,6 +340,7 @@ struct LabelSheet: View {
 
     private func setChild(_ child: Child?) {
         artwork.child = child
+        artwork.touch()
         try? modelContext.save()
         // Picked for a fresh capture: the next captures go to this child too (拍給 on the home screen and camera).
         if !artwork.isKept, !artwork.isSample { app.setCaptureChild(child?.id) }
@@ -351,13 +354,14 @@ struct BirthdayEditor: View {
     var body: some View {
         HStack {
             if let b = child.birthday {
-                DatePicker("生日", selection: Binding(get: { b }, set: { child.birthday = $0; try? modelContext.save() }),
+                DatePicker("生日", selection: Binding(get: { b }, set: { child.birthday = $0; child.touch(); try? modelContext.save() }),
                            in: ...Date(), displayedComponents: .date)
                     .labelsHidden()
                     .tint(Palette.teal)
             } else {
                 Button {
                     child.birthday = Calendar.current.date(byAdding: .year, value: -4, to: Date())
+                    child.touch()
                     try? modelContext.save()
                 } label: {
                     Label("填生日", systemImage: "birthday.cake")
@@ -529,12 +533,14 @@ struct VoiceNoteRow: View {
     private func stopAndTranscribe() {
         guard let data = recorder.stop() else { return }
         artwork.voiceNoteData = data
+        artwork.touch()
         try? modelContext.save()
         let artwork = self.artwork, recorder = self.recorder, context = modelContext
         Task {
             // The artwork may have been thrown away (不要這張 / 重拍) while the speech was being transcribed.
             if let text = await recorder.transcribe(data), AppModel.isAlive(artwork) {
                 artwork.voiceTranscript = text
+                artwork.touch()
                 try? context.save()
             }
         }

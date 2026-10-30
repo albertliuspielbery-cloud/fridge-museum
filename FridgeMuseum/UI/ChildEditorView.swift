@@ -164,6 +164,7 @@ struct ChildEditorView: View {
             child.birthday = hasBirthday ? birthday : nil
             child.avatarColorHex = colorHex
             if child.avatarImageData != avatarData { child.avatarImageData = avatarData }
+            child.touch()
         } else {
             let c = Child(name: trimmed, birthday: hasBirthday ? birthday : nil, avatarColorHex: colorHex)
             c.avatarImageData = avatarData

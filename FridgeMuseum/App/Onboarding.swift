@@ -20,6 +20,9 @@ final class OnboardingCoordinator {
     nonisolated static let demoScene = "onboarding"
 
     var isPresented = false
+    /// The child editor opened from the last page (先加一位小朋友). Here, not in the presenter, so RootView can keep
+    /// other sheets (the iCloud explanation) from presenting at the same time.
+    var isAddingChild = false
 
     private let defaults: UserDefaults
     private let demoScenario: String?
@@ -74,7 +77,6 @@ struct OnboardingPresenter: ViewModifier {
     @Environment(AppModel.self) private var app
     @Environment(\.modelContext) private var modelContext
     @State private var next: OnboardingNext?
-    @State private var showNewChild = false
 
     func body(content: Content) -> some View {
         @Bindable var coordinator = OnboardingCoordinator.shared
@@ -85,7 +87,7 @@ struct OnboardingPresenter: ViewModifier {
                     OnboardingCoordinator.shared.finish()
                 }
             }
-            .sheet(isPresented: $showNewChild) {
+            .sheet(isPresented: $coordinator.isAddingChild) {
                 ChildEditorView(child: nil) { created in app.setCaptureChild(created.id) }
             }
             .task { evaluate() }
@@ -104,7 +106,7 @@ struct OnboardingPresenter: ViewModifier {
         next = nil
         switch choice {
         case .addChild:
-            showNewChild = true
+            OnboardingCoordinator.shared.isAddingChild = true
         case .sample:
             if let sample = app.openSample(.flat, context: modelContext) { app.pendingRoute = .edit(sample.id) }
         }

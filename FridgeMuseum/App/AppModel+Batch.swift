@@ -9,6 +9,7 @@ extension AppModel {
         var count = 0
         for artwork in artworks where Self.isAlive(artwork) {
             change(artwork)
+            artwork.touch()
             count += 1
         }
         if count > 0 { try? context.save() }

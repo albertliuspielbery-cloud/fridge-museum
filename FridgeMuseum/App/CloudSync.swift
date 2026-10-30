@@ -17,7 +17,10 @@ import UIKit
 /// artwork stays on the device. What this code cannot prevent: if the person signs out of iCloud (or turns iCloud off
 /// for this app in iOS Settings) *while the app is running with sync on*, NSPersistentCloudKitContainer removes the
 /// synced data from the device by design (Apple: privacy on shared devices); it comes back when the same account signs
-/// in again. Checking the account before opening the store avoids it for changes made while the app was closed.
+/// in again, but changes not uploaded yet are lost. For account changes made while the app was closed, the launch
+/// checks first: no account → this launch stays local; once this phone has synced, the current Apple Account must
+/// match the remembered one at every launch — a different account (or one that can't be confirmed, e.g. offline)
+/// stays local too, so the mirroring never starts under another account and never drops this phone's artworks.
 @MainActor
 @Observable
 final class CloudSync {
@@ -27,7 +30,7 @@ final class CloudSync {
         /// The Settings toggle (default on for Full Version users, effective after the one-time explanation).
         static let enabled = "sync.enabled"
         static let introShown = "sync.introShown"
-        /// The previous launch ran with sync (an Apple Account check is only needed when switching back on).
+        /// The previous launch ran with sync (also evidence, in a restored backup, that the store was synced).
         static let lastLaunchCloud = "sync.lastLaunchCloud"
         /// CloudKit user record name of the account this phone last synced with.
         static let userRecordName = "sync.userRecordName"
@@ -36,7 +39,14 @@ final class CloudSync {
 
     /// How this launch's store was opened. Never changes during the session.
     private(set) var decision: SyncDecision = .local(.notSupported)
-    private(set) var activity: SyncActivity = .idle
+    /// The last upload (export) failed: shown until an upload succeeds (空間不足 / 暫時無法同步 stay up while
+    /// uploads keep failing, even if downloads work).
+    private(set) var exportProblem: SyncProblem?
+    /// The last download (import / setup) failed.
+    private(set) var importProblem: SyncProblem?
+    private(set) var isRunning = false
+    /// Last time the uploads were confirmed up to date (a successful export, or a successful import while no upload
+    /// is failing).
     private(set) var lastSyncedAt: Date?
     private(set) var accountChangedThisSession = false
     private(set) var wantsSync: Bool
@@ -55,6 +65,11 @@ final class CloudSync {
         wantsSync = defaults.bool(forKey: Keys.enabled)
         introShown = defaults.bool(forKey: Keys.introShown)
         lastSyncedAt = defaults.object(forKey: Keys.lastSyncedAt) as? Date
+    }
+
+    var activity: SyncActivity {
+        if let problem = exportProblem ?? importProblem { return .failed(problem) }
+        return isRunning ? .syncing : .idle
     }
 
     /// This session's store is mirrored to iCloud.
@@ -118,18 +133,21 @@ final class CloudSync {
                                 introShown: introShown, wantsSync: wantsSync)
         if SyncPolicy.needsAccountCheck(inputs) {
             inputs.account = await Self.fetchAccount()
-            if inputs.account == .available, !defaults.bool(forKey: Keys.lastLaunchCloud),
-               let last = defaults.string(forKey: Keys.userRecordName) {
+            // Synced before: confirm it's the same Apple Account at every launch (SyncPolicy.decide).
+            if inputs.account == .available, let last = defaults.string(forKey: Keys.userRecordName) {
+                inputs.hasStoredAccount = true
                 if let current = await Self.fetchUserRecordName() { inputs.sameAccountAsLastSync = current == last }
             }
         }
+        let previouslySynced = defaults.bool(forKey: Keys.lastLaunchCloud) || defaults.string(forKey: Keys.userRecordName) != nil
         var decided = SyncPolicy.decide(inputs)
         let opened = ArchiveStore.open(cloudKitContainerID: decided == .cloud ? Self.containerID : nil)
         if decided == .cloud && !opened.isCloud { decided = .local(.containerFailed) }
         decision = decided
         defaults.set(decided == .cloud, forKey: Keys.lastLaunchCloud)
         // Records made before 1.2.0 get this device's id (once), before anything else touches the store.
-        SyncOrigin.stampLegacyRecords(context: opened.container.mainContext, defaults: defaults)
+        SyncOrigin.stampLegacyRecords(context: opened.container.mainContext, defaults: defaults,
+                                      previouslySynced: previouslySynced)
         if decided == .cloud { startMonitoring() }
         return opened.container
     }
@@ -177,23 +195,37 @@ final class CloudSync {
     private func handle(_ event: SyncEvent) {
         guard event.isFinished else {
             runningEvents.insert(event.id)
-            activity = .syncing
+            isRunning = true
             return
         }
         runningEvents.remove(event.id)
+        isRunning = !runningEvents.isEmpty
         if let problem = event.problem {
-            activity = .failed(problem)
+            if event.kind == .export { exportProblem = problem } else { importProblem = problem }
             return
         }
         guard event.succeeded else { return }
-        if event.kind != .setup {
-            let when = event.endDate ?? Date()
-            lastSyncedAt = when
-            defaults.set(when, forKey: Keys.lastSyncedAt)
+        switch event.kind {
+        case .export:
+            exportProblem = nil
+            markSynced(event.endDate)
+        case .import:
+            importProblem = nil
+            // Downloads alone don't prove the uploads are through: only while no upload is failing.
+            if exportProblem == nil { markSynced(event.endDate) }
+            scheduleMaintenance(after: 3)
+        case .setup:
+            importProblem = nil
+        case .other:
+            break
         }
-        if runningEvents.isEmpty { activity = .idle }
-        if event.kind == .import { scheduleMaintenance(after: 3) }
         recordAccountOnce()
+    }
+
+    private func markSynced(_ date: Date?) {
+        let when = date ?? Date()
+        lastSyncedAt = when
+        defaults.set(when, forKey: Keys.lastSyncedAt)
     }
 
     /// Remembers which Apple Account this phone syncs with (checked when sync is switched back on later).
@@ -350,6 +382,7 @@ extension SyncStatus {
         case .noAccount: String(localized: "iCloud 未登入")
         case .accountUnavailable: String(localized: "iCloud 暫時無法使用")
         case .accountChanged: String(localized: "iCloud 帳號不同，已暫停")
+        case .accountUnverified: String(localized: "無法確認 iCloud 帳號，這次先不同步")
         case .restartNeeded: String(localized: "iCloud 帳號有變動，請重新打開 App")
         case .unavailable: String(localized: "這次無法開啟同步")
         case .starting: String(localized: "準備中…")
@@ -370,6 +403,8 @@ extension SyncStatus {
             String(localized: "到 iPhone「設定」登入 Apple 帳號並開啟 iCloud，再重新打開 App。作品都還在手機上。")
         case .accountChanged:
             String(localized: "這支手機現在登入的 Apple 帳號，和上次同步時不同。為了不刪掉手機上的作品，先暫停同步；換回原本的帳號就會繼續。")
+        case .accountUnverified:
+            String(localized: "這支手機同步過，要先確認登入的還是同一個 Apple 帳號才會同步（保護手機上還沒上傳的作品）。連上網路後重新打開 App 就會繼續。")
         case .quotaFull:
             String(localized: "iCloud 空間滿了，新作品先留在手機上。到「設定 › Apple 帳號 › iCloud」整理空間後會自動繼續。")
         case .restartNeeded:

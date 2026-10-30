@@ -512,6 +512,10 @@ EN_ICLOUD = {
     "iCloud 未登入": "Not signed in to iCloud",
     "iCloud 暫時無法使用": "iCloud isn’t available right now",
     "iCloud 帳號不同，已暫停": "Different iCloud account, paused",
+    "無法確認 iCloud 帳號，這次先不同步": "Couldn’t confirm your iCloud account, not syncing this time",
+    "這支手機同步過，要先確認登入的還是同一個 Apple 帳號才會同步（保護手機上還沒上傳的作品）。連上網路後重新打開 App 就會繼續。":
+        "This phone has synced before, so it first checks that you’re still signed in to the same Apple Account "
+        "(this protects artworks not uploaded yet). Connect to the internet and reopen the app to continue.",
     "iCloud 帳號有變動，請重新打開 App": "Your iCloud account changed. Reopen the app.",
     "這次無法開啟同步": "Couldn’t turn on sync this time",
     "準備中…": "Getting ready…",
