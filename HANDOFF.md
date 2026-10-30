@@ -10,10 +10,10 @@
 
 | 項目 | 狀態 |
 |---|---|
-| iOS App | **1.1.0** 已送審（2026-10-29 14:50，App＋「完整版」內購共 2 項，狀態「等待審查」；發布方式：手動）。Albert 已實機測過 1.1.0 |
+| iOS App | **1.1.0** 已送審（2026-10-29，App＋「完整版」內購，等待審查；手動發布；`v1.1.0` 標籤＝送審版本）。**1.2.1** 已上傳 TestFlight（2026-10-30）：iCloud 同步（完整版）、分享卡片、拍照自動轉正（1.2.1 修平放／連拍方向）、筆刷放大、美術館大圖／小圖／一次轉向、新手教學。1.2.x 還要實機測（尤其 iCloud 兩台裝置、平放拍照） |
 | App 內購買 | `tw.starlight.fridgemuseum.full`「完整版 / Full Version」已建立：NT$190、家人共享開、地區 TW/HK/US/CA/GB/AU/SG。審查截圖已上傳（10/28 第 2 次執行成功），但流程結束時讀到的狀態仍是 MISSING_METADATA，要到 ASC 確認是否已變 Ready to Submit |
 | 網頁測試版 | **0.9.0** 上線中：https://claude.ai/artifact/MQTbRzJLuHZUzNpgRvADPf （只有擁有者看得到）。原始碼在 `web/` |
-| repo | `albertliuspielbery-cloud/fridge-museum`（**公開**）。main = App 1.1.0。開發分支用 `fix/**`（push 也會跑模擬器測試） |
+| repo | `albertliuspielbery-cloud/fridge-museum`（**公開**）。main = App 1.2.1（1.1.0 在審查中，修正請從 `v1.1.0` 標籤開分支）。開發分支用 `fix/**`（push 也會跑模擬器測試） |
 | 隱私／支援頁 | GitHub Pages：`docs/privacy.html`、`docs/support.html` → https://albertliuspielbery-cloud.github.io/fridge-museum/privacy.html 、…/support.html |
 
 ---
