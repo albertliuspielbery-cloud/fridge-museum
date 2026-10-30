@@ -327,13 +327,15 @@ final class AppModel {
         // Corners are found in the queue too, right before each export.
         // Unfinished but already rendered = the recipe changed after that render (edited while stepping through
         // pending captures — renderLater — or the app closed mid-render): re-render it from the current recipe.
-        // Synced from another device (iCloud): rendered there, so only one that arrived without a render gets one
-        // here, and another device's capture still being edited there is left alone (LaunchRender).
+        // Synced from another device (iCloud): rendered there, so it is only rendered here when it is still
+        // unfinished well after its last edit; another device's capture still being edited there is left alone, and
+        // one whose render already failed here this launch waits for the next launch (LaunchRender).
         for artwork in (try? context.fetch(descriptor)) ?? [] where processTasks[artwork.id] == nil && Self.isAlive(artwork) {
             let id = artwork.id
             guard !processingIDs.contains(id), !renderingIDs.contains(id) else { continue }
             let isLocal = SyncOrigin.isLocal(artwork.originDeviceID, device: device)
             if syncedOnly && isLocal { continue }
+            if foreignRenderFailures.contains(id) { continue }
             let owns = SyncOrigin.ownsPending(origin: artwork.originDeviceID, createdAt: artwork.createdAt, device: device, now: now)
             switch LaunchRender.action(isLocal: isLocal, ownsPending: owns, isKept: artwork.isKept,
                                        hasRender: artwork.renderedImageData != nil,
@@ -350,6 +352,9 @@ final class AppModel {
         runDeferred(context: context)
     }
 
+    /// Another device's artworks whose render failed on this device during this launch (not retried until the next).
+    @ObservationIgnored private var foreignRenderFailures: Set<UUID> = []
+
     /// Artworks being edited, processed or rendered right now (iCloud duplicate merging leaves them alone).
     private var busyArtworkIDs: Set<UUID> {
         editingIDs.union(claimedIDs).union(processingIDs).union(renderingIDs).union(processTasks.keys)
@@ -365,9 +370,15 @@ final class AppModel {
         let report = SyncDedupe.run(context: context, skipping: busyArtworkIDs)
         if let current = currentChildID, let merged = report.childRemap[current] { setCaptureChild(merged) }
         // Merged copies whose render no longer matches their recipe: render here, whatever device they came from.
+        let device = DeviceIdentity.storedID, now = Date()
         for id in report.needsRender {
             guard let artwork = fetchArtwork(id, context: context), Self.isAlive(artwork),
-                  !processingIDs.contains(id), !renderingIDs.contains(id), processTasks[id] == nil else { continue }
+                  !processingIDs.contains(id), !renderingIDs.contains(id), processTasks[id] == nil,
+                  !foreignRenderFailures.contains(id) else { continue }
+            // Another device's artwork: the same grace as at launch (that device is probably rendering it); the
+            // queue picks it up at a later run once the grace has passed.
+            if !SyncOrigin.isLocal(artwork.originDeviceID, device: device), !artwork.isOwnPending,
+               now.timeIntervalSince(artwork.modifiedAt ?? artwork.createdAt) <= LaunchRender.foreignGrace { continue }
             if artwork.renderedImageData != nil { staleIDs.insert(id) }
             deferredIDs.insert(id)
         }
@@ -482,7 +493,15 @@ final class AppModel {
             artwork.processingState = artwork.recipe == recipe ? .done : .pending
         } catch {
             guard Self.isAlive(artwork) else { return }
-            artwork.processingState = .failed
+            if SyncOrigin.isLocal(artwork.originDeviceID, device: DeviceIdentity.storedID) || artwork.isOwnPending {
+                artwork.processingState = .failed
+            } else {
+                // Another device's artwork (iCloud): a failure here (memory pressure…) must not sync as .failed — that
+                // would stop every device from ever re-rendering it. It stays unfinished; this device just doesn't
+                // retry it again during this launch.
+                foreignRenderFailures.insert(id)
+                if artwork.processingState != .pending { artwork.processingState = .pending }
+            }
         }
         try? context.save()
     }

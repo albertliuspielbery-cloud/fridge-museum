@@ -330,9 +330,10 @@ struct CloudSyncTests {
         #expect(kids.first?.birthday == day(2020, 5, 3))              // filled in
     }
 
-    /// Same record, newer copy cleared the child and the tags: that sticks. Its render state wasn't .done, so the
-    /// merged artwork is marked unfinished and listed for a render on this device.
-    @Test func newerClearedChildAndTagsStickAndUnfinishedRenderIsRedone() throws {
+    /// Same record, newer copy emptied the tags: that sticks. Its render state wasn't .done, so the merged artwork
+    /// is marked unfinished and listed for a render on this device. A newer copy without a child (its link may still
+    /// be arriving from iCloud) waits instead of clearing the child.
+    @Test func newerEmptiedTagsStickAndUnfinishedRenderIsRedone() throws {
         let container = ArchiveStore.makeContainer(inMemory: true)
         let context = ModelContext(container)
         let kid = Child(name: "小美")
@@ -345,7 +346,7 @@ struct CloudSyncTests {
         a.renderedImageData = Data([1])
         a.processingState = .done
         a.modifiedAt = day(2026, 5, 1)
-        let b = Artwork(kind: .flat, child: nil, capturedAt: day(2026, 5, 1), originalImageData: Data([1]))
+        let b = Artwork(kind: .flat, child: kid, capturedAt: day(2026, 5, 1), originalImageData: Data([1]))
         b.id = a.id
         b.originDeviceID = "B"
         b.isKept = true
@@ -363,10 +364,23 @@ struct CloudSyncTests {
         let left = try context.fetch(FetchDescriptor<Artwork>())
         #expect(left.count == 1)
         let merged = try #require(left.first)
-        #expect(merged.child == nil)
+        #expect(merged.child?.name == "小美")
         #expect(merged.tags.isEmpty)
         #expect(merged.processingState == .pending)
         #expect(report.needsRender == [id])
+
+        // Newer copy without a child: not merged this round.
+        let c = Artwork(kind: .flat, child: nil, capturedAt: day(2026, 5, 1), originalImageData: Data([1]))
+        c.id = id
+        c.originDeviceID = "C"
+        c.isKept = true
+        c.modifiedAt = day(2026, 5, 9)
+        context.insert(c)
+        try context.save()
+        let wait = SyncDedupe.run(context: context)
+        #expect(wait.removedArtworks == 0)
+        #expect(try context.fetch(FetchDescriptor<Artwork>()).count == 2)
+        #expect(merged.child?.name == "小美")
     }
 
     /// Batch edits only mark real changes as edits.

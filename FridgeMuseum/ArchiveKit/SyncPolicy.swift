@@ -392,6 +392,8 @@ enum SyncDedupe {
                   let plan = resolve(origins: group.map(\.originDeviceID), createdAt: group.map(\.createdAt)) else { continue }
             var redo = false
             for i in plan.remove {
+                // Waits for the child link (see mustWaitForChild); merged at a later maintenance run.
+                if mustWaitForChild(loser: group[i], keeper: group[plan.keep]) { continue }
                 if merge(artwork: group[i], into: group[plan.keep]) { redo = true }
                 context.delete(group[i])
                 report.removedArtworks += 1
@@ -401,6 +403,17 @@ enum SyncDedupe {
 
         if report.removedChildren + report.removedArtworks > 0 { try? context.save() }
         return report
+    }
+
+    /// The newer copy has no child while the staying one has: during a CloudKit import an artwork can arrive before
+    /// its Child record (the to-one link is filled in a moment later). Merging now would clear the child and delete
+    /// the copy whose link is about to arrive — so this pair waits for a later run. (A child deliberately cleared on
+    /// the newer copy therefore keeps both copies until the other device's edit is the older one.)
+    @MainActor
+    static func mustWaitForChild(loser: Artwork, keeper: Artwork) -> Bool {
+        loser.child == nil && keeper.child != nil
+            && isNewer(modifiedAt: loser.modifiedAt, renderVersion: loser.renderVersion,
+                       than: keeper.modifiedAt, renderVersion: keeper.renderVersion)
     }
 
     /// Whose edits are newer: `modifiedAt` (every parent edit `touch()`es it), then `renderVersion` (recipe edits
@@ -468,11 +481,9 @@ enum SyncDedupe {
             keeper.recipeData = loser.recipeData
             keeper.isFavorite = loser.isFavorite
             keeper.tags = loser.tags
-            if let child = loser.child {
-                if !child.isDeleted { keeper.child = child }
-            } else {
-                keeper.child = nil
-            }
+            // A nil child on the newer copy never clears the keeper's (run() lets such pairs wait: the link may
+            // still be on its way from iCloud); both nil or the same child → nothing to change.
+            if let child = loser.child, !child.isDeleted { keeper.child = child }
             if loser.voiceNoteData != nil {
                 keeper.voiceNoteData = loser.voiceNoteData
                 keeper.voiceTranscript = loser.voiceTranscript

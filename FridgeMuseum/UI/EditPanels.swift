@@ -234,21 +234,21 @@ struct LabelSheet: View {
                     }
                     HStack(alignment: .top, spacing: 12) {
                         field("作品名稱") {
-                            TextField("例：我的家", text: $artwork.title).kitchenField()
+                            TextField("例：我的家", text: edited(\.title)).kitchenField()
                         }
                         field("用什麼做的") {
-                            TextField("例：蠟筆、紙", text: $artwork.medium).kitchenField()
+                            TextField("例：蠟筆、紙", text: edited(\.medium)).kitchenField()
                         }
                     }
                     field("作品日期") {
-                        DatePicker(selection: $artwork.capturedAt, in: ...Date(), displayedComponents: .date) {
+                        DatePicker(selection: edited(\.capturedAt), in: ...Date(), displayedComponents: .date) {
                             Text(verbatim: artwork.placardTerm).font(.fm(14.5, bold: true)).foregroundStyle(Palette.teal)
                         }
                         .tint(Palette.teal)
                     }
-                    field("標籤") { TagEditor(tags: $artwork.tags) }
+                    field("標籤") { TagEditor(tags: edited(\.tags)) }
                     field("備註") {
-                        TextField("孩子說了什麼？", text: $artwork.note, axis: .vertical)
+                        TextField("孩子說了什麼？", text: edited(\.note), axis: .vertical)
                             .lineLimit(2...5)
                             .kitchenField()
                     }
@@ -275,14 +275,12 @@ struct LabelSheet: View {
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(30)
         .overlay(alignment: .topLeading) { if DemoMode.scene("label") { ReadyMarker() } }
-        // A placard edit marks the artwork edited (iCloud: the newer copy's edits win in SyncDedupe). Values that
-        // arrive from another device through iCloud also fire onChange, but they are already saved (no unsaved
-        // changes), so they don't count as an edit here.
-        .onChange(of: artwork.capturedAt) { savePlacardEdit() }
-        .onChange(of: artwork.title) { savePlacardEdit() }
-        .onChange(of: artwork.medium) { savePlacardEdit() }
-        .onChange(of: artwork.tags) { savePlacardEdit() }
-        .onChange(of: artwork.note) { savePlacardEdit() }
+        // Edits are marked in the field bindings (`edited`); these only save.
+        .onChange(of: artwork.capturedAt) { try? modelContext.save() }
+        .onChange(of: artwork.title) { try? modelContext.save() }
+        .onChange(of: artwork.medium) { try? modelContext.save() }
+        .onChange(of: artwork.tags) { try? modelContext.save() }
+        .onChange(of: artwork.note) { try? modelContext.save() }
         .onChange(of: model.recipe.caption) { _, on in
             // The caption band only matters on export, so persist it right away (no re-render needed).
             var r = artwork.recipe
@@ -340,9 +338,15 @@ struct LabelSheet: View {
         }
     }
 
-    private func savePlacardEdit() {
-        if artwork.hasChanges { artwork.touch() }
-        try? modelContext.save()
+    /// A placard field binding that marks the artwork edited when the parent actually changes the value (iCloud: the
+    /// newer copy's edits win in SyncDedupe). Values arriving from another device don't go through it.
+    private func edited<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<Artwork, Value>) -> Binding<Value> {
+        let artwork = self.artwork
+        return Binding(get: { artwork[keyPath: keyPath] }, set: { newValue in
+            guard artwork[keyPath: keyPath] != newValue else { return }
+            artwork[keyPath: keyPath] = newValue
+            artwork.touch()
+        })
     }
 
     private func setChild(_ child: Child?) {
