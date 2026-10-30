@@ -327,3 +327,35 @@ struct FullScreenButton: View {
         .accessibilityLabel(Text("全螢幕看"))
     }
 }
+
+/// Pinch on the museum wall (switch 大圖 / 標準 / 小圖). A UIPinchGestureRecognizer that never cancels touches and
+/// recognizes simultaneously with everything, so the ScrollView keeps scrolling and the prints keep their taps.
+struct WallPinchGesture: UIGestureRecognizerRepresentable {
+    /// Called once when the pinch ends, with its final scale (< 1 pinch in, > 1 pinch out).
+    let onEnded: (CGFloat) -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPinchGestureRecognizer {
+        let recognizer = UIPinchGestureRecognizer()
+        recognizer.cancelsTouchesInView = false
+        recognizer.delaysTouchesBegan = false
+        recognizer.delaysTouchesEnded = false
+        recognizer.delegate = context.coordinator
+        return recognizer
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPinchGestureRecognizer, context: Context) {
+        if recognizer.state == .ended { onEnded(recognizer.scale) }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+            true
+        }
+    }
+}
