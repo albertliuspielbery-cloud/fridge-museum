@@ -39,6 +39,7 @@ struct EditView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var model: EditModel
     @State private var tool: EditTool?
@@ -368,21 +369,28 @@ struct EditView: View {
             let rect = stageZoom.displayRect(fit: fit)
             let visible = rect.intersection(CGRect(origin: .zero, size: size))
             let shown = visible.isNull ? rect : visible
+            // 對比: the visible part of the left (原圖) side, drawn through a plain clip (no offscreen mask).
+            let beforeClip = CGRect(x: rect.minX, y: rect.minY, width: rect.width * split, height: rect.height)
+                .intersection(CGRect(origin: .zero, size: size))
             let touchSurface = usesStageTouches
             ZStack(alignment: .topLeading) {
                 Image(uiImage: out)
                     .resizable()
                     .frame(width: rect.width, height: rect.height)
-                    .shadow(color: Palette.printShadow, radius: 8, y: 4)
+                    // Zoomed (up to 6×) the image is far bigger than the stage: no shadow then, so nothing renders
+                    // an offscreen shadow pass of the whole enlarged print.
+                    .modifier(PrintShadow(enabled: !stageZoom.isZoomed))
                     .offset(x: rect.minX, y: rect.minY)
                 if compare, let before = model.before {
-                    Image(uiImage: before)
-                        .resizable()
-                        .frame(width: rect.width, height: rect.height)
-                        .mask(alignment: .leading) {
-                            Rectangle().frame(width: rect.width * split)
-                        }
-                        .offset(x: rect.minX, y: rect.minY)
+                    if !beforeClip.isNull, beforeClip.width > 0, beforeClip.height > 0 {
+                        Image(uiImage: before)
+                            .resizable()
+                            .frame(width: rect.width, height: rect.height)
+                            .offset(x: rect.minX - beforeClip.minX, y: rect.minY - beforeClip.minY)
+                            .frame(width: beforeClip.width, height: beforeClip.height, alignment: .topLeading)
+                            .clipped()
+                            .offset(x: beforeClip.minX, y: beforeClip.minY)
+                    }
                     CompareDivider(height: shown.height)
                         .offset(x: rect.minX + rect.width * split - 22, y: shown.minY)
                     HStack {
@@ -434,7 +442,7 @@ struct EditView: View {
             }
             .frame(width: size.width, height: size.height, alignment: .topLeading)
             // Zoomed: keep the artwork inside the stage (at 1× the print's shadow may spill over as before).
-            .mask { Rectangle().padding(stageZoom.isZoomed ? 0 : -40) }
+            .clipShape(Rectangle().inset(by: stageZoom.isZoomed ? 0 : -40))
             .contentShape(Rectangle())
             .gesture(stageGesture(rect: rect))
             .allowsHitTesting(!touchSurface)
@@ -543,7 +551,7 @@ struct EditView: View {
         case .transformEnded:
             pinchStart = nil
         case .doubleTap(let p):
-            withAnimation(.easeOut(duration: 0.25)) {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
                 stageZoom = stageZoom.toggled(at: p, fit: fit, viewport: viewport)
             }
         }
@@ -584,7 +592,7 @@ struct EditView: View {
     /// 「100%」: back to the whole artwork. Shows the current zoom.
     private var zoomResetChip: some View {
         Button {
-            withAnimation(.easeOut(duration: 0.25)) { stageZoom = StageZoom() }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { stageZoom = StageZoom() }
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "arrow.down.right.and.arrow.up.left")
@@ -1055,6 +1063,20 @@ struct PinchStart {
     var zoom: StageZoom
     var centroid: CGPoint
     var distance: CGFloat
+}
+
+/// The print's drop shadow on the stage; left off while zoomed (see `resultStage`).
+struct PrintShadow: ViewModifier {
+    var enabled: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+            content.shadow(color: Palette.printShadow, radius: 8, y: 4)
+        } else {
+            content
+        }
+    }
 }
 
 /// Brush size outline (white with a dark edge so it shows on any artwork).
