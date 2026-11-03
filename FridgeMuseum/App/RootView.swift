@@ -20,6 +20,7 @@ struct RootView: View {
 
     var body: some View {
         @Bindable var app = app
+        @Bindable var family = app.family
         NavigationStack(path: $path) {
             HomeView(open: open, showSettings: { showSettings = true })
                 .navigationDestination(for: Route.self) { route in
@@ -65,6 +66,21 @@ struct RootView: View {
         .sheet(isPresented: $showSyncIntro) {
             SyncIntroSheet()
         }
+        // 家庭美術館 (1.3.0): an invitation link was opened.
+        .sheet(item: $family.invite) { invite in
+            FamilyJoinSheet(invite: invite)
+        }
+        .onChange(of: app.family.notice) { _, notice in
+            guard let notice else { return }
+            app.family.notice = nil
+            app.show(notice.text, seconds: 5)
+        }
+        .onChange(of: app.family.pendingMessage) { _, message in
+            // Settings shows it itself when open.
+            guard let message, !showSettings else { return }
+            app.family.pendingMessage = nil
+            app.show(message, style: .problem, seconds: 6)
+        }
         .alert(Text("為每位小朋友建立相簿？"), isPresented: Binding(get: { app.photosPrimer != nil }, set: { if !$0 { app.photosPrimer = nil } }),
                presenting: app.photosPrimer) { primer in
             Button { app.continueSave(after: primer, albums: true, context: modelContext) } label: { Text("建立相簿") }
@@ -87,16 +103,20 @@ struct RootView: View {
         .onChange(of: app.popToRoot) {
             path = NavigationPath()
         }
+        .onChange(of: app.widgetArtworkID) { openWidgetArtwork() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { app.store.refresh() }
+            if phase == .background { WidgetSnapshot.shared.flush() }
         }
-        .onChange(of: app.store.isUnlocked) { offerSyncIntroIfNeeded() }
+        .onChange(of: app.store.isPurchased) { offerSyncIntroIfNeeded() }
         .onChange(of: app.paywall) { offerSyncIntroIfNeeded() }
         .onChange(of: showSettings) { offerSyncIntroIfNeeded() }
         .onChange(of: path) { offerSyncIntroIfNeeded() }
         .onChange(of: OnboardingCoordinator.shared.isPresented) { offerSyncIntroIfNeeded() }
         .onChange(of: OnboardingCoordinator.shared.isAddingChild) { offerSyncIntroIfNeeded() }
         .task {
+            openWidgetArtwork()
+            WidgetSnapshot.shared.start(container: modelContext.container)
             await app.store.load()
             app.processUnfinished(context: modelContext)
             // iCloud: merge duplicates / render synced artworks now and after every import (only when syncing).
@@ -119,11 +139,22 @@ struct RootView: View {
     private var canOfferSyncIntro: Bool {
         !DemoMode.isActive && !showSyncIntro && !showSettings && app.paywall == nil && app.photosPrimer == nil
             && !OnboardingCoordinator.shared.isPresented && !OnboardingCoordinator.shared.isAddingChild
-            && path.isEmpty && app.sync.shouldOfferIntro(isFullVersion: app.store.isUnlocked)
+            && path.isEmpty && !app.family.isFamilyMode && app.sync.shouldOfferIntro(isFullVersion: app.store.isPurchased)
     }
 
     private func open(_ route: Route) {
         path.append(route)
+    }
+
+    /// 主畫面小工具: the tapped artwork's page right on top of the home screen (Settings closed). An artwork that is
+    /// gone shows ArtworkLoader's 找不到這件作品. Sheets / the camera opened from elsewhere stay as they are.
+    private func openWidgetArtwork() {
+        guard let id = app.widgetArtworkID else { return }
+        app.widgetArtworkID = nil
+        showSettings = false
+        var fresh = NavigationPath()
+        fresh.append(Route.detail(id))
+        path = fresh
     }
 }
 

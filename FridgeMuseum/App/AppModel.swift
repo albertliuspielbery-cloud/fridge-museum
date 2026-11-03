@@ -52,6 +52,9 @@ final class AppModel {
     var paywall: PaywallRequest?
     /// Navigation requests from places that don't own the NavigationStack (camera cover, paywall, demo seeding).
     var pendingRoute: Route?
+    /// 主畫面小工具 (1.3.0): an artwork tapped in the widget (fridgemuseum://artwork/<uuid>, FridgeMuseumApp.onOpenURL);
+    /// RootView opens it on top of the home screen. The widget's data is written by App/WidgetSnapshot.swift.
+    var widgetArtworkID: UUID?
     var popToRoot = 0
     /// Bumped to open the camera from elsewhere (重拍 in the editor).
     var cameraRequest = 0
@@ -61,6 +64,9 @@ final class AppModel {
     let store = StoreBridge()
     /// iCloud sync (Full Version): how this launch's store was opened, status for Settings (App/CloudSync.swift).
     let sync = CloudSync()
+    /// 家庭美術館 (1.3.0): which museum this launch opened, sharing and its sync (App/FamilySync.swift). It notices
+    /// every save itself (ModelContext.didSave), so the save points below need no family hooks.
+    let family = FamilySync()
 
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     /// Background processing per artwork, so deleting (重拍, a replaced sample) can cancel it first.

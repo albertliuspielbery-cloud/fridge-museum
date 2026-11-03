@@ -79,6 +79,60 @@ DEFINE SCHEMA
         GRANT READ TO "_world"
     );
 
+    RECORD TYPE FMArtwork (
+        "___createTime"                 TIMESTAMP,
+        "___createdBy"                  REFERENCE,
+        "___etag"                       STRING,
+        "___modTime"                    TIMESTAMP,
+        "___modifiedBy"                 REFERENCE,
+        "___recordID"                   REFERENCE QUERYABLE,
+        "childID"                       STRING,
+        "createdAt"                     TIMESTAMP,
+        "capturedAt"                    TIMESTAMP,
+        "title"                         STRING,
+        "note"                          STRING,
+        "kind"                          STRING,
+        "recipe"                        BYTES,
+        "processingState"               STRING,
+        "renderVersion"                 INT64,
+        "pixelWidth"                    INT64,
+        "pixelHeight"                   INT64,
+        "tags"                          LIST<STRING>,
+        "isFavorite"                    INT64,
+        "medium"                        STRING,
+        "keptAt"                        TIMESTAMP,
+        "originalImage"                 ASSET,
+        "renderedImage"                 ASSET,
+        "thumbnail"                     ASSET,
+        "fingerprint"                   BYTES,
+        "voiceNote"                     ASSET,
+        "voiceTranscript"               STRING,
+        "originDeviceID"                STRING,
+        "modifiedAt"                    TIMESTAMP,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE FMChild (
+        "___createTime"                 TIMESTAMP,
+        "___createdBy"                  REFERENCE,
+        "___etag"                       STRING,
+        "___modTime"                    TIMESTAMP,
+        "___modifiedBy"                 REFERENCE,
+        "___recordID"                   REFERENCE QUERYABLE,
+        "name"                          STRING,
+        "birthday"                      TIMESTAMP,
+        "avatarColorHex"                STRING,
+        "avatarImage"                   ASSET,
+        "createdAt"                     TIMESTAMP,
+        "originDeviceID"                STRING,
+        "modifiedAt"                    TIMESTAMP,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
     RECORD TYPE Users (
         "___createTime"                 TIMESTAMP,
         "___createdBy"                  REFERENCE,
