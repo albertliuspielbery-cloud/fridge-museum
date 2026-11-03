@@ -258,19 +258,24 @@ actor ImageProcessor {
                 let refined = PaperDetector.refine(c.quad, planes: planes)
                 c.quad = refined.quad
                 c.edgeSupport = refined.contrast
+                c.edgeSides = refined.sides
                 candidates.append(c)
             }
         }
         let det = PaperDetector.detectFull(small)
-        // Not when the detector's outline is (nearly) the whole frame and it called it a guess: 1.2.1's "af > 0.96 →
-        // not found" (paper filling the photo, or a white table caught by the bright mask) must stay the whole photo.
-        if let q = det.candidate, !det.isGuess || q.area <= 0.96 {
-            candidates.append(PaperCandidate(quad: q, source: .detector, confidence: det.score,
-                                             edgeSupport: PaperDetector.edgeContrast(q, planes: planes), fit: det.fit))
+        // Not when the detector rejected its outline for covering (nearly) the whole frame: 1.2.1's "af > 0.96 → not
+        // found" (paper filling the photo, or a white table caught by the bright mask) must stay the whole photo.
+        if det.offersCandidate, let q = det.candidate {
+            let e = PaperDetector.edgeMeasure(q, planes: planes)
+            candidates.append(PaperCandidate(quad: q, source: .detector, confidence: det.score, edgeSupport: e.contrast,
+                                             fit: det.fit, edgeSides: e.sides))
         }
         let aspect = Double(small.width) / Double(max(1, small.height))
         let result: PaperDetection
-        if let pick = PaperCandidateScoring.pick(candidates, imageAspect: aspect) {
+        let picked = PaperCandidateScoring.pick(candidates, imageAspect: aspect) { outer, inner in
+            PaperDetector.ringLooksLikePaper(outer: outer, inner: inner, in: small)
+        }
+        if let pick = picked {
             if pick.isConfident {
                 result = PaperDetection(quad: pick.quad, isGuess: false, method: pick.source == .detector ? .detector : .vision)
             } else {

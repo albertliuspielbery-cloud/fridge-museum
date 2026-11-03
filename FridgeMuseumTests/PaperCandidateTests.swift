@@ -61,7 +61,7 @@ struct PaperCandidateScoringTests {
 
     @Test func detectorAloneKeepsItsOldAcceptance() throws {
         let det = PaperCandidate(quad: a4, source: .detector, confidence: 0.4, edgeSupport: 3, fit: 0.9)
-        #expect(try #require(PaperCandidateScoring.pick([det], imageAspect: aspect)).isConfident)
+        #expect(PaperCandidateScoring.pick([det], imageAspect: aspect)?.isConfident == true)
         let weak = PaperCandidate(quad: a4, source: .detector, confidence: 0.15, edgeSupport: 3, fit: 0.9)
         #expect(PaperCandidateScoring.pick([weak], imageAspect: aspect)?.isConfident != true)
     }
@@ -100,22 +100,27 @@ struct PaperCandidateScoringTests {
         #expect(!alone.isConfident)
         // with an agreeing document it counts
         let doc = PaperCandidate(quad: a4, source: .document, confidence: 0.4, edgeSupport: 5)
-        #expect(try #require(PaperCandidateScoring.pick([sheet, doc], imageAspect: aspect)).isConfident)
+        #expect(PaperCandidateScoring.pick([sheet, doc], imageAspect: aspect)?.isConfident == true)
     }
 
     /// 1.2.1 passed a Vision document at 0.5 confidence with edge contrast 5; so does 1.2.2.
     @Test func documentAtOldThresholdStillPasses() throws {
         let doc = PaperCandidate(quad: a4, source: .document, confidence: 0.5, edgeSupport: 5)
-        #expect(try #require(PaperCandidateScoring.pick([doc], imageAspect: aspect)).isConfident)
+        #expect(PaperCandidateScoring.pick([doc], imageAspect: aspect)?.isConfident == true)
     }
 
-    /// Paper filling the frame (or a white table caught whole): never a confident crop.
-    @Test func nearlyFullFrameIsNeverConfident() {
-        let detector = PaperCandidate(quad: .inset(0.003), source: .detector, confidence: 0.9, edgeSupport: -1, fit: 0.97)
-        let document = PaperCandidate(quad: .inset(0.01), source: .document, confidence: 1, edgeSupport: 10)
-        #expect(PaperCandidateScoring.pick([detector], imageAspect: aspect)?.isConfident != true)
-        #expect(PaperCandidateScoring.pick([document], imageAspect: aspect)?.isConfident != true)
-        #expect(PaperCandidateScoring.pick([detector, document], imageAspect: aspect)?.isConfident != true)
+    /// Paper filling the frame (or a white table caught whole): not a confident crop unless all four edges are clear
+    /// (tight framing with a real edge, which 1.2.1 cropped too).
+    @Test func nearlyFullFrameNeedsClearEdges() {
+        let detectorGuess = PaperCandidate(quad: .inset(0.003), source: .detector, confidence: 0.3, edgeSupport: -1, fit: 0.97)
+        let weakDocument = PaperCandidate(quad: .inset(0.01), source: .document, confidence: 1, edgeSupport: 5)
+        let threeSides = PaperCandidate(quad: .inset(0.01), source: .document, confidence: 1, edgeSupport: 10, edgeSides: 3)
+        let clearDocument = PaperCandidate(quad: .inset(0.01), source: .document, confidence: 1, edgeSupport: 10)
+        #expect(PaperCandidateScoring.pick([detectorGuess], imageAspect: aspect)?.isConfident != true)
+        #expect(PaperCandidateScoring.pick([weakDocument], imageAspect: aspect)?.isConfident != true)
+        #expect(PaperCandidateScoring.pick([threeSides], imageAspect: aspect)?.isConfident != true)
+        #expect(PaperCandidateScoring.pick([detectorGuess, weakDocument], imageAspect: aspect)?.isConfident != true)
+        #expect(PaperCandidateScoring.pick([clearDocument], imageAspect: aspect)?.isConfident == true)
     }
 
     /// A big rectangle (placemat / tray) around a medium detector outline: the sheet wins.
@@ -126,14 +131,86 @@ struct PaperCandidateScoringTests {
         #expect(pick.quad == a4 && pick.isConfident)
     }
 
-    /// A tray that Vision calls a document, with the detector's sheet inside it: the inner sheet wins.
-    @Test func innerSheetBeatsOuterDocument() throws {
-        let tray = PaperCandidate(quad: .inset(0.08), source: .document, confidence: 0.9, edgeSupport: 30)
+    /// A tray that Vision calls a document (moderate edge), with the detector's sheet inside it: the inner sheet wins.
+    /// With a clear document edge (≥ 8) the document is trusted, as in 1.2.1.
+    @Test func innerSheetVersusOuterDocument() throws {
+        let tray = PaperCandidate(quad: .inset(0.08), source: .document, confidence: 0.9, edgeSupport: 6)
         let det = PaperCandidate(quad: a4, source: .detector, confidence: 0.45, edgeSupport: 8, fit: 0.9)
         let pick = try #require(PaperCandidateScoring.pick([tray, det], imageAspect: aspect))
         #expect(pick.quad == a4 && pick.isConfident)
+        let clearTray = PaperCandidate(quad: .inset(0.08), source: .document, confidence: 0.9, edgeSupport: 30)
+        let kept = try #require(PaperCandidateScoring.pick([clearTray, det], imageAspect: aspect))
+        #expect(kept.quad == .inset(0.08))
         #expect(PaperCandidateScoring.contains(.inset(0.08), a4))
         #expect(!PaperCandidateScoring.contains(a4, .inset(0.08)))
+    }
+
+    /// A confident document (the 1.2.1 0.5 / edge-5 case) is not traded for a weak guess inside it.
+    @Test func confidentOuterIsNotTradedForAWeakInnerGuess() throws {
+        let doc = PaperCandidate(quad: a4, source: .document, confidence: 0.5, edgeSupport: 5)
+        let inner = Quad(topLeft: .init(x: 0.35, y: 0.3), topRight: .init(x: 0.65, y: 0.3),
+                         bottomRight: .init(x: 0.65, y: 0.57), bottomLeft: .init(x: 0.35, y: 0.57))
+        let guess = PaperCandidate(quad: inner, source: .detector, confidence: 0.3, edgeSupport: 3, fit: 0.8)
+        let pick = try #require(PaperCandidateScoring.pick([doc, guess], imageAspect: aspect))
+        #expect(pick.quad == a4)
+        #expect(pick.isConfident)
+    }
+
+    /// A detector guess with no evidence of its own agreeing with a lone rectangle doesn't lift the rectangle cap.
+    @Test func zeroEvidenceAgreementDoesNotCount() {
+        let mat = PaperCandidate(quad: a4, source: .rectangles, confidence: 1, edgeSupport: 12)
+        let guess = PaperCandidate(quad: a4, source: .detector, confidence: 0.15, edgeSupport: 3, fit: 0.9)
+        #expect(PaperCandidateScoring.pick([mat, guess], imageAspect: aspect)?.isConfident != true)
+    }
+
+    // MARK: Drawn frame vs tray (ring check on a synthetic image)
+
+    /// Brown table, white sheet (60…300 × 40…230 of 360 × 270) with a black frame drawn 25 px inside its edge and a
+    /// blue scribble inside the frame.
+    func sheetWithDrawnFrame() -> RGBA8Image {
+        var img = RGBA8Image(width: 360, height: 270, fill: (120, 85, 55))
+        for y in 40..<230 { for x in 60..<300 { img.set(x, y, (245, 243, 238)) } }
+        for y in 64..<206 {
+            for x in 84..<276 where x < 86 || x >= 274 || y < 66 || y >= 204 { img.set(x, y, (20, 20, 20)) }
+        }
+        for y in 120..<130 { for x in 130..<230 { img.set(x, y, (40, 80, 200)) } }
+        return img
+    }
+
+    /// Dark tray (40…320 × 25…245) with a white sheet (100…260 × 70…200) on it.
+    func sheetOnTray() -> RGBA8Image {
+        var img = RGBA8Image(width: 360, height: 270, fill: (190, 185, 175))
+        for y in 25..<245 { for x in 40..<320 { img.set(x, y, (80, 70, 60)) } }
+        for y in 70..<200 { for x in 100..<260 { img.set(x, y, (245, 243, 238)) } }
+        return img
+    }
+
+    func px(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double) -> Quad {
+        Quad(topLeft: .init(x: x0 / 360, y: y0 / 270), topRight: .init(x: x1 / 360, y: y0 / 270),
+             bottomRight: .init(x: x1 / 360, y: y1 / 270), bottomLeft: .init(x: x0 / 360, y: y1 / 270))
+    }
+
+    @Test func ringCheckTellsDrawnFrameFromTray() {
+        let drawn = sheetWithDrawnFrame()
+        #expect(PaperDetector.ringLooksLikePaper(outer: px(60, 40, 300, 230), inner: px(85, 65, 275, 205), in: drawn))
+        let tray = sheetOnTray()
+        #expect(!PaperDetector.ringLooksLikePaper(outer: px(40, 25, 320, 245), inner: px(100, 70, 260, 200), in: tray))
+    }
+
+    /// The detector traces the drawn frame; the document has the sheet: the sheet stays.
+    @Test func drawnFrameDoesNotBeatTheSheet() throws {
+        let img = sheetWithDrawnFrame()
+        let imageAspect = 360.0 / 270.0
+        let sheet = px(60, 40, 300, 230), frame = px(85, 65, 275, 205)
+        let doc = PaperCandidate(quad: sheet, source: .document, confidence: 0.9, edgeSupport: 7.5)
+        let det = PaperCandidate(quad: frame, source: .detector, confidence: 0.45, edgeSupport: 40, fit: 0.9)
+        let picked = PaperCandidateScoring.pick([doc, det], imageAspect: imageAspect, ringLooksLikePaper: { outer, inner in
+            PaperDetector.ringLooksLikePaper(outer: outer, inner: inner, in: img)
+        })
+        let pick = try #require(picked)
+        #expect(pick.quad == sheet)
+        // without the ring check the inner frame would have won
+        #expect(PaperCandidateScoring.pick([doc, det], imageAspect: imageAspect)?.quad == frame)
     }
 
     @Test func agreementUsesTheLongEdge() {
@@ -193,15 +270,30 @@ struct PaperCandidateScoringTests {
         let imageAspect = 360.0 / 270.0
         let right = PaperCandidate(quad: truth, source: .document, confidence: 0.7, edgeSupport: onSheet)
         let wrong = PaperCandidate(quad: grown, source: .document, confidence: 0.7, edgeSupport: onMarble)
-        #expect(try #require(PaperCandidateScoring.pick([right], imageAspect: imageAspect)).isConfident)
+        #expect(PaperCandidateScoring.pick([right], imageAspect: imageAspect)?.isConfident == true)
         #expect(PaperCandidateScoring.pick([wrong], imageAspect: imageAspect)?.isConfident != true)
         // refine keeps (or snaps back to) the true outline
-        // fewer than 3 measurable sides (two on the frame edge): unknown
+        // a sheet running off a frame corner: 2 sides measured (still known); only 1 side: unknown
         let corner = Quad(topLeft: .init(x: 0, y: 0), topRight: .init(x: 0.5, y: 0),
                           bottomRight: .init(x: 0.5, y: 0.5), bottomLeft: .init(x: 0, y: 0.5))
-        #expect(PaperDetector.edgeContrast(corner, planes: planes) == -1)
+        let cornerEdge = PaperDetector.edgeMeasure(corner, planes: planes)
+        #expect(cornerEdge.sides == 2 && cornerEdge.contrast >= 0)
+        let half = Quad(topLeft: .init(x: 0, y: 0), topRight: .init(x: 0.5, y: 0),
+                        bottomRight: .init(x: 0.5, y: 1), bottomLeft: .init(x: 0, y: 1))
+        #expect(PaperDetector.edgeContrast(half, planes: planes) == -1)
         let refined = PaperDetector.refine(truth, planes: planes)
         #expect(PaperCandidateScoring.agree(refined.quad, truth, imageAspect: imageAspect, tolerance: 0.015))
+    }
+
+    /// A guess rejected for a (nearly) whole-frame mask never becomes a candidate, even though the 0.994 shrink can
+    /// bring its outline just under 95 %.
+    @Test func wholeFrameGuessOffersNoCandidate() {
+        let white = PaperDetector.detectFull(RGBA8Image(width: 240, height: 180, fill: (246, 244, 240)))
+        #expect(white.isGuess)
+        #expect(!white.offersCandidate)
+        let shrunk = PaperDetector.Result(quad: .full, isGuess: true, score: 0.7, candidate: .inset(0.0013), fit: 0.99,
+                                          areaFraction: 0.955)
+        #expect(!shrunk.offersCandidate)
     }
 
     @Test func detectorExposesItsBestOutline() {
@@ -264,7 +356,7 @@ struct LowLightTests {
         let est = try #require(LowLightClassifier.brightness(LowLightSample(iso: 1000, exposureSeconds: 1.0 / 30)))
         #expect(est < -1.5 && est > -2.5)
         // ISO 100, 1/60 s: a bright room
-        #expect(try #require(LowLightClassifier.brightness(LowLightSample(iso: 100, exposureSeconds: 1.0 / 60))) > 1.5)
+        #expect((LowLightClassifier.brightness(LowLightSample(iso: 100, exposureSeconds: 1.0 / 60)) ?? -99) > 1.5)
         #expect(LowLightClassifier.brightness(LowLightSample()) == nil)
     }
 
@@ -377,7 +469,8 @@ struct PaperVisionSmokeTests {
                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         ctx.setFillColor(CGColor(srgbRed: 0.97, green: 0.96, blue: 0.94, alpha: 1))
         ctx.fill(CGRect(x: 0, y: 0, width: 800, height: 600))
-        let data = try #require(ImageEncoding.jpegData(try #require(ctx.makeImage()), quality: 0.9))
+        let image = try #require(ctx.makeImage())
+        let data = try #require(ImageEncoding.jpegData(image, quality: 0.9))
         let det = await ImageProcessor().detectPaper(id: UUID(), originalData: data)
         #expect(det.isGuess)
         #expect(det.quad == .full)
