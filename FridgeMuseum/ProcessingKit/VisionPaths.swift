@@ -23,6 +23,43 @@ enum VisionPaths {
         return quad(fromVision: [obs.topLeft, obs.topRight, obs.bottomRight, obs.bottomLeft])
     }
 
+    /// 1.2.2: Vision's document outline (confidence ≥ 0.3) and up to four sheet-like rectangles, from one pass over
+    /// an upright (small) CGImage. Empty when Vision is unavailable (e.g. some Simulators) or sees nothing; the caller
+    /// scores these with the prototype detector's candidate (`PaperCandidateScoring`). `edgeSupport` is not set here.
+    static func paperCandidates(cgImage: CGImage) -> [PaperCandidate] {
+        let document = VNDetectDocumentSegmentationRequest()
+        let rectangles = sheetRectanglesRequest()
+        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:])
+        do { try handler.perform([document, rectangles]) } catch {
+            // One request failing (unsupported here) must not cost the other: try them one by one.
+            try? VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:]).perform([document])
+            try? VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:]).perform([rectangles])
+        }
+        var out: [PaperCandidate] = []
+        if let obs = document.results?.first, Double(obs.confidence) >= 0.3,
+           let q = quad(fromVision: [obs.topLeft, obs.topRight, obs.bottomRight, obs.bottomLeft]) {
+            out.append(PaperCandidate(quad: q, source: .document, confidence: Double(obs.confidence)))
+        }
+        for obs in rectangles.results ?? [] {
+            guard let q = quad(fromVision: [obs.topLeft, obs.topRight, obs.bottomRight, obs.bottomLeft]) else { continue }
+            out.append(PaperCandidate(quad: q, source: .rectangles, confidence: Double(obs.confidence)))
+        }
+        return out
+    }
+
+    /// Rectangle detector tuned for a sheet seen from above or a little slanted: short/long side 0.45…1 (A4 is 0.71;
+    /// perspective squeezes it), corners within 25° of square, at least 20 % of the frame.
+    static func sheetRectanglesRequest() -> VNDetectRectanglesRequest {
+        let r = VNDetectRectanglesRequest()
+        r.minimumAspectRatio = 0.45
+        r.maximumAspectRatio = 1.0
+        r.quadratureTolerance = 25
+        r.minimumSize = 0.2
+        r.minimumConfidence = 0.4
+        r.maximumObservations = 4
+        return r
+    }
+
     /// Vision points are normalized with LOWER-left origin; flip and order them.
     static func quad(fromVision pts: [CGPoint]) -> Quad? {
         CornerOrdering.order(pts.map { NormPoint(x: Double($0.x), y: 1 - Double($0.y)) })

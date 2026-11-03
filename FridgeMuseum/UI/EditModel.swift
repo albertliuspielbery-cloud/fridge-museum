@@ -146,6 +146,14 @@ final class EditModel {
         cornersChanged()
     }
 
+    /// 1.2.2: where the crop tool's corners should start when no paper was found (the whole photo is used and the
+    /// hint says so): the detector's best weak outline, else an inset frame. nil = show the real corners.
+    func suggestedCropCorners() async -> Quad? {
+        guard recipe.kind == .flat, (recipe.corners ?? .full) == .full, notes.contains(.paperNotFound) else { return nil }
+        let detection = await processor.cachedDetection(id: artworkID)
+        return PaperCandidateScoring.startingCorners(suggestion: detection?.suggestion)
+    }
+
     func useWholePhoto() {
         recipe.corners = .full
         cornersChanged()

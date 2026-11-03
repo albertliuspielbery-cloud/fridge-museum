@@ -59,6 +59,9 @@ struct PaperDetection: Sendable, Hashable {
     /// Nothing convincing was found; `quad` is the whole photo.
     var isGuess: Bool
     var method: Method
+    /// 1.2.2: when `isGuess`, the best weak outline (a low-confidence Vision rectangle, …) for the crop tool's
+    /// starting corners; never used for the render.
+    var suggestion: Quad? = nil
 }
 
 enum ProcessingError: Error {
@@ -81,6 +84,8 @@ actor ImageProcessor {
     static let thumbnailMaxEdge = 480
     /// Long edge of the copy used for paper detection and edge fill (prototype `smallOf`).
     static let detectionEdge = 360
+    /// Long edge of the copy Vision's document / rectangle detectors look at (they scale down internally anyway).
+    static let visionDetectionEdge = 1024
 
     private let context: CIContext
     private let srgb: CGColorSpace
@@ -236,36 +241,48 @@ actor ImageProcessor {
 
     // MARK: - Paper detection
 
+    /// 1.2.2: every detector proposes, `PaperCandidateScoring` decides (see PaperCandidates.swift). Vision (document
+    /// segmentation + sheet rectangles) runs once on a ≤ 1024 px copy; its outlines are snapped to the strongest
+    /// nearby edges first. All candidates' edge support is measured on the same 360 px image.
     private func detectPaperSync(id: UUID, data: Data) -> PaperDetection {
         let key = id.uuidString
         if let d = detections[key] { return d }
         let none = PaperDetection(quad: .full, isGuess: true, method: .none)
         guard let src = try? source(id: id, data: data, maxEdge: Self.previewMaxEdge),
               let small = try? smallImage(id: id, data: data) else { return none }
-        var visionQuad: Quad?
-        if let cg = context.createCGImage(src, from: src.extent),
-           let q = VisionPaths.detectDocument(cgImage: cg), q.isPlausible {
-            visionQuad = q
+        let planes = PaperDetector.Planes(small)
+        var candidates: [PaperCandidate] = []
+        let visionCopy = scaleToFit(src, maxEdge: Self.visionDetectionEdge)
+        if let cg = context.createCGImage(visionCopy, from: visionCopy.extent) {
+            for var c in VisionPaths.paperCandidates(cgImage: cg) where c.quad.isConvex {
+                let refined = PaperDetector.refine(c.quad, planes: planes)
+                c.quad = refined.quad
+                c.edgeSupport = refined.contrast
+                candidates.append(c)
+            }
         }
         let det = PaperDetector.detectFull(small)
+        if let q = det.candidate {
+            candidates.append(PaperCandidate(quad: q, source: .detector, confidence: det.score,
+                                             edgeSupport: PaperDetector.edgeContrast(q, planes: planes), fit: det.fit))
+        }
+        let aspect = Double(small.width) / Double(max(1, small.height))
         let result: PaperDetection
-        if let vq = visionQuad {
-            let refined = PaperDetector.refine(vq, in: small)
-            // Vision's outline has (almost) no edge under it – e.g. a featureless table, or a quad lying on the frame
-            // edge: defer to the ported detector (which keeps the whole photo and reports .paperNotFound when unsure).
-            if refined.contrast < 5 || (refined.contrast < 8 && !det.isGuess && det.score > 0.6) {
-                result = det.isGuess ? none : PaperDetection(quad: det.quad, isGuess: false, method: .detector)
+        if let pick = PaperCandidateScoring.pick(candidates, imageAspect: aspect) {
+            if pick.isConfident {
+                result = PaperDetection(quad: pick.quad, isGuess: false, method: pick.source == .detector ? .detector : .vision)
             } else {
-                result = PaperDetection(quad: refined.quad, isGuess: false, method: .vision)
+                result = PaperDetection(quad: .full, isGuess: true, method: .none, suggestion: pick.quad)
             }
-        } else if det.isGuess {
-            result = none
         } else {
-            result = PaperDetection(quad: det.quad, isGuess: false, method: .detector)
+            result = none
         }
         detections[key] = result
         return result
     }
+
+    /// The paper as last detected (cached), without running detection. For the editor's crop tool.
+    func cachedDetection(id: UUID) -> PaperDetection? { detections[id.uuidString] }
 
     /// Small upright copy for paper detection and edge fill.
     private func smallImage(id: UUID, data: Data) throws -> RGBA8Image {

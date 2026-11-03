@@ -12,6 +12,7 @@ struct CameraScreen: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \Child.createdAt) private var children: [Child]
 
     @State private var camera = CameraModel()
@@ -73,7 +74,12 @@ struct CameraScreen: View {
                 app.endBurst(context: modelContext)
             }
         }
+        // Flashlight off when the app leaves the foreground (it stays off on return; the user turns it on again).
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { camera.turnTorchOff() }
+        }
         .sensoryFeedback(.impact(weight: .medium), trigger: camera.shutterCount)
+        .sensoryFeedback(.selection, trigger: camera.torchOn)
     }
 
     private var topBar: some View {
@@ -89,6 +95,10 @@ struct CameraScreen: View {
                     .background(Circle().fill(.black.opacity(0.45)))
             }
             .accessibilityLabel(Text("關閉"))
+            if camera.hasTorch && camera.state == .running {
+                torchButton
+                    .padding(.leading, 10)
+            }
             Spacer()
             KindSwitch(kind: Bindable(app).captureKind, long: false, compact: true)
         }
@@ -96,11 +106,37 @@ struct CameraScreen: View {
         .padding(.top, 10)
     }
 
+    /// 1.2.2 flashlight (torch, not the photo flash). Highlighted in yellow when the scene is dim and it is off.
+    private var torchButton: some View {
+        let on = camera.torchOn
+        let nudge = camera.suggestsTorch
+        return Button {
+            camera.toggleTorch()
+        } label: {
+            Image(systemName: on ? "flashlight.on.fill" : "flashlight.off.fill")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(on ? Palette.cardInk : (nudge ? Palette.yellow : Color.white))
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(on ? Palette.yellow : Color.black.opacity(0.45)))
+                .overlay(Circle().strokeBorder(Palette.yellow, lineWidth: nudge ? 2 : 0))
+                .contentShape(Circle())
+                .environment(\.colorScheme, .light)
+        }
+        .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.2), value: nudge)
+        .accessibilityLabel(Text("手電筒"))
+        .accessibilityValue(on ? Text("開") : Text("關"))
+        .accessibilityHint(Text("光線不夠時打開，拍得更清楚"))
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
     private var hint: some View {
         let text: LocalizedStringKey
         switch (app.captureKind, camera.paperFound) {
         case (.flat, true): text = "找到紙張了，按下快門"
+        case (.flat, false) where camera.suggestsTorch: text = "有點暗，開手電筒會更清楚"
         case (.flat, false): text = "把整張畫放進畫面，四個角都要拍到"
+        case (.craft, _) where camera.suggestsTorch: text = "有點暗，開手電筒會更清楚"
         case (.craft, _): text = "把勞作放在桌上，拍清楚一點"
         }
         return VStack(spacing: 10) {

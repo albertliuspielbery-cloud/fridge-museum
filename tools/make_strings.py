@@ -581,6 +581,19 @@ EN_BATCH_ROTATE = {
 EN.update(EN_BATCH_ROTATE)
 # ---- end fix/flat-capture
 
+# ---- fix/1.2.2: dim light / white table — flashlight in the camera, new "paper not found" hint. Kept apart for merging.
+EN_LOW_LIGHT = {
+    "有點暗，開手電筒會更清楚": "It’s a bit dark. Turn on the flashlight for a clearer photo.",
+    "手電筒": "Flashlight",
+    "光線不夠時打開，拍得更清楚": "Turn it on when it’s dim for a clearer photo.",
+    # replaces the 1.0 copy above (the crop tool now starts its corners away from the photo edges)
+    "processing.note.paperNotFound": ("找不到紙的邊，可以拖四個角，或在白桌子上墊一張深色的紙",
+                                      "Couldn’t find the paper’s edges. Drag the four corners, "
+                                      "or put a dark sheet under the paper on a white table."),
+}
+EN.update(EN_LOW_LIGHT)
+# ---- end fix/1.2.2
+
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),
     "CFBundleName": ("冰箱美術館", "My Fridge Museum"),

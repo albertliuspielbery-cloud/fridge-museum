@@ -66,6 +66,10 @@ struct EditView: View {
     @State private var isSaving = false
     @State private var kindSelection: ArtworkKind
     @State private var activeCorner: Int?
+    /// 1.2.2: no paper outline was found (the whole photo is used): the crop tool shows these corners dashed — the best
+    /// weak outline, else an inset frame — so the handles start away from the screen edges. Nothing changes until a
+    /// handle is dragged (opening 裁切 just to turn the picture must not crop it).
+    @State private var suggestedCorners: Quad?
     /// After 向左轉 / 向右轉 / 拉直 the crop tool shows the turned result; tapping 裁切 again returns to the corners.
     @State private var cropShowsResult = false
     @State private var pickingParts = false
@@ -152,6 +156,13 @@ struct EditView: View {
         }
         .onChange(of: tool) { _, newTool in
             resetZoom()
+            suggestedCorners = nil
+            if newTool == .crop, !DemoMode.isActive {
+                Task {
+                    let s = await model.suggestedCropCorners()
+                    if tool == .crop { suggestedCorners = s }
+                }
+            }
             if newTool == .brush {
                 if !brushZoomHintShown, !DemoMode.isActive {
                     brushZoomHintShown = true
@@ -625,14 +636,14 @@ struct EditView: View {
     private func cropStage(size: CGSize) -> some View {
         if let src = model.source {
             let rect = fitRect(src.size, in: size)
-            let quad = model.recipe.corners ?? .full
+            let quad = cropBase
             let pts = quad.points.map { toView($0, rect) }
             ZStack(alignment: .topLeading) {
                 Image(uiImage: src)
                     .resizable()
                     .frame(width: rect.width, height: rect.height)
                     .offset(x: rect.minX, y: rect.minY)
-                QuadOutline(points: pts)
+                QuadOutline(points: pts, dashed: suggestedCorners != nil)
                 ForEach(0..<4, id: \.self) { i in
                     CornerHandle(active: activeCorner == i)
                         .position(pts[i])
@@ -640,7 +651,8 @@ struct EditView: View {
                             DragGesture(minimumDistance: 0, coordinateSpace: .named("cropStage"))
                                 .onChanged { value in
                                     activeCorner = i
-                                    var q = model.recipe.corners ?? .full
+                                    var q = cropBase
+                                    suggestedCorners = nil
                                     q[i] = NormPoint(x: Double((value.location.x - rect.minX) / rect.width),
                                                      y: Double((value.location.y - rect.minY) / rect.height)).clampedToUnit()
                                     model.recipe.corners = q
@@ -653,7 +665,8 @@ struct EditView: View {
                         .accessibilityElement()
                         .accessibilityLabel(Text(cornerName(i)))
                         .accessibilityAdjustableAction { direction in
-                            var q = model.recipe.corners ?? .full
+                            var q = cropBase
+                            suggestedCorners = nil
                             let d = direction == .increment ? 0.01 : -0.01
                             q[i] = NormPoint(x: q[i].x + (i == 0 || i == 3 ? d : -d), y: q[i].y + (i < 2 ? d : -d)).clampedToUnit()
                             model.recipe.corners = q
@@ -681,6 +694,9 @@ struct EditView: View {
                 .task { await model.loadSource() }
         }
     }
+
+    /// The corners the crop stage shows and a drag starts from.
+    private var cropBase: Quad { suggestedCorners ?? model.recipe.corners ?? .full }
 
     private func cornerName(_ i: Int) -> String {
         switch i {
@@ -881,6 +897,7 @@ struct EditView: View {
 
     private func redetectCorners() {
         cropShowsResult = false
+        suggestedCorners = nil
         Task { await model.redetectCorners() }
     }
 
@@ -898,7 +915,7 @@ struct EditView: View {
     private func panelContent(for tool: EditTool) -> some View {
         switch tool {
         case .crop:
-            CropPanel(model: model, onTurn: { cropShowsResult = true }, onCorners: { cropShowsResult = false })
+            CropPanel(model: model, onTurn: { cropShowsResult = true }, onCorners: { cropShowsResult = false; suggestedCorners = nil })
         case .adjust:
             if model.recipe.kind == .flat {
                 // Four controls: scroll inside the card so the artwork keeps most of the screen on small phones.
@@ -1157,16 +1174,19 @@ struct CompareDivider: View {
 /// The paper outline in crop mode: yellow marker line with a dark edge so it shows on any table.
 struct QuadOutline: View {
     var points: [CGPoint]
+    /// A suggestion that is not applied yet (1.2.2: no paper found).
+    var dashed = false
 
     var body: some View {
         let path = Path { p in
             p.addLines(points)
             p.closeSubpath()
         }
+        let dash: [CGFloat] = dashed ? [10, 7] : []
         ZStack {
-            path.fill(Palette.mark.opacity(0.08))
-            path.stroke(Palette.markEdge, style: StrokeStyle(lineWidth: 5.5, lineJoin: .round))
-            path.stroke(Palette.mark, style: StrokeStyle(lineWidth: 3, lineJoin: .round))
+            path.fill(Palette.mark.opacity(dashed ? 0.04 : 0.08))
+            path.stroke(Palette.markEdge, style: StrokeStyle(lineWidth: 5.5, lineJoin: .round, dash: dash))
+            path.stroke(Palette.mark, style: StrokeStyle(lineWidth: 3, lineJoin: .round, dash: dash))
         }
         .allowsHitTesting(false)
     }

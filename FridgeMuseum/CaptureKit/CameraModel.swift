@@ -16,6 +16,12 @@ final class CameraModel {
     var isCapturing = false
     /// Increments on every shutter press (drives the flash animation).
     var shutterCount = 0
+    /// 1.2.2 low-light assist: the scene is dim (from the analysed frames).
+    var isDim = false
+    /// The flashlight is on (as the device reports it).
+    var torchOn = false
+    /// This camera has a flashlight (false in the Simulator, so DemoMode / screenshots never show the button).
+    var hasTorch = false
 
     let controller = CameraController()
 
@@ -23,6 +29,10 @@ final class CameraModel {
     /// Gravity-based capture angle; also right when the phone is held (almost) flat over a table.
     @ObservationIgnored private let gravity = GravityOrientationTracker()
     @ObservationIgnored private weak var previewLayer: AVCaptureVideoPreviewLayer?
+    @ObservationIgnored private var torch = TorchState()
+
+    /// Show the flashlight hint / highlight: dim, flashlight off, and there is one.
+    var suggestsTorch: Bool { hasTorch && isDim && !torchOn }
 
     var paperFound: Bool { liveQuad != nil }
 
@@ -39,9 +49,13 @@ final class CameraModel {
         controller.setQuadHandler { quad in
             Task { @MainActor in self.updateQuad(quad) }
         }
+        controller.setLightHandler { status in
+            Task { @MainActor in self.updateLight(status) }
+        }
         do {
             try await controller.start()
             state = .running
+            hasTorch = controller.hasTorch
             setUpRotation()
         } catch {
             state = .unavailable
@@ -49,10 +63,42 @@ final class CameraModel {
     }
 
     func stop() {
-        controller.stop()
+        _ = torch.leave(now: Self.now)
+        torchOn = false
+        isDim = false
+        controller.stop()        // also switches the flashlight off
         gravity.stop()
         liveQuad = nil
     }
+
+    /// The flashlight button.
+    func toggleTorch() {
+        guard state == .running, hasTorch else { return }
+        let want = torch.toggle(available: true, now: Self.now)
+        torchOn = want          // answer the tap at once; corrected below if the device refuses
+        Task {
+            let on = await controller.setTorch(want)
+            torch.applied(on, now: Self.now)
+            torchOn = on
+        }
+    }
+
+    /// Leaving the app (background): flashlight off; it stays off when the user comes back.
+    func turnTorchOff() {
+        guard torch.leave(now: Self.now) || torchOn else { return }
+        torchOn = false
+        Task { _ = await controller.setTorch(false) }
+    }
+
+    private func updateLight(_ status: CameraLightStatus) {
+        if isDim != status.isDim { isDim = status.isDim }
+        // The system switched it off (overheating, another app, an interruption): accept it, don't turn it back on.
+        if torch.deviceReported(active: status.torchActive, available: status.torchAvailable, now: Self.now) {
+            torchOn = false
+        }
+    }
+
+    private static var now: Double { ProcessInfo.processInfo.systemUptime }
 
     func setDetectionEnabled(_ on: Bool) {
         controller.setDetectionEnabled(on)

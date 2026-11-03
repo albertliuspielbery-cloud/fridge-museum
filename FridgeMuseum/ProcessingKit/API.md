@@ -93,6 +93,7 @@ struct PaperDetection: Sendable, Hashable {
     var quad: Quad
     var isGuess: Bool        // true → nothing convincing found, quad == .full (shows .paperNotFound)
     var method: Method
+    var suggestion: Quad?    // 1.2.2: isGuess only — best weak outline, the crop tool's starting corners (never rendered)
 }
 ```
 
@@ -130,6 +131,17 @@ Batch fix: museum 選取 → 轉向 (`AppModel.rotateAll`).
 
 `recipe.corners == nil` on a flat render → the processor detects the paper itself (and may add `.paperNotFound`).
 
+Paper detection (1.2.2, `PaperCandidates.swift`): candidates from Vision document segmentation (confidence ≥ 0.3),
+Vision rectangles (`VisionPaths.sheetRectanglesRequest`: aspect 0.45…1, 25°, ≥ 20 % of the frame) — one pass on a
+≤ 1024 px copy, each outline snapped with `PaperDetector.refine` — and `PaperDetector.detectFull` (its best outline even
+when unsure, `Result.candidate`). `PaperCandidateScoring.pick` scores shape (area, convexity, perspective-corrected
+aspect vs A4/Letter/4:3/1:1/八開/四開) × evidence (Vision confidence gated by the robust edge contrast measured on the
+360 px copy; the detector's own score). Agreeing sources combine (noisy-or); the corners come from the member with the
+strongest edges. Score ≥ 0.3 → used; 0.1…0.3 → `suggestion` only. `func cachedDetection(id:) -> PaperDetection?`
+(no detection run). Live camera: `LivePaperPicker` (document ≥ 0.6 alone; a weaker document + an agreeing rectangle;
+a rectangle alone only when the previous rectangle pass saw it too; rectangle passes only when the document is unsure,
+≤ 1 per 0.3 s).
+
 Cast shadows (1.0.1, flat only, no recipe field): when the sheet was found or the user set corners (quad ≠ full),
 `IlluminationEstimator.model(_:shadows: true)` also runs `ShadowEstimator` on the cell grid. It finds shadowed paper
 (smooth, darker, one level and tint per region, reaching the sheet's border or attached to a region that does, grown
@@ -162,7 +174,7 @@ photo edge and is not near the main part, those parts start removed and `.autoDr
 
 | case | when | zh-Hant | en |
 |---|---|---|---|
-| paperNotFound | flat, detector found nothing and the whole photo is used | 沒找到紙邊，先用整張照片，可用「裁切四角」調整 | Couldn’t find the paper’s edges, so the whole photo is used. Fix it in “Crop.” |
+| paperNotFound | flat, detector found nothing and the whole photo is used | 找不到紙的邊，可以拖四個角，或在白桌子上墊一張深色的紙 (1.2.2) | Couldn’t find the paper’s edges. Drag the four corners, or put a dark sheet under the paper on a white table. |
 | notWhitePaper | flat, coloured / dark paper (paperMode == .colored) | 不是白紙，保留紙本來的顏色 | This isn’t white paper, so its original color is kept. |
 | dotsKeptAsPattern | flat, removeSpecks on and > 14 inner dots | 小點很多像是圖案，沒有清掉 | Lots of little dots look like part of the design, so they were left alone. |
 | cutoutFallback | craft, could not separate object (and no brush strokes) → original photo kept | 沒能分開作品和桌面，先保留原照片 | Couldn’t separate the craft from the table, so the original photo is kept. |

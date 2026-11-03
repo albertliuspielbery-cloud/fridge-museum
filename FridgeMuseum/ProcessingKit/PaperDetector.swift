@@ -6,8 +6,9 @@ import Foundation
 /// to the strongest straight edge nearby) and is scored by how well the mask fills it and how much the colour changes
 /// across its sides. If nothing scores well the whole photo is kept and the result is marked as a guess.
 ///
-/// Native order (ImageProcessor): Vision document segmentation first, refined with `refine(_:in:)`;
-/// this detector is the fallback. Input should be small (≈360 px long edge).
+/// Native (ImageProcessor, 1.2.2): one of several candidates next to Vision's document and rectangle detectors, all
+/// scored by `PaperCandidateScoring` (Vision outlines are refined with `refine(_:planes:)`). Input should be small
+/// (≈360 px long edge).
 enum PaperDetector {
     typealias P = SIMD2<Double>
 
@@ -15,6 +16,10 @@ enum PaperDetector {
         var quad: Quad
         var isGuess: Bool
         var score: Double
+        /// 1.2.2: the best outline even when it did not convince (nil if no mask gave one); for `PaperCandidateScoring`.
+        var candidate: Quad? = nil
+        /// How well the winning mask fills `candidate` (0…1).
+        var fit: Double = 0
     }
 
     struct Candidate {
@@ -162,16 +167,25 @@ enum PaperDetector {
                 best = b
             }
         }
-        guard let b = best, b.score >= 0.4, b.af <= 0.96 else { return guess }
-        return Result(quad: normalize(b.q, w, h, shrink: 0.994), isGuess: false, score: b.score)
+        guard let b = best else { return guess }
+        let q = normalize(b.q, w, h, shrink: 0.994)
+        guard b.score >= 0.4, b.af <= 0.96 else {
+            return Result(quad: .full, isGuess: true, score: b.score, candidate: q.isConvex ? q : nil, fit: b.fit)
+        }
+        return Result(quad: q, isGuess: false, score: b.score, candidate: q, fit: b.fit)
     }
 
     /// Snaps a quad from Vision to the strongest straight edges nearby (±2 % of the long edge) when that clearly
     /// raises the edge contrast. Returns the (possibly unchanged) quad and the robust edge contrast of the result.
     static func refine(_ quad: Quad, in img: RGBA8Image) -> (quad: Quad, contrast: Double) {
-        let w = img.width, h = img.height
+        guard img.width > 8, img.height > 8 else { return (quad, -1) }
+        return refine(quad, planes: Planes(img))
+    }
+
+    /// Same, with the planes built once for several candidates.
+    static func refine(_ quad: Quad, planes: Planes) -> (quad: Quad, contrast: Double) {
+        let w = planes.w, h = planes.h
         guard w > 8, h > 8 else { return (quad, -1) }
-        let planes = Planes(img)
         let q0 = quad.points.map { P($0.x * Double(w), $0.y * Double(h)) }
         let c0 = edgeFit(q0, planes, snap: false, range: 0, robust: true).con
         let q1 = orderQuad(edgeFit(q0, planes, snap: true).q, landscape: w >= h)
@@ -182,6 +196,13 @@ enum PaperDetector {
             if r.isConvex { return (r, c1) }
         }
         return (quad, c0)
+    }
+
+    /// Robust colour change across the sides of a normalized quad (sides on the frame edge skipped; -1 = none left).
+    static func edgeContrast(_ quad: Quad, planes: Planes) -> Double {
+        guard planes.w > 8, planes.h > 8 else { return -1 }
+        let q = quad.points.map { P($0.x * Double(planes.w), $0.y * Double(planes.h)) }
+        return edgeFit(q, planes, snap: false, range: 0, robust: true).con
     }
 
     // MARK: - Pieces (ports)
