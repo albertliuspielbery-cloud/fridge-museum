@@ -184,15 +184,16 @@ enum PaperDetector {
 
     /// Snaps a quad from Vision to the strongest straight edges nearby (±2 % of the long edge) when that clearly
     /// raises the edge contrast. Returns the (possibly unchanged) quad and the robust edge contrast of the result.
+    /// Exactly the 1.2.1 function (raw contrast, -1 only when no side could be measured).
     static func refine(_ quad: Quad, in img: RGBA8Image) -> (quad: Quad, contrast: Double) {
         guard img.width > 8, img.height > 8 else { return (quad, -1) }
         let r = refine(quad, planes: Planes(img))
-        return (r.quad, r.contrast)
+        return (r.quad, r.rawContrast)
     }
 
-    /// Same, with the planes built once for several candidates. Also returns how many sides could be measured (the
-    /// others lie on the frame edge); the contrast is -1 (unknown) when fewer than 2 were.
-    static func refine(_ quad: Quad, planes: Planes) -> (quad: Quad, contrast: Double, sides: Int) {
+    /// Same, with the planes built once for several candidates. `rawContrast` is the 1.2.1 value; `sides` says on how
+    /// many sides it was measured (the others lie on the frame edge) — see `knownContrast`.
+    static func refine(_ quad: Quad, planes: Planes) -> (quad: Quad, rawContrast: Double, sides: Int) {
         let w = planes.w, h = planes.h
         guard w > 8, h > 8 else { return (quad, -1, 0) }
         let q0 = quad.points.map { P($0.x * Double(w), $0.y * Double(h)) }
@@ -202,9 +203,9 @@ enum PaperDetector {
         let ratio = polyArea(q1) / max(1, polyArea(q0))
         if f1.con > f0.con * 1.05, ratio > 0.9, ratio < 1.1 {
             let r = normalize(q1, w, h, shrink: 1)
-            if r.isConvex { return (r, measured(f1.con, sides: f1.sides), f1.sides) }
+            if r.isConvex { return (r, f1.con, f1.sides) }
         }
-        return (quad, measured(f0.con, sides: f0.sides), f0.sides)
+        return (quad, f0.con, f0.sides)
     }
 
     /// Robust colour change across the sides of a normalized quad (sides on the frame edge skipped) and the number of
@@ -213,46 +214,77 @@ enum PaperDetector {
         guard planes.w > 8, planes.h > 8 else { return (-1, 0) }
         let q = quad.points.map { P($0.x * Double(planes.w), $0.y * Double(planes.h)) }
         let f = edgeFit(q, planes, snap: false, range: 0, robust: true)
-        return (measured(f.con, sides: f.sides), f.sides)
+        return (knownContrast(f.con, sides: f.sides), f.sides)
     }
 
     static func edgeContrast(_ quad: Quad, planes: Planes) -> Double { edgeMeasure(quad, planes: planes).contrast }
 
-    private static func measured(_ con: Double, sides: Int) -> Double { sides >= 2 ? con : -1 }
+    /// The contrast the 1.2.2 scoring uses: -1 (unknown) with fewer than 2 measured sides.
+    static func knownContrast(_ con: Double, sides: Int) -> Double { sides >= 2 ? con : -1 }
 
-    /// 1.2.2: does the ring between `outer` and `inner` look like the same paper as inside `inner`? (A frame the
-    /// child drew on the sheet: yes → keep the sheet. A tray or placemat around the sheet: no.) Compares the ring's
-    /// median brightness / chromaticity with the paper inside `inner` (its 75th-percentile brightness — the drawing
-    /// is darker — and the chromaticity of those bright pixels). Normalized quads, on the small detection image.
-    static func ringLooksLikePaper(outer: Quad, inner: Quad, in img: RGBA8Image) -> Bool {
+    /// 1.2.2 rescue only: is the ring between `outer` and `inner` a tray / placemat (so the inner sheet is the
+    /// paper), rather than the sheet's own margin around a frame the child drew?
+    /// Paper reference: a thin band just inside `inner` (its outer ~10 % of the size). The ring is paper-like (→ not a
+    /// tray) when its brightness is within 0.85…1.18 of the band's with a similar colour, or when it is a bright,
+    /// neutral margin at least as bright as the band (a fully painted interior inside a drawn frame). It is a tray only
+    /// if it is not paper-like AND it also differs from what lies outside `outer` (else the outer outline is just
+    /// table). Medians of a 2-px grid on the small detection image; too few samples → false (keep the outer outline).
+    static func ringLooksLikeTray(outer: Quad, inner: Quad, in img: RGBA8Image) -> Bool {
         let w = img.width, h = img.height
         guard w > 8, h > 8 else { return false }
         let o = outer.points.map { P($0.x * Double(w), $0.y * Double(h)) }
         let i = inner.points.map { P($0.x * Double(w), $0.y * Double(h)) }
-        let mo = inQuadMask(o, w, h), mi = inQuadMask(i, w, h)
-        var ring: [(l: Double, c: SIMD3<Double>)] = [], inside: [(l: Double, c: SIMD3<Double>)] = []
+        let ci = i.reduce(P.zero, +) / 4
+        let core = i.map { ci + ($0 - ci) * 0.9 }
+        let mo = inQuadMask(o, w, h), mi = inQuadMask(i, w, h), mc = inQuadMask(core, w, h)
+        var ring = RegionStats(), band = RegionStats(), outside = RegionStats()
         img.pixels.withUnsafeBufferPointer { d in
             for y in stride(from: 0, to: h, by: 2) {
                 for x in stride(from: 0, to: w, by: 2) {
                     let k = y * w + x
-                    guard mo[k] != 0 else { continue }
                     let r = Double(d[k * 4]), g = Double(d[k * 4 + 1]), b = Double(d[k * 4 + 2])
-                    let s = r + g + b + 1
-                    let e = (l: 0.299 * r + 0.587 * g + 0.114 * b, c: SIMD3(r / s, g / s, b / s))
-                    if mi[k] != 0 { inside.append(e) } else { ring.append(e) }
+                    if mo[k] == 0 {
+                        outside.add(r, g, b)
+                    } else if mi[k] == 0 {
+                        ring.add(r, g, b)
+                    } else if mc[k] == 0 {
+                        band.add(r, g, b)
+                    }
                 }
             }
         }
-        guard ring.count >= 8, inside.count >= 8 else { return false }
-        let paperL = inside.map { $0.l }.sorted()[Int(Double(inside.count) * 0.75)]
-        let paper = inside.filter { $0.l >= paperL - 12 }
-        let ringL = ring.map { $0.l }.sorted()[ring.count / 2]
-        func meanC(_ a: [(l: Double, c: SIMD3<Double>)]) -> SIMD3<Double> {
-            a.reduce(SIMD3<Double>.zero) { $0 + $1.c } / Double(max(1, a.count))
+        guard ring.count >= 8, band.count >= 8 else { return false }
+        let ringL = ring.medianLuma, bandL = band.medianLuma
+        let ratio = ringL / max(1, bandL)
+        let paperLike = (ratio >= 0.85 && ratio <= 1.18 && ring.chromaDistance(band) < 25)
+            || (ringL >= bandL && ring.meanSaturation < 25)
+        if paperLike { return false }
+        guard outside.count >= 8 else { return true }
+        let r2 = ringL / max(1, outside.medianLuma)
+        return r2 < 0.85 || r2 > 1.18 || ring.chromaDistance(outside) >= 25
+    }
+
+    struct RegionStats {
+        private var lumas: [Double] = []
+        private var chroma = SIMD3<Double>.zero
+        private var saturation = 0.0
+        var count: Int { lumas.count }
+
+        mutating func add(_ r: Double, _ g: Double, _ b: Double) {
+            lumas.append(0.299 * r + 0.587 * g + 0.114 * b)
+            let s = r + g + b + 1
+            chroma += SIMD3(r / s, g / s, b / s)
+            saturation += max(r, g, b) - min(r, g, b)
         }
-        let dc = meanC(ring) - meanC(paper)
-        let chroma = (abs(dc.x) + abs(dc.y) + abs(dc.z)) * 1000
-        return abs(ringL - paperL) < 20 && chroma < 25
+
+        var medianLuma: Double { lumas.isEmpty ? 0 : lumas.sorted()[lumas.count / 2] }
+        var meanChroma: SIMD3<Double> { chroma / Double(max(1, count)) }
+        var meanSaturation: Double { saturation / Double(max(1, count)) }
+
+        func chromaDistance(_ o: RegionStats) -> Double {
+            let d = meanChroma - o.meanChroma
+            return (abs(d.x) + abs(d.y) + abs(d.z)) * 1000
+        }
     }
 
     // MARK: - Pieces (ports)

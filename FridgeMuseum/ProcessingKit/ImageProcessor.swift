@@ -84,8 +84,6 @@ actor ImageProcessor {
     static let thumbnailMaxEdge = 480
     /// Long edge of the copy used for paper detection and edge fill (prototype `smallOf`).
     static let detectionEdge = 360
-    /// Long edge of the copy Vision's document / rectangle detectors look at (they scale down internally anyway).
-    static let visionDetectionEdge = 1024
 
     private let context: CIContext
     private let srgb: CGColorSpace
@@ -241,9 +239,10 @@ actor ImageProcessor {
 
     // MARK: - Paper detection
 
-    /// 1.2.2: every detector proposes, `PaperCandidateScoring` decides (see PaperCandidates.swift). Vision (document
-    /// segmentation + sheet rectangles) runs once on a ≤ 1024 px copy; its outlines are snapped to the strongest
-    /// nearby edges first. All candidates' edge support is measured on the same 360 px image.
+    /// 1.2.2: the exact 1.2.1 decision first (`PaperDecision.legacy`: same Vision input — the 1600 px working copy —,
+    /// same thresholds, same refined corners); only when it would keep the whole photo does the new scoring try to
+    /// rescue it (`PaperCandidateScoring.rescue`: Vision document ≥ 0.3, sheet rectangles, the detector's unsure
+    /// outline). Vision's document and rectangle requests run in one pass.
     private func detectPaperSync(id: UUID, data: Data) -> PaperDetection {
         let key = id.uuidString
         if let d = detections[key] { return d }
@@ -252,38 +251,34 @@ actor ImageProcessor {
               let small = try? smallImage(id: id, data: data) else { return none }
         let planes = PaperDetector.Planes(small)
         var candidates: [PaperCandidate] = []
-        let visionCopy = scaleToFit(src, maxEdge: Self.visionDetectionEdge)
-        if let cg = context.createCGImage(visionCopy, from: visionCopy.extent) {
+        var document: PaperDecision.VisionDocument?
+        if let cg = context.createCGImage(src, from: src.extent) {
             for var c in VisionPaths.paperCandidates(cgImage: cg) where c.quad.isConvex {
-                let refined = PaperDetector.refine(c.quad, planes: planes)
+                let original = c.quad
+                let refined = PaperDetector.refine(original, planes: planes)
+                if c.source == .document {
+                    document = PaperDecision.VisionDocument(original: original, confidence: c.confidence,
+                                                            refined: refined.quad, rawContrast: refined.rawContrast)
+                }
                 c.quad = refined.quad
-                c.edgeSupport = refined.contrast
+                c.edgeSupport = PaperDetector.knownContrast(refined.rawContrast, sides: refined.sides)
                 c.edgeSides = refined.sides
                 candidates.append(c)
             }
         }
         let det = PaperDetector.detectFull(small)
-        // Not when the detector rejected its outline for covering (nearly) the whole frame: 1.2.1's "af > 0.96 → not
-        // found" (paper filling the photo, or a white table caught by the bright mask) must stay the whole photo.
+        // Not when the detector rejected its outline for covering (nearly) the whole frame (paper filling the photo,
+        // or a white table caught by the bright mask).
         if det.offersCandidate, let q = det.candidate {
             let e = PaperDetector.edgeMeasure(q, planes: planes)
             candidates.append(PaperCandidate(quad: q, source: .detector, confidence: det.score, edgeSupport: e.contrast,
                                              fit: det.fit, edgeSides: e.sides))
         }
         let aspect = Double(small.width) / Double(max(1, small.height))
-        let result: PaperDetection
-        let picked = PaperCandidateScoring.pick(candidates, imageAspect: aspect) { outer, inner in
-            PaperDetector.ringLooksLikePaper(outer: outer, inner: inner, in: small)
-        }
-        if let pick = picked {
-            if pick.isConfident {
-                result = PaperDetection(quad: pick.quad, isGuess: false, method: pick.source == .detector ? .detector : .vision)
-            } else {
-                result = PaperDetection(quad: .full, isGuess: true, method: .none, suggestion: pick.quad)
-            }
-        } else {
-            result = none
-        }
+        let result = PaperDecision.decide(document: document, detector: det, candidates: candidates, imageAspect: aspect,
+                                          innerIsOnATray: { outer, inner in
+                                              PaperDetector.ringLooksLikeTray(outer: outer, inner: inner, in: small)
+                                          })
         detections[key] = result
         return result
     }

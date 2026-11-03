@@ -131,14 +131,16 @@ Batch fix: museum 選取 → 轉向 (`AppModel.rotateAll`).
 
 `recipe.corners == nil` on a flat render → the processor detects the paper itself (and may add `.paperNotFound`).
 
-Paper detection (1.2.2, `PaperCandidates.swift`): candidates from Vision document segmentation (confidence ≥ 0.3),
-Vision rectangles (`VisionPaths.sheetRectanglesRequest`: aspect 0.45…1, 25°, ≥ 20 % of the frame) — one pass on a
-≤ 1024 px copy, each outline snapped with `PaperDetector.refine` — and `PaperDetector.detectFull` (its best outline even
-when unsure, `Result.candidate`). `PaperCandidateScoring.pick` scores shape (area, convexity, perspective-corrected
-aspect vs A4/Letter/4:3/1:1/八開/四開) × evidence (Vision confidence gated by the robust edge contrast measured on the
-360 px copy; the detector's own score). Agreeing sources combine (noisy-or); the corners come from the member with the
-strongest edges. Score ≥ 0.3 → used; 0.1…0.3 → `suggestion` only. Caps: an outline over 95 % of the frame (unless all four edges are clear, ≥ 8; detector guesses always) and a rectangle no other source with evidence ≥ 0.1 agrees with are suggestions at most. A detector / document outline inside the winner scoring ≥ 60 % of it (and confident if the winner is) wins, except when the winner has a Vision document with edge ≥ 8 or the ring between them looks like the same paper (a drawn frame; `PaperDetector.ringLooksLikePaper`). Edge contrast needs ≥ 2 measurable sides (rectangles ≥ 3). `func cachedDetection(id:) -> PaperDetection?`
-(no detection run). Live camera: `LivePaperPicker` (document ≥ 0.6 alone; a weaker document + an agreeing rectangle;
+Paper detection (1.2.2, `PaperCandidates.swift`, `PaperDecision.decide`): **the exact 1.2.1 decision runs first**
+(`PaperDecision.legacy`: Vision document ≥ 0.5 and plausible on the 1600 px copy, refined with
+`PaperDetector.refine`; raw contrast < 5, or < 8 while the detector is sure (> 0.6) → the detector if it is not a
+guess; else the refined document; no document → the detector if not a guess). Anything 1.2.1 cropped is returned
+unchanged. Only when 1.2.1 would keep the whole photo, `PaperCandidateScoring.rescue` scores all candidates (Vision
+document ≥ 0.3, sheet rectangles, the detector's unsure outline): shape × evidence, agreeing sources combine, inner
+outline on a tray (`PaperDetector.ringLooksLikeTray`) preferred. A rescue crops only a sheet-like outline ≤ 95 % of the
+frame with edge ≥ 4, from a 1.2.1-grade document (≥ 0.5, area ≥ 0.12) or else with a faint edge (4…8); otherwise it
+is `suggestion` only. `func cachedDetection(id:) -> PaperDetection?` (no detection run).
+Live camera: `LivePaperPicker` (document ≥ 0.6 alone; a weaker document + an agreeing rectangle;
 a rectangle alone only when the previous rectangle pass saw it too; rectangle passes only when the document is unsure,
 ≤ 1 per 0.3 s).
 

@@ -63,6 +63,10 @@ enum PaperCandidateScoring {
         var isConfident: Bool
         /// Sources that agreed with the winner (the winner's included).
         var agreeing: Set<PaperCandidate.Source>
+        /// Strongest edge support in the winning group (-1 unknown).
+        var edgeSupport: Double = -1
+        /// The winning group has a Vision document of the kind 1.2.1 considered (confidence ≥ 0.5, area ≥ 0.12).
+        var hasStrongDocument = false
     }
 
     // MARK: Shape
@@ -187,11 +191,11 @@ enum PaperCandidateScoring {
     /// edge-snapped corners are the precise ones), the winner's own corners when edges tie. A rectangle nothing
     /// agrees with stays a suggestion. When the winner fully contains a paper-like detector / document outline that
     /// scores at least `innerPreference` of it (and is itself confident when the winner is), the inner one wins —
-    /// unless the winner's group has a Vision document with a clear edge (≥ 8; 1.2.1 always trusted that) or the
-    /// ring between the two looks like the same paper (`ringLooksLikePaper`: a frame drawn on the sheet).
+    /// unless the winner's group has a Vision document with a clear edge (≥ 8) or `innerIsOnATray` says the ring
+    /// between the two is not a tray (`PaperDetector.ringLooksLikeTray`; e.g. the margin around a drawn frame).
     /// Agreement only counts from outlines with some evidence of their own (≥ `minAgreeingEvidence`).
     static func pick(_ candidates: [PaperCandidate], imageAspect: Double,
-                     ringLooksLikePaper: ((_ outer: Quad, _ inner: Quad) -> Bool)? = nil) -> Pick? {
+                     innerIsOnATray: ((_ outer: Quad, _ inner: Quad) -> Bool)? = nil) -> Pick? {
         let usable = candidates.filter { $0.quad.isConvex }
         var scored: [Scored] = []
         for (i, c) in usable.enumerated() {
@@ -201,6 +205,8 @@ enum PaperCandidateScoring {
             var agreeing: Set<PaperCandidate.Source> = [c.source]
             var cornerSource = c
             var clearDocument = c.source == .document && c.edgeSupport >= clearEdge
+            var strongDocument = isStrongDocument(c)
+            var groupEdge = c.edgeSupport
             for (j, o) in usable.enumerated() where j != i && o.source != c.source && !agreeing.contains(o.source) {
                 guard agree(c.quad, o.quad, imageAspect: imageAspect) else { continue }
                 let e = evidence(o)
@@ -208,12 +214,14 @@ enum PaperCandidateScoring {
                 miss *= 1 - e
                 agreeing.insert(o.source)
                 if o.source == .document && o.edgeSupport >= clearEdge { clearDocument = true }
+                if isStrongDocument(o) { strongDocument = true }
+                groupEdge = max(groupEdge, o.edgeSupport)
                 if o.edgeSupport > cornerSource.edgeSupport + 0.5 { cornerSource = o }
             }
             var s = shape * (1 - miss)
             if agreeing == [.rectangles] { s = min(s, rectangleAloneCap) }
             let p = Pick(quad: cornerSource.quad, source: c.source, score: s, isConfident: s >= confidentScore,
-                         agreeing: agreeing)
+                         agreeing: agreeing, edgeSupport: groupEdge, hasStrongDocument: strongDocument)
             scored.append(Scored(pick: p, candidate: c, hasClearDocument: clearDocument))
         }
         // first of equal scores wins (stable)
@@ -232,13 +240,38 @@ enum PaperCandidateScoring {
                 if e.candidate.quad.area > outer.candidate.quad.area * 0.85 { continue }
                 if !contains(outer.candidate.quad, e.candidate.quad) { continue }
                 guard e.pick.score >= innerFloor, e.pick.score > innerScore else { continue }
-                if let ringLooksLikePaper, ringLooksLikePaper(outer.candidate.quad, e.candidate.quad) { continue }
+                if let innerIsOnATray, !innerIsOnATray(outer.candidate.quad, e.candidate.quad) { continue }
                 innerScore = e.pick.score
                 best = e
             }
         }
         guard best.pick.score >= suggestionScore else { return nil }
         return best.pick
+    }
+
+    /// The kind of Vision document 1.2.1 looked at (confidence ≥ 0.5, plausible size).
+    static func isStrongDocument(_ c: PaperCandidate) -> Bool {
+        c.source == .document && c.confidence >= 0.5 && c.quad.area >= 0.12
+    }
+
+    /// 1.2.2 rescue — only asked when 1.2.1 would have kept the whole photo (see `PaperDecision`). `pick`, plus
+    /// guardrails before anything is cropped: never a nearly-full outline (> 95 %; 1.2.1 already handled the clear
+    /// ones), only a sheet-like shape (aspect score ≥ 0.9), an edge at least at the marble-noise level (≥ 4), and a
+    /// winning group with a 1.2.1-grade Vision document — otherwise (weak documents 0.3–0.5, small outlines, detector
+    /// soft guesses; lone rectangles are capped anyway) only when the edge is in the faint range 4…8 that 1.2.1's
+    /// "< 5" rule threw away. Anything else is a suggestion.
+    static func rescue(_ candidates: [PaperCandidate], imageAspect: Double,
+                       innerIsOnATray: ((_ outer: Quad, _ inner: Quad) -> Bool)? = nil) -> Pick? {
+        guard var p = pick(candidates, imageAspect: imageAspect, innerIsOnATray: innerIsOnATray) else { return nil }
+        if p.isConfident && !rescueMayCrop(p, imageAspect: imageAspect) { p.isConfident = false }
+        return p
+    }
+
+    static func rescueMayCrop(_ p: Pick, imageAspect: Double) -> Bool {
+        guard p.quad.isConvex, p.quad.area >= 0.04, p.quad.area <= nearlyFullArea else { return false }
+        guard aspectScore(sheetAspect(p.quad, imageAspect: imageAspect)) >= 0.9 else { return false }
+        guard p.edgeSupport >= 4 else { return false }
+        return p.hasStrongDocument || p.edgeSupport <= clearEdge
     }
 
     /// An outline needs at least this much evidence of its own for its agreement to count (a detector guess with
@@ -259,7 +292,52 @@ enum PaperCandidateScoring {
     }
 }
 
-/// Live camera overlay (1.2.2): Vision document segmentation every analysed frame, the rectangle detector only when
+/// The paper decision for a still photo (1.2.2). By construction, whatever 1.2.1 cropped is cropped identically: the
+/// exact 1.2.1 rule runs first, and the new scoring is only a rescue for photos 1.2.1 left whole (white on white,
+/// dim light). Pure, so a parity test can run both on the same inputs.
+enum PaperDecision {
+    /// Vision's document outline as 1.2.1 saw it.
+    struct VisionDocument: Sendable, Equatable {
+        /// Straight from Vision (normalized, top-left origin).
+        var original: Quad
+        var confidence: Double
+        /// After `PaperDetector.refine` on the 360 px image (1.2.1's corners).
+        var refined: Quad
+        /// `refine`'s raw contrast (1.2.1's value: -1 only when no side could be measured).
+        var rawContrast: Double
+    }
+
+    /// 1.2.1's `detectPaperSync`, verbatim: Vision document (confidence ≥ 0.5, plausible), refined; deferred to the
+    /// detector when its contrast is < 5, or < 8 while the detector is sure (> 0.6); else the detector when it is
+    /// not a guess. nil = whole photo.
+    static func legacy(document: VisionDocument?, detector det: PaperDetector.Result) -> PaperDetection? {
+        if let d = document, d.confidence >= 0.5, d.original.isPlausible {
+            if d.rawContrast < 5 || (d.rawContrast < 8 && !det.isGuess && det.score > 0.6) {
+                return det.isGuess ? nil : PaperDetection(quad: det.quad, isGuess: false, method: .detector)
+            }
+            return PaperDetection(quad: d.refined, isGuess: false, method: .vision)
+        }
+        return det.isGuess ? nil : PaperDetection(quad: det.quad, isGuess: false, method: .detector)
+    }
+
+    /// 1.2.1 first; when it keeps the whole photo, `PaperCandidateScoring.rescue` over all candidates (a confident
+    /// rescue crops; otherwise its outline only becomes the crop tool's suggestion).
+    static func decide(document: VisionDocument?, detector: PaperDetector.Result, candidates: [PaperCandidate],
+                       imageAspect: Double,
+                       innerIsOnATray: ((_ outer: Quad, _ inner: Quad) -> Bool)? = nil) -> PaperDetection {
+        if let old = legacy(document: document, detector: detector) { return old }
+        guard let pick = PaperCandidateScoring.rescue(candidates, imageAspect: imageAspect,
+                                                      innerIsOnATray: innerIsOnATray) else {
+            return PaperDetection(quad: .full, isGuess: true, method: .none)
+        }
+        if pick.isConfident {
+            return PaperDetection(quad: pick.quad, isGuess: false, method: pick.source == .detector ? .detector : .vision)
+        }
+        return PaperDetection(quad: .full, isGuess: true, method: .none, suggestion: pick.quad)
+    }
+}
+
+/// Live camera overlay (1.2.2):Vision document segmentation every analysed frame, the rectangle detector only when
 /// the document detector is unsure, and at most ~3×/s (heat). Pure decision, unit-tested.
 enum LivePaperPicker {
     /// Document outline accepted alone (unchanged from 1.2.1).

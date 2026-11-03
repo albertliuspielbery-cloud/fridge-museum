@@ -165,19 +165,22 @@ struct PaperCandidateScoringTests {
 
     // MARK: Drawn frame vs tray (ring check on a synthetic image)
 
-    /// Brown table, white sheet (60…300 × 40…230 of 360 × 270) with a black frame drawn 25 px inside its edge and a
-    /// blue scribble inside the frame.
-    func sheetWithDrawnFrame() -> RGBA8Image {
+    /// Brown table, white sheet (60…300 × 40…230 of 360 × 270) with a black frame drawn 25 px inside its edge.
+    /// `margin`: colour of the sheet outside the frame (shaded margin); `interior`: fill inside the frame (nil = white
+    /// paper with a blue scribble).
+    func sheetWithDrawnFrame(margin: (UInt8, UInt8, UInt8) = (245, 243, 238),
+                             interior: (UInt8, UInt8, UInt8)? = nil) -> RGBA8Image {
         var img = RGBA8Image(width: 360, height: 270, fill: (120, 85, 55))
-        for y in 40..<230 { for x in 60..<300 { img.set(x, y, (245, 243, 238)) } }
+        for y in 40..<230 { for x in 60..<300 { img.set(x, y, margin) } }
+        for y in 64..<206 { for x in 84..<276 { img.set(x, y, interior ?? (245, 243, 238)) } }
         for y in 64..<206 {
             for x in 84..<276 where x < 86 || x >= 274 || y < 66 || y >= 204 { img.set(x, y, (20, 20, 20)) }
         }
-        for y in 120..<130 { for x in 130..<230 { img.set(x, y, (40, 80, 200)) } }
+        if interior == nil { for y in 120..<130 { for x in 130..<230 { img.set(x, y, (40, 80, 200)) } } }
         return img
     }
 
-    /// Dark tray (40…320 × 25…245) with a white sheet (100…260 × 70…200) on it.
+    /// Dark tray (40…320 × 25…245) with a white sheet (100…260 × 70…200) on it, light table around.
     func sheetOnTray() -> RGBA8Image {
         var img = RGBA8Image(width: 360, height: 270, fill: (190, 185, 175))
         for y in 25..<245 { for x in 40..<320 { img.set(x, y, (80, 70, 60)) } }
@@ -191,10 +194,13 @@ struct PaperCandidateScoringTests {
     }
 
     @Test func ringCheckTellsDrawnFrameFromTray() {
-        let drawn = sheetWithDrawnFrame()
-        #expect(PaperDetector.ringLooksLikePaper(outer: px(60, 40, 300, 230), inner: px(85, 65, 275, 205), in: drawn))
-        let tray = sheetOnTray()
-        #expect(!PaperDetector.ringLooksLikePaper(outer: px(40, 25, 320, 245), inner: px(100, 70, 260, 200), in: tray))
+        let sheet = px(60, 40, 300, 230), frame = px(85, 65, 275, 205)
+        #expect(!PaperDetector.ringLooksLikeTray(outer: sheet, inner: frame, in: sheetWithDrawnFrame()))
+        // shaded margin (about 0.9× as bright) is still the sheet
+        #expect(!PaperDetector.ringLooksLikeTray(outer: sheet, inner: frame, in: sheetWithDrawnFrame(margin: (221, 219, 214))))
+        // fully painted interior: the white margin is still paper
+        #expect(!PaperDetector.ringLooksLikeTray(outer: sheet, inner: frame, in: sheetWithDrawnFrame(interior: (40, 80, 200))))
+        #expect(PaperDetector.ringLooksLikeTray(outer: px(40, 25, 320, 245), inner: px(100, 70, 260, 200), in: sheetOnTray()))
     }
 
     /// The detector traces the drawn frame; the document has the sheet: the sheet stays.
@@ -204,8 +210,8 @@ struct PaperCandidateScoringTests {
         let sheet = px(60, 40, 300, 230), frame = px(85, 65, 275, 205)
         let doc = PaperCandidate(quad: sheet, source: .document, confidence: 0.9, edgeSupport: 7.5)
         let det = PaperCandidate(quad: frame, source: .detector, confidence: 0.45, edgeSupport: 40, fit: 0.9)
-        let picked = PaperCandidateScoring.pick([doc, det], imageAspect: imageAspect, ringLooksLikePaper: { outer, inner in
-            PaperDetector.ringLooksLikePaper(outer: outer, inner: inner, in: img)
+        let picked = PaperCandidateScoring.pick([doc, det], imageAspect: imageAspect, innerIsOnATray: { outer, inner in
+            PaperDetector.ringLooksLikeTray(outer: outer, inner: inner, in: img)
         })
         let pick = try #require(picked)
         #expect(pick.quad == sheet)
@@ -474,5 +480,145 @@ struct PaperVisionSmokeTests {
         let det = await ImageProcessor().detectPaper(id: UUID(), originalData: data)
         #expect(det.isGuess)
         #expect(det.quad == .full)
+    }
+}
+
+/// 1.2.2 still-photo decision: whatever 1.2.1 cropped is cropped identically; the new scoring only rescues photos
+/// 1.2.1 left whole.
+struct PaperDecisionTests {
+    let aspect = 4.0 / 3.0
+    let a4 = Quad(topLeft: .init(x: 0.25, y: 0.2), topRight: .init(x: 0.75, y: 0.2),
+                  bottomRight: .init(x: 0.75, y: 0.67), bottomLeft: .init(x: 0.25, y: 0.67))
+    /// A slightly different outline (what refine might snap to).
+    var a4Snapped: Quad {
+        Quad(topLeft: .init(x: 0.252, y: 0.201), topRight: .init(x: 0.748, y: 0.2),
+             bottomRight: .init(x: 0.75, y: 0.668), bottomLeft: .init(x: 0.251, y: 0.67))
+    }
+    let tray = Quad.inset(0.08)
+    /// 2 : 1, not a known sheet.
+    let offRatio = Quad(topLeft: .init(x: 0.1, y: 0.3), topRight: .init(x: 0.85, y: 0.3),
+                        bottomRight: .init(x: 0.85, y: 0.675), bottomLeft: .init(x: 0.1, y: 0.675))
+
+    func detector(_ quad: Quad?, score: Double, guess: Bool) -> PaperDetector.Result {
+        PaperDetector.Result(quad: guess ? .full : (quad ?? .full), isGuess: guess, score: score, candidate: quad,
+                             fit: 0.9, areaFraction: quad?.area ?? 0)
+    }
+
+    /// 1.2.1's ImageProcessor.detectPaperSync decision, copied here so `PaperDecision.legacy` can't drift.
+    func old121(visionQuad: Quad?, refined: Quad, contrast: Double, det: PaperDetector.Result) -> PaperDetection {
+        let none = PaperDetection(quad: .full, isGuess: true, method: .none)
+        if visionQuad != nil {
+            if contrast < 5 || (contrast < 8 && !det.isGuess && det.score > 0.6) {
+                return det.isGuess ? none : PaperDetection(quad: det.quad, isGuess: false, method: .detector)
+            }
+            return PaperDetection(quad: refined, isGuess: false, method: .vision)
+        } else if det.isGuess {
+            return none
+        }
+        return PaperDetection(quad: det.quad, isGuess: false, method: .detector)
+    }
+
+    /// The candidates detectPaperSync would build from the same inputs.
+    func candidates(_ doc: PaperDecision.VisionDocument?, sides: Int, det: PaperDetector.Result) -> [PaperCandidate] {
+        var out: [PaperCandidate] = []
+        if let d = doc {
+            out.append(PaperCandidate(quad: d.refined, source: .document, confidence: d.confidence,
+                                      edgeSupport: PaperDetector.knownContrast(d.rawContrast, sides: sides), edgeSides: sides))
+        }
+        if det.offersCandidate, let q = det.candidate {
+            out.append(PaperCandidate(quad: q, source: .detector, confidence: det.score, edgeSupport: 6, fit: det.fit))
+        }
+        return out
+    }
+
+    @Test func parityWith121WheneverItCropped() {
+        var checked = 0
+        let docQuads: [Quad] = [a4, offRatio, .inset(0.01), .inset(0.35), tray]
+        let dets = [detector(nil, score: 0, guess: true), detector(a4, score: 0.2, guess: true),
+                    detector(a4, score: 0.5, guess: false), detector(tray, score: 0.7, guess: false),
+                    detector(tray, score: 0.9, guess: false), detector(.inset(0.002), score: 0.8, guess: true)]
+        for quad in docQuads {
+            for conf in [0.3, 0.45, 0.5, 0.55, 0.7, 0.95] {
+                for contrast in [-1.0, 2, 4, 4.99, 5, 6, 7.99, 8, 12, 30] {
+                    for sides in [1, 2, 4] {
+                        for det in dets {
+                            let doc = PaperDecision.VisionDocument(original: quad, confidence: conf, refined: quad,
+                                                                   rawContrast: contrast)
+                            let usedByOld = conf >= 0.5 && quad.isPlausible
+                            let old = old121(visionQuad: usedByOld ? quad : nil, refined: quad, contrast: contrast, det: det)
+                            #expect(PaperDecision.legacy(document: doc, detector: det) == (old.isGuess ? nil : old))
+                            let new = PaperDecision.decide(document: doc, detector: det,
+                                                           candidates: candidates(doc, sides: sides, det: det),
+                                                           imageAspect: aspect)
+                            if !old.isGuess {
+                                #expect(new == old, "conf \(conf) contrast \(contrast) sides \(sides) det \(det.score)")
+                                checked += 1
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // no Vision document at all
+        for det in dets {
+            let old = old121(visionQuad: nil, refined: .full, contrast: 0, det: det)
+            let new = PaperDecision.decide(document: nil, detector: det, candidates: candidates(nil, sides: 4, det: det),
+                                           imageAspect: aspect)
+            if !old.isGuess { #expect(new == old) }
+        }
+        #expect(checked > 100)
+    }
+
+    func decide(conf: Double, contrast: Double, quad: Quad, refined: Quad? = nil, sides: Int = 4,
+                det: PaperDetector.Result) -> PaperDetection {
+        let doc = PaperDecision.VisionDocument(original: quad, confidence: conf, refined: refined ?? quad, rawContrast: contrast)
+        return PaperDecision.decide(document: doc, detector: det, candidates: candidates(doc, sides: sides, det: det),
+                                    imageAspect: aspect)
+    }
+
+    /// A clear document inside a confident tray outline (white or dark tray): the sheet, with its refined corners.
+    @Test func clearDocumentInsideTrayCropsTheSheet() {
+        for trayScore in [0.7, 0.95] {
+            for contrast in [9.0, 25] {
+                let r = decide(conf: 0.9, contrast: contrast, quad: a4, refined: a4Snapped,
+                               det: detector(tray, score: trayScore, guess: false))
+                #expect(r == PaperDetection(quad: a4Snapped, isGuess: false, method: .vision))
+            }
+        }
+    }
+
+    @Test func casesThat121CroppedStayTheSame() {
+        let guess = detector(nil, score: 0, guess: true)
+        // 0.5 / edge 5 on an off-ratio sheet
+        #expect(decide(conf: 0.5, contrast: 5, quad: offRatio, det: guess)
+                == PaperDetection(quad: offRatio, isGuess: false, method: .vision))
+        // nearly full frame, edge 6
+        #expect(decide(conf: 0.9, contrast: 6, quad: .inset(0.01), det: guess)
+                == PaperDetection(quad: .inset(0.01), isGuess: false, method: .vision))
+        // only one side measurable (raw contrast still counts, as in 1.2.1)
+        #expect(decide(conf: 0.8, contrast: 6, quad: a4, sides: 1, det: guess)
+                == PaperDetection(quad: a4, isGuess: false, method: .vision))
+    }
+
+    /// The owner's case: Vision sees the sheet on dim white marble, edge 4 (1.2.1: whole photo) → crops now.
+    @Test func dimMarbleRescue() {
+        let r = decide(conf: 0.7, contrast: 4, quad: a4, det: detector(nil, score: 0, guess: true))
+        #expect(r == PaperDetection(quad: a4, isGuess: false, method: .vision))
+    }
+
+    @Test func rescueGuardrails() {
+        let guess = detector(nil, score: 0, guess: true)
+        // weak document (0.3–0.5): crops only with a faint (4…8) edge
+        #expect(!decide(conf: 0.45, contrast: 6, quad: a4, det: guess).isGuess)
+        let strongEdge = decide(conf: 0.4, contrast: 12, quad: a4, det: guess)
+        #expect(strongEdge.isGuess && strongEdge.suggestion == a4)
+        // too faint, or nearly the whole frame: suggestion only
+        #expect(decide(conf: 0.9, contrast: 3, quad: a4, det: guess).isGuess)
+        #expect(decide(conf: 0.9, contrast: 4.5, quad: .inset(0.01), det: guess).isGuess)
+        // not sheet-like
+        #expect(decide(conf: 0.9, contrast: 4.5, quad: offRatio, det: guess).isGuess)
+        // nothing at all
+        #expect(PaperDecision.decide(document: nil, detector: guess, candidates: [], imageAspect: aspect)
+                == PaperDetection(quad: .full, isGuess: true, method: .none))
     }
 }
