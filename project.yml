@@ -74,6 +74,8 @@ targets:
         # iCloud sync (1.2.0): CloudKit's silent pushes (another device changed something).
         UIBackgroundModes:
           - remote-notification
+        # 家庭美術館 (1.3.0): open iCloud share invitations in the app (FamilySceneDelegate).
+        CKSharingSupported: true
         NSCameraUsageDescription: 用相機拍下孩子的畫作和勞作。照片在手機上處理；開啟 iCloud 同步時，只存到你自己的 iCloud。
         NSPhotoLibraryAddUsageDescription: 把整理好的作品存到「照片」。
         NSPhotoLibraryUsageDescription: 為每位小朋友建立「冰箱美術館」相簿，並把整理好的作品放進去。
