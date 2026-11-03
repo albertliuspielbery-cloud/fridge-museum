@@ -97,6 +97,22 @@
 - 連拍：相機快門上方「連拍」開關。每張直接成為待收作品（給目前「拍給」的孩子），不開編輯器；照樣找紙角，匯出等連拍結束才一張一張跑（AppModel `beginBurst/endBurst`，沿用 deferral；`runDeferred` 現在一次只跑一張、編輯器一開就暫停）。「完成」回廚房，便利貼「繼續」從最舊的一張開始，收進／存到手機／不要這張後自動開下一張（逐張時上一張的完整算圖排到佇列，等沒有編輯器開著才跑；改過的作品標成 processingState = pending，App 被關掉時下次開啟會重算）。開 App 時沒處理完的作品也走同一個佇列。「全部存到照片」在編輯器開著時暫停，單張存到手機排在批次目前那張後面（`ExportGate`，先來先做，一次只做一張 4096 匯出）。
 - 備份提醒：首頁沒有便利貼時，若有 ≥10 件沒存到照片、或最舊的一件超過 14 天，顯示「還有 N 張只在 App 裡」；「之後再說」隱藏 14 天（UserDefaults `backupSnoozedUntil`）；這次開 App 才收的作品不算（第一次使用不會跳）。設定頁「備份到照片」顯示已存 X／Y 件。用既有的 `Artwork.lastSavedToPhotosAt`，沒改資料模型。
 
+### 1.3.0 主畫面小工具（`fix/1.3-widget`，未合併）
+- 小／中／大三種尺寸。薄荷冰箱門底色、白相紙上的作品、水果磁鐵（依作品 id 固定 lemon/tomato/berry），下面是小朋友名字和日期（系統依語言顯示 zh-Hant／en 日期）。每 3 小時（00、03、06…點，當地時間）換一件；同一個時段一定是同一件（`WidgetSchedule`：第 n 個時段顯示第 n mod 件數件，一整天依序輪過去）。點作品打開 App 到那件作品頁（`fridgemuseum://artwork/<uuid>`）。美術館沒有作品（或 App 還沒寫過資料）：冰冰＋「拍第一張作品吧」。
+- 選哪些：收進美術館的（`isKept && !isSample`）、有成品圖或小圖的，最多 24 件：最愛優先，其次最新（作品日期）；輪播順序是新到舊。
+- 資料流：App 存檔（任何 ModelContext 的 `didSave`，包括編輯、刪除、同步整理）後最多 30 秒寫一次、開 App 寫一次、進背景立刻寫（`App/WidgetSnapshot.swift`，背景執行緒、自己的 ModelContext）。寫到 App Group `group.tw.starlight.fridgemuseum`：`WidgetImages/<id>-<renderVersion>.jpg`（長邊 ≤ 600、JPEG 0.85；已存在就不重做）＋ `widget.json`（原子寫入），寫完才刪沒用到的圖，內容有變才 `reloadAllTimelines()`。小工具不開資料庫。拿不到 App Group 容器（模擬器未簽名、描述檔沒有 App Group）就安靜跳過；單元測試、DemoMode 不寫。
+- 程式：`Shared/WidgetModel.swift`（App 和小工具都編譯：路徑、JSON、選作品、時段；測試 `FridgeMuseumTests/WidgetModelTests.swift`）、`App/WidgetSnapshot.swift`、`FridgeMuseumWidget/`（extension、自己的 String Catalog、素材是 App 冰冰／磁鐵 SVG 的複本，沒有新美術；字型用系統圓體，不帶字型檔）。點小工具：`FridgeMuseumApp.onOpenURL` → `AppModel.widgetArtworkID` → RootView 關掉設定頁、回首頁再推作品頁（冷啟動也會開）。相機全螢幕或付費頁開著時，作品頁推在底下，關掉才看到（沒特別處理）。
+- 簽名（只在「上傳」時跑，push 的模擬器測試驗證不到）：`ci/ci_sign.py` 多登記 `tw.starlight.fridgemuseum.widget`、兩個識別碼都開 `APP_GROUPS`、用同一張憑證做兩個描述檔（`FridgeMuseum AppStore CI`、`FridgeMuseum Widget AppStore CI`），並檢查兩個描述檔裡真的有這個 App Group，沒有就停下、印出下面的步驟。憑證規則沒改（不主動刪，608cebd）。`ios.yml` 不再傳全域 `PROVISIONING_PROFILE_SPECIFIER`，改傳 `FM_APP_PROFILE`／`FM_WIDGET_PROFILE`，由 `project.yml` 兩個 target 的 Release 設定各自取用；export.plist 的 `provisioningProfiles` 帶兩個識別碼。
+
+**Albert 要手動做一次（Apple 沒有開放 API），上傳 1.3.0 之前：**
+1. 打開 https://developer.apple.com/account/resources/identifiers/list/applicationGroup → 右上「＋」→ 選 **App Groups** → Continue → Description 填 `Fridge Museum`、Identifier 填 `group.tw.starlight.fridgemuseum` → Continue → Register。
+2. 跑一次「準備 App 識別碼」https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/bundle-id.yml （會登記 `tw.starlight.fridgemuseum.widget` 並在兩個識別碼開 App Groups 功能）。
+3. 打開 https://developer.apple.com/account/resources/identifiers/list → 點 **tw.starlight.fridgemuseum** → 在 App Groups 那一行按 Configure（或 Edit）→ 勾 `group.tw.starlight.fridgemuseum` → Continue → Save（問描述檔會失效選 Confirm）。
+4. 回列表點 **tw.starlight.fridgemuseum.widget**，同樣勾 `group.tw.starlight.fridgemuseum` → Save。
+5. 之後照常按「上傳」。沒做第 1、3、4 步時，上傳會停在「簽名準備」並顯示這些步驟（會多建立一張上架憑證，Apple 上限內沒關係）。
+
+**只能實機驗證：** 三種尺寸在不同 iPhone（SE／mini／Pro Max）上的版面與深色模式；新增、刪除、改圖、轉向後小工具在 30 秒內更新；App 被關掉時（進背景那次寫入）是否來得及；3 小時輪播（Apple 會依電量排程，不一定準時）；點小工具冷啟動／熱啟動都打開那件作品；被刪掉的作品顯示「找不到這件作品」；小工具記憶體（30 MB 上限，圖 ≤ 600 px 應該很寬鬆）；上傳流程（兩個描述檔、App Group）第一次跑。
+
 ### 1.2.2 暗光／白桌子找紙（`fix/1.2.2`）
 - 擁有者回報：餐廳／家裡暗暗的暖光、白色大理石桌（紋路、反光）上常找不到紙邊。實測（他的照片貼一張白紙）：大理石本身的邊緣對比約 2.5–4.5，沒有影子的白紙邊約 5–9，有一點影子約 20–40；1.2.1 規定 Vision 外框底下對比要 ≥ 5，剛好把對的外框丟掉。
 - 找紙：**先跑和 1.2.1 一模一樣的判斷**（`PaperDecision.legacy`），1.2.1 會裁的照片結果完全相同；只有 1.2.1 會用整張照片時，才用新的「多個偵測器提案、一個分數決定」補救（`PaperCandidateScoring.rescue`：Vision 文件偵測 ≥ 0.3、矩形偵測、移植偵測器沒把握的外框；形狀 × 證據）。補救只在外框像紙、≤ 95% 畫面、邊緣對比 ≥ 4，且有 1.2.1 等級的 Vision 文件（或邊緣在 4–8 的淡邊範圍）時才裁切，否則只當「裁切」的起始角。

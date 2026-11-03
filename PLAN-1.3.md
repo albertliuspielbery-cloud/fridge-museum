@@ -35,6 +35,14 @@
 - 簽名：`ci/ci_sign.py` 要多登記 widget 的 bundle id、兩個 id 都開 `APP_GROUPS` 功能、做兩個描述檔；ios.yml 的 export.plist 帶兩個描述檔。**App Group 本身 ASC API 建不了**，要 Albert 到 developer.apple.com → Identifiers → App Groups 建 `group.tw.starlight.fridgemuseum`，並在兩個 App ID 勾上（或 Claude 在他同意下用瀏覽器操作）。
 - 注意：`ci_sign.py` 剛被另一個對話改過（不主動刪憑證，608cebd），改的時候保留那個行為。
 
+### B 實作記錄（2026-11-03，`fix/1.3-widget`）與設計差異
+- **存檔掛勾**：不是在 AppModel 每個 `context.save()` 後面加呼叫（儲存點散在 UI 各處），改成監聽 SwiftData 的 `ModelContext.didSave`（任何 context），30 秒節流；另外開 App 寫一次、進背景立刻寫。AppModel 只多一個 `widgetArtworkID` 屬性（點小工具用），方便和家庭同步分支合併。
+- **選作品**：最多 24 件，最愛優先、其次最新；輪播新到舊。時段固定在當地 00/03/06…點（夏令時間照牆上時鐘），同一時段同一件。
+- **widget.json**：多了 `version`、`generatedAt`、`kind`、`imageFile`（圖檔名含 renderVersion，改圖就換新檔、舊的刪掉）。
+- **點小工具**：直接開作品頁（RootView 回首頁再推 `Route.detail`），不用退而求其次開美術館。相機／付費頁蓋著時作品頁在底下。
+- **外觀**：薄荷冰箱門＋白相紙＋水果磁鐵（同分享卡片），素材是 App 既有 SVG 的複本；字型用系統圓體（不把字型檔包進 extension）。
+- **簽名**：除了上面寫的，`ci_sign.py` 會先讀描述檔確認有 App Group，沒有就停下並印出手動步驟；描述檔改成每個 target 各自指定（project.yml Release 設定讀 `FM_APP_PROFILE`／`FM_WIDGET_PROFILE`）。
+
 ## 驗收
 - 模擬器編譯＋全部單元測試通過（push `fix/**` 自動跑）。
 - 獨立代理審查 GO（重點：資料不會被刪、切換模式安全、CloudKit 錯誤處理、簽名不影響星光）。

@@ -3,13 +3,17 @@
 # 1.2.0 起會確認 App 識別碼已開啟 iCloud（CloudKit）和推播（Push Notifications）功能，沒開就用 API 開。
 # 注意：iCloud 容器 iCloud.tw.starlight.fridgemuseum 的「建立」和「指派給 App 識別碼」Apple 沒有開放 API，
 #       要在 developer.apple.com 手動做一次（步驟見 HANDOFF.md「1.2.0 iCloud 同步」）。沒指派的話，打包會因描述檔缺少容器而失敗。
+# 1.3.0 起多一個「主畫面小工具」（widget extension，識別碼 <APP_BUNDLE_ID>.widget）：兩個識別碼都要登記、都開 App Groups
+# 功能，各做一個描述檔（同一張憑證）。App Group group.tw.starlight.fridgemuseum 本身同樣沒有 API，要手動建立並在兩個
+# 識別碼勾選（HANDOFF.md「1.3.0 主畫面小工具」）；描述檔裡沒有這個 App Group 時，這支程式會直接停下並說明怎麼做。
 #
 # 用法：
 #   python3 ci/ci_sign.py <輸出資料夾>        準備憑證 + 描述檔（會先確認／登記 App 識別碼）
 #   python3 ci/ci_sign.py --register-only     只確認／登記 App 識別碼（「準備 App 識別碼」工作流程用）
 #
 # 需要環境變數：ASC_KEY_ID、ASC_ISSUER_ID、ASC_KEY_P8（.p8 檔的文字內容）
-# 可選環境變數：APP_BUNDLE_ID（預設 tw.starlight.fridgemuseum）、PROFILE_NAME（預設 FridgeMuseum AppStore CI）
+# 可選環境變數：APP_BUNDLE_ID（預設 tw.starlight.fridgemuseum）、PROFILE_NAME（預設 FridgeMuseum AppStore CI）、
+#             WIDGET_PROFILE_NAME（預設 FridgeMuseum Widget AppStore CI）
 # 需要套件：pyjwt、cryptography
 import base64
 import json
@@ -26,12 +30,23 @@ PROFILE_NAME = os.environ.get('PROFILE_NAME') or 'FridgeMuseum AppStore CI'
 # Apple 的 Identifier 名稱只接受英數字和空白，所以用英文名；App 顯示名稱「冰箱美術館」在 Info.plist。
 BUNDLE_NAME = 'Fridge Museum'
 ICLOUD_CONTAINER = 'iCloud.tw.starlight.fridgemuseum'
+# 主畫面小工具（1.3.0）：widget extension 的識別碼與描述檔（project.yml 的 FridgeMuseumWidget：$(APP_BUNDLE_ID).widget）。
+WIDGET_BUNDLE = BUNDLE + '.widget'
+WIDGET_BUNDLE_NAME = 'Fridge Museum Widget'
+WIDGET_PROFILE_NAME = os.environ.get('WIDGET_PROFILE_NAME') or 'FridgeMuseum Widget AppStore CI'
+APP_GROUP = 'group.tw.starlight.fridgemuseum'
+APP_GROUP_PORTAL = 'https://developer.apple.com/account/resources/identifiers/list/applicationGroup'
 # App 識別碼需要的功能（App Store Connect API bundleIdCapabilities）。
 # ICLOUD 的 ICLOUD_VERSION = XCODE_6 就是「Include CloudKit support」（Xcode 6 以後的 iCloud）。
 # PUSH_NOTIFICATIONS：CloudKit 用無聲推播通知「別台裝置改了東西」（aps-environment）。
+# APP_GROUPS（1.3.0）：App 和小工具共用 App Group 容器（widget.json + 作品小圖）。
 CAPABILITIES = [
     ('ICLOUD', [{'key': 'ICLOUD_VERSION', 'options': [{'key': 'XCODE_6'}]}]),
     ('PUSH_NOTIFICATIONS', None),
+    ('APP_GROUPS', None),
+]
+WIDGET_CAPABILITIES = [
+    ('APP_GROUPS', None),
 ]
 API = 'https://api.appstoreconnect.apple.com/v1'
 
@@ -113,27 +128,31 @@ def create_dist_cert(body):
         return call('POST', '/certificates', body)['data']
 
 
-def ensure_bundle_id():
-    """回傳 App 識別碼的 API id；不存在就用 POST /bundleIds 登記。"""
-    q = urllib.parse.quote(BUNDLE, safe='')
+def ensure_bundle_id(identifier=BUNDLE, name=BUNDLE_NAME, is_app=True):
+    """回傳識別碼的 API id；不存在就用 POST /bundleIds 登記。"""
+    q = urllib.parse.quote(identifier, safe='')
     found = [x for x in call('GET', f'/bundleIds?filter[identifier]={q}&limit=20')['data']
-             if x['attributes']['identifier'] == BUNDLE]
+             if x['attributes']['identifier'] == identifier]
     if found:
-        print(f'App 識別碼已存在：{BUNDLE}')
+        print(f'App 識別碼已存在：{identifier}')
         return found[0]['id']
     created = call('POST', '/bundleIds', {'data': {'type': 'bundleIds', 'attributes': {
-        'identifier': BUNDLE, 'name': BUNDLE_NAME, 'platform': 'IOS'}}})['data']
-    print(f'已登記新的 App 識別碼：{BUNDLE}')
-    print(f'::notice::已登記 App 識別碼 {BUNDLE}。下一步：到 https://appstoreconnect.apple.com/apps 用這個識別碼新增 App。')
+        'identifier': identifier, 'name': name, 'platform': 'IOS'}}})['data']
+    print(f'已登記新的 App 識別碼：{identifier}')
+    if is_app:
+        print(f'::notice::已登記 App 識別碼 {identifier}。下一步：到 https://appstoreconnect.apple.com/apps 用這個識別碼新增 App。')
+    else:
+        print(f'::notice::已登記小工具識別碼 {identifier}。請到 {APP_GROUP_PORTAL} 確認 App Group {APP_GROUP} 已建立，'
+              f'並在這個識別碼的 App Groups 功能勾選它（HANDOFF.md「1.3.0 主畫面小工具」）。')
     return created['id']
 
 
-def ensure_capabilities(bid):
-    """App 識別碼沒開的功能用 POST /bundleIdCapabilities 打開（已開的跳過）。描述檔是每次重做的，會帶上這些功能。"""
+def ensure_capabilities(bid, capabilities=CAPABILITIES, identifier=BUNDLE):
+    """識別碼沒開的功能用 POST /bundleIdCapabilities 打開（已開的跳過）。描述檔是每次重做的，會帶上這些功能。"""
     have = {c['attributes'].get('capabilityType') for c in call('GET', f'/bundleIds/{bid}/bundleIdCapabilities')['data']}
-    for ctype, settings in CAPABILITIES:
+    for ctype, settings in capabilities:
         if ctype in have:
-            print(f'App 識別碼功能已開啟：{ctype}')
+            print(f'App 識別碼功能已開啟（{identifier}）：{ctype}')
             continue
         attrs = {'capabilityType': ctype}
         if settings:
@@ -141,12 +160,14 @@ def ensure_capabilities(bid):
         call('POST', '/bundleIdCapabilities', {'data': {
             'type': 'bundleIdCapabilities', 'attributes': attrs,
             'relationships': {'bundleId': {'data': {'type': 'bundleIds', 'id': bid}}}}})
-        print(f'已開啟 App 識別碼功能：{ctype}')
+        print(f'已開啟 App 識別碼功能（{identifier}）：{ctype}')
+    if not any(ctype == 'ICLOUD' for ctype, _ in capabilities):
+        return
     print(f'::notice::iCloud 容器 {ICLOUD_CONTAINER} 要在 developer.apple.com 手動建立並指派給 {BUNDLE}'
           '（Apple 沒有開放 API；做過一次就好，步驟見 HANDOFF.md「1.2.0 iCloud 同步」）。沒指派的話，下一步打包會失敗。')
 
 
-def prepare_signing(out, bid):
+def prepare_signing(out, bid, widget_bid):
     from cryptography import x509
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
@@ -155,9 +176,9 @@ def prepare_signing(out, bid):
 
     os.makedirs(out, exist_ok=True)
 
-    # 1. 清掉以前雲端建立的同名描述檔
+    # 1. 清掉以前雲端建立的同名描述檔（App 和小工具的）
     for p in call('GET', '/profiles?limit=200')['data']:
-        if p['attributes']['name'] == PROFILE_NAME:
+        if p['attributes']['name'] in (PROFILE_NAME, WIDGET_PROFILE_NAME):
             call('DELETE', '/profiles/' + p['id'])
 
     # 2. 上架用憑證：每次新做一張（私鑰只存在這台雲端電腦）；不主動刪舊憑證，見 create_dist_cert()
@@ -177,12 +198,19 @@ def prepare_signing(out, bid):
     with open(f'{out}/p12pass', 'w') as f:
         f.write(pw)
 
-    # 3. 上架用描述檔（App Store）
+    # 3. 上架用描述檔（App Store）：App 和小工具各一個，同一張憑證
+    app_uuid = create_profile(PROFILE_NAME, bid, cert['id'], BUNDLE)
+    widget_uuid = create_profile(WIDGET_PROFILE_NAME, widget_bid, cert['id'], WIDGET_BUNDLE)
+    print('簽名準備完成：憑證', cert['id'], '描述檔', PROFILE_NAME, app_uuid, '＋', WIDGET_PROFILE_NAME, widget_uuid)
+
+
+def create_profile(name, bid, cert_id, identifier):
+    """做一個 App Store 描述檔、裝到這台電腦，並確認裡面有 App Group（沒有就停下並說明，否則打包時才會看不懂地失敗）。"""
     prof = call('POST', '/profiles', {'data': {
         'type': 'profiles',
-        'attributes': {'name': PROFILE_NAME, 'profileType': 'IOS_APP_STORE'},
+        'attributes': {'name': name, 'profileType': 'IOS_APP_STORE'},
         'relationships': {'bundleId': {'data': {'type': 'bundleIds', 'id': bid}},
-                          'certificates': {'data': [{'type': 'certificates', 'id': cert['id']}]}}}})['data']
+                          'certificates': {'data': [{'type': 'certificates', 'id': cert_id}]}}}})['data']
     uuid = prof['attributes']['uuid']
     data = base64.b64decode(prof['attributes']['profileContent'])
     for d in ['~/Library/MobileDevice/Provisioning Profiles', '~/Library/Developer/Xcode/UserData/Provisioning Profiles']:
@@ -190,7 +218,33 @@ def prepare_signing(out, bid):
         os.makedirs(d, exist_ok=True)
         with open(f'{d}/{uuid}.mobileprovision', 'wb') as f:
             f.write(data)
-    print('簽名準備完成：憑證', cert['id'], '描述檔', PROFILE_NAME, uuid)
+    check_app_group(data, identifier)
+    return uuid
+
+
+def check_app_group(profile_data, identifier):
+    """描述檔（CMS 包著的 plist）的 Entitlements 要有 APP_GROUP。只在讀得懂描述檔時判斷；讀不懂就交給打包自己檢查。"""
+    import plistlib
+    a, b = profile_data.find(b'<?xml'), profile_data.find(b'</plist>')
+    if a < 0 or b < 0:
+        print(f'::warning::讀不到描述檔內容（{identifier}），略過 App Group 檢查')
+        return
+    try:
+        ents = plistlib.loads(profile_data[a:b + len(b'</plist>')]).get('Entitlements', {})
+    except Exception as e:  # noqa: BLE001 — 只是事前檢查
+        print(f'::warning::描述檔內容解析失敗（{identifier}）：{e}，略過 App Group 檢查')
+        return
+    groups = ents.get('com.apple.security.application-groups') or []
+    if APP_GROUP in groups:
+        print(f'描述檔含 App Group（{identifier}）：{APP_GROUP}')
+        return
+    print(f'::error::{identifier} 的描述檔沒有 App Group {APP_GROUP}（主畫面小工具要用）。Apple 沒有開放 API 建立／指派 App Group，'
+          f'請手動做一次：1) 打開 {APP_GROUP_PORTAL} 按「＋」→ App Groups → Description 填 Fridge Museum、'
+          f'Identifier 填 {APP_GROUP} → Continue → Register。2) 到 https://developer.apple.com/account/resources/identifiers/list '
+          f'分別點 {BUNDLE} 和 {WIDGET_BUNDLE} → 勾 App Groups → Configure（或 Edit）→ 勾 {APP_GROUP} → Continue → Save'
+          f'（跳出「描述檔會失效」選 Confirm）。3) 再按一次上傳。詳見 HANDOFF.md「1.3.0 主畫面小工具」。'
+          f'（描述檔目前的 App Groups：{groups or "無"}）')
+    raise SystemExit(1)
 
 
 def main():
@@ -200,8 +254,10 @@ def main():
     need_env()
     bid = ensure_bundle_id()
     ensure_capabilities(bid)
+    widget_bid = ensure_bundle_id(WIDGET_BUNDLE, WIDGET_BUNDLE_NAME, is_app=False)
+    ensure_capabilities(widget_bid, WIDGET_CAPABILITIES, WIDGET_BUNDLE)
     if sys.argv[1] != '--register-only':
-        prepare_signing(sys.argv[1], bid)
+        prepare_signing(sys.argv[1], bid, widget_bid)
 
 
 if __name__ == '__main__':
