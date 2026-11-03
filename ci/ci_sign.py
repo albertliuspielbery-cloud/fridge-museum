@@ -86,7 +86,10 @@ def _created_days_ago(c):
     try:
         e = dt.datetime.fromisoformat(exp.replace('Z', '+00:00'))
     except ValueError:
-        return 0
+        try:
+            e = dt.datetime.strptime(exp, '%Y-%m-%dT%H:%M:%S.%f%z')
+        except ValueError:
+            return 0
     return 365 - (e - dt.datetime.now(dt.timezone.utc)).days
 
 
@@ -98,7 +101,7 @@ def create_dist_cert(body):
     try:
         return call('POST', '/certificates', body, soft=True)['data']
     except ApiError as e:
-        if e.code != 409:
+        if e.code != 409 or not any(w in e.msg.lower() for w in ('current distribution certificate', 'pending certificate request', 'maximum', 'limit')):
             print(f'::error::App Store Connect API POST /certificates {e.code}: {e.msg[:700]}')
             raise SystemExit(1)
         certs = call('GET', '/certificates?filter[certificateType]=DISTRIBUTION,IOS_DISTRIBUTION&limit=200')['data']
