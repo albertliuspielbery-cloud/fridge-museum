@@ -201,13 +201,17 @@ enum PaperCandidateScoring {
         for (i, c) in usable.enumerated() {
             let shape = shapeScore(c, imageAspect: imageAspect)
             guard shape > 0 else { continue }
-            var miss = 1 - evidence(c)
+            let ownEvidence = evidence(c)
+            var miss = 1 - ownEvidence
             var agreeing: Set<PaperCandidate.Source> = [c.source]
             var cornerSource = c
             var clearDocument = c.source == .document && c.edgeSupport >= clearEdge
             var strongDocument = isStrongDocument(c)
             var groupEdge = c.edgeSupport
-            for (j, o) in usable.enumerated() where j != i && o.source != c.source && !agreeing.contains(o.source) {
+            // An outline without evidence of its own can neither join nor lead a group (else a zero-evidence detector
+            // guess would collect a lone rectangle's evidence and bypass the rectangle cap).
+            let canGroup = ownEvidence >= minAgreeingEvidence
+            for (j, o) in usable.enumerated() where canGroup && j != i && o.source != c.source && !agreeing.contains(o.source) {
                 guard agree(c.quad, o.quad, imageAspect: imageAspect) else { continue }
                 let e = evidence(o)
                 guard e >= minAgreeingEvidence else { continue }
