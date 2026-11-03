@@ -30,6 +30,10 @@ struct FridgeMuseumApp: App {
                 }
             }
             .preferredColorScheme(DemoMode.colorScheme)
+            // 主畫面小工具: here (not in RootView) so a tap that cold-launches the app isn't lost while the store opens.
+            .onOpenURL { url in
+                if let id = WidgetShared.artworkID(from: url) { appModel.widgetArtworkID = id }
+            }
             .task {
                 guard container == nil else { return }
                 container = await appModel.sync.openStore(isFullVersion: appModel.store.isUnlocked)

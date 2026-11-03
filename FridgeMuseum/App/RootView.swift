@@ -87,8 +87,10 @@ struct RootView: View {
         .onChange(of: app.popToRoot) {
             path = NavigationPath()
         }
+        .onChange(of: app.widgetArtworkID) { openWidgetArtwork() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { app.store.refresh() }
+            if phase == .background { WidgetSnapshot.shared.flush() }
         }
         .onChange(of: app.store.isUnlocked) { offerSyncIntroIfNeeded() }
         .onChange(of: app.paywall) { offerSyncIntroIfNeeded() }
@@ -97,6 +99,8 @@ struct RootView: View {
         .onChange(of: OnboardingCoordinator.shared.isPresented) { offerSyncIntroIfNeeded() }
         .onChange(of: OnboardingCoordinator.shared.isAddingChild) { offerSyncIntroIfNeeded() }
         .task {
+            openWidgetArtwork()
+            WidgetSnapshot.shared.start(container: modelContext.container)
             await app.store.load()
             app.processUnfinished(context: modelContext)
             // iCloud: merge duplicates / render synced artworks now and after every import (only when syncing).
@@ -124,6 +128,17 @@ struct RootView: View {
 
     private func open(_ route: Route) {
         path.append(route)
+    }
+
+    /// 主畫面小工具: the tapped artwork's page right on top of the home screen (Settings closed). An artwork that is
+    /// gone shows ArtworkLoader's 找不到這件作品. Sheets / the camera opened from elsewhere stay as they are.
+    private func openWidgetArtwork() {
+        guard let id = app.widgetArtworkID else { return }
+        app.widgetArtworkID = nil
+        showSettings = false
+        var fresh = NavigationPath()
+        fresh.append(Route.detail(id))
+        path = fresh
     }
 }
 

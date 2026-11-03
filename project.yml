@@ -48,6 +48,11 @@ targets:
           - "**/API.md"
       - path: FridgeMuseum/Resources/PrivacyInfo.xcprivacy
         buildPhase: resources
+      # 主畫面小工具 (1.3.0): App Group paths, widget.json model, selection + rotation (also compiled into the widget).
+      - path: Shared
+    dependencies:
+      # 主畫面小工具 (1.3.0): embedded in PlugIns/ (XcodeGen embeds app extensions by default).
+      - target: FridgeMuseumWidget
     info:
       path: FridgeMuseum/Info.plist
       properties:
@@ -71,6 +76,11 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        # 主畫面小工具 (1.3.0): fridgemuseum://artwork/<uuid> opens that artwork (FridgeMuseumApp.onOpenURL).
+        CFBundleURLTypes:
+          - CFBundleURLName: tw.starlight.fridgemuseum.artwork-link
+            CFBundleURLSchemes:
+              - fridgemuseum
         # iCloud sync (1.2.0): CloudKit's silent pushes (another device changed something).
         UIBackgroundModes:
           - remote-notification
@@ -100,6 +110,53 @@ targets:
         MTLLINKER_FLAGS: -cikernel
         # Add FM_SWIFT_VISION to try the new Swift Vision API path for document detection (unverified):
         # SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) FM_SWIFT_VISION"
+      configs:
+        Release:
+          # Manual signing for the App Store upload: ios.yml passes FM_APP_PROFILE / FM_WIDGET_PROFILE (the profile
+          # names ci/ci_sign.py creates), so each target gets its own profile. Empty (= Automatic) everywhere else.
+          PROVISIONING_PROFILE_SPECIFIER: $(FM_APP_PROFILE)
+
+  # 主畫面小工具 (1.3.0): small / medium / large museum widget. Reads only the App Group files the app writes
+  # (App/WidgetSnapshot.swift); never opens the database. Own String Catalog (Localizable.xcstrings, zh-Hant + en)
+  # and asset catalog (copies of the app's 冰冰 / magnet art). System rounded fonts (keeps the extension small).
+  FridgeMuseumWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: FridgeMuseumWidget
+        excludes:
+          - "Info.plist"
+          - "FridgeMuseumWidget.entitlements"
+      - path: Shared
+    info:
+      path: FridgeMuseumWidget/Info.plist
+      properties:
+        CFBundleDisplayName: 冰箱美術館
+        CFBundleDevelopmentRegion: zh-Hant
+        CFBundleLocalizations:
+          - zh-Hant
+          - en
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSHumanReadableCopyright: $(APP_COPYRIGHT)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_NAME: FridgeMuseumWidget
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).widget
+        CODE_SIGN_ENTITLEMENTS: FridgeMuseumWidget/FridgeMuseumWidget.entitlements
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        ENABLE_PREVIEWS: YES
+      configs:
+        Release:
+          PROVISIONING_PROFILE_SPECIFIER: $(FM_WIDGET_PROFILE)
 
   FridgeMuseumTests:
     type: bundle.unit-test

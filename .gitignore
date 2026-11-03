@@ -2,6 +2,7 @@
 *.xcodeproj/
 *.xcworkspace/
 FridgeMuseum/Info.plist
+FridgeMuseumWidget/Info.plist
 
 # Xcode / build
 build/

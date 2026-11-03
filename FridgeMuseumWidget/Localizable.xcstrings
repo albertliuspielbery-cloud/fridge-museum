@@ -1,0 +1,57 @@
+{
+  "sourceLanguage" : "zh-Hant",
+  "strings" : {
+    "冰箱美術館" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My Fridge Museum"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "冰箱美術館"
+          }
+        }
+      }
+    },
+    "拍第一張作品吧" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snap your first artwork!"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拍第一張作品吧"
+          }
+        }
+      }
+    },
+    "每三小時換一件孩子的作品。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A different artwork from your museum every three hours."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每三小時換一件孩子的作品。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
