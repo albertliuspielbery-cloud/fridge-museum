@@ -138,7 +138,13 @@ struct ChildEditorView: View {
             }
             .confirmationDialog(Text("確定刪除？"), isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("刪除", role: .destructive) {
-                    if let child { modelContext.delete(child); try? modelContext.save() }
+                    if let child {
+                        // Their artworks become 未分類: mark them edited so the change reaches the family museum
+                        // (and 1.2 sync's newer-edit-wins) instead of only living on this phone.
+                        for artwork in child.artworks ?? [] { artwork.touch() }
+                        modelContext.delete(child)
+                        try? modelContext.save()
+                    }
                     dismiss()
                 }
             }

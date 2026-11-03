@@ -51,6 +51,12 @@ struct FamilySection: View {
             } message: {
                 Text(verbatim: problem ?? "")
             }
+            // A stop / leave finished from the system sharing screen (or resumed at launch).
+            .onChange(of: family.pendingMessage, initial: true) { _, message in
+                guard let message else { return }
+                family.pendingMessage = nil
+                problem = message
+            }
         }
     }
 

@@ -40,6 +40,9 @@ struct FamilyMembership: Codable, Equatable, Sendable {
     /// Set when the family museum ended but the family works haven't been copied into the personal store yet
     /// (the copy is retried at every launch until it succeeds; only then is the membership cleared).
     var pendingEnd: FamilyEndReason?
+    /// 停止分享 started but didn't finish (copy back or zone deletion failed, e.g. offline, or the system sharing
+    /// screen already removed the share): the next family launch resumes it, so the owner never stays half-stopped.
+    var stopRequested: Bool?
 }
 
 /// Which store this launch opens. Exactly one: switching takes effect at the next launch (same reason as 1.2 —
@@ -63,8 +66,10 @@ enum FamilySyncPolicy {
     /// Two timestamps closer than this are the same edit: CloudKit keeps milliseconds, SwiftData keeps more.
     static let timeTolerance: TimeInterval = 0.01
 
-    /// A scan that finds no records at all while this many were uploaded is treated as a broken or empty store,
-    /// not as "the family deleted everything": its deletions are not sent (they would empty every phone).
+    /// Deletions of records this phone hasn't seen in the store during this session (a store that opened empty or
+    /// broken looks exactly like that) are held back when they would remove at least this many records *and* more
+    /// than half of everything uploaded — they would empty every family phone. Deletions of records seen earlier
+    /// this session (the person deleted them, or they left the museum) always go through.
     static let massDeleteGuard = 3
 
     /// Simulator, screenshot demos and unit tests (`isSupported` false) never open the family store, whatever is
@@ -161,11 +166,27 @@ struct FamilySyncState: Codable, Equatable, Sendable {
     var systemFields: [String: Data] = [:]
     /// Artworks whose child hasn't arrived yet: artwork record name → child record name.
     var awaitingChild: [String: String] = [:]
+    /// Server records that arrived with an asset file that couldn't be read: not applied (that would wipe the image
+    /// here and, with the next edit, for the whole family); fetched again directly (FamilySync.refetch).
+    var refetch: Set<String> = []
+
+    init() {}
+
+    /// Missing keys decode as empty (state files written by earlier builds).
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        uploaded = try c.decodeIfPresent([String: FamilyStamp].self, forKey: .uploaded) ?? [:]
+        systemFields = try c.decodeIfPresent([String: Data].self, forKey: .systemFields) ?? [:]
+        awaitingChild = try c.decodeIfPresent([String: String].self, forKey: .awaitingChild) ?? [:]
+        refetch = try c.decodeIfPresent(Set<String>.self, forKey: .refetch) ?? []
+    }
 }
 
 extension FamilySyncPolicy {
-    /// Compares the store with the uploaded-state table.
-    static func changes(local: [FamilyLocalItem], uploaded: [String: FamilyStamp]) -> FamilyChanges {
+    /// Compares the store with the uploaded-state table. `seenThisSession`: record names found in the store by an
+    /// earlier scan this session (see `massDeleteGuard`).
+    static func changes(local: [FamilyLocalItem], uploaded: [String: FamilyStamp],
+                        seenThisSession: Set<String> = []) -> FamilyChanges {
         var result = FamilyChanges()
         var present = Set<String>()
         for item in local {
@@ -177,12 +198,43 @@ extension FamilySyncPolicy {
         }
         result.saves.sort()
         let missing = uploaded.keys.filter { !present.contains($0) }.sorted()
-        if local.isEmpty && missing.count >= massDeleteGuard {
+        let known = missing.filter { seenThisSession.contains($0) }
+        let unknown = missing.filter { !seenThisSession.contains($0) }
+        if unknown.count >= massDeleteGuard && unknown.count * 2 > uploaded.count {
             result.heldBackDeletes = true
+            result.deletes = known
         } else {
             result.deletes = missing
         }
         return result
+    }
+
+    /// Records in the store that the family doesn't have yet (never uploaded, or changed since), including ones
+    /// still rendering. Leaving copies these into the personal store even when the person chose not to keep the
+    /// family works: they may exist nowhere else.
+    static func unsent(local: [FamilyLocalItem], uploaded: [String: FamilyStamp]) -> [String] {
+        local.filter { item in
+            guard let last = uploaded[item.recordName] else { return true }
+            return !last.isSameVersion(as: item.stamp)
+        }.map(\.recordName).sorted()
+    }
+
+    enum IncomingAction: Equatable, Sendable {
+        /// Write the server's version into the store.
+        case apply
+        /// Keep this phone's newer edit and upload it on top of the server's version.
+        case keepLocal
+        /// The server's version wins but an asset couldn't be read: change nothing here, fetch the record again.
+        case refetch
+    }
+
+    /// What to do with a server record once the winner is known. A record with an unreadable asset is never applied
+    /// — not even partly — because a missing image would be read as "no image" and uploaded with the next edit.
+    static func incomingAction(winner: Winner, hasUnreadableAssets: Bool) -> IncomingAction {
+        switch winner {
+        case .local: return .keepLocal
+        case .server: return hasUnreadableAssets ? .refetch : .apply
+        }
     }
 
     enum Winner: Equatable, Sendable {
@@ -529,6 +581,22 @@ enum FamilyRecordCodec {
         f.originDeviceID = string(record, F.originDeviceID)
         f.modifiedAt = record[F.modifiedAt] as? Date
         return f
+    }
+
+    /// The asset fields of each record type.
+    static let assetFields: [String: [String]] = [
+        FamilySyncPolicy.childRecordType: [F.avatarImage],
+        FamilySyncPolicy.artworkRecordType: [F.originalImage, F.renderedImage, F.thumbnail, F.voiceNote],
+    ]
+
+    /// Asset fields that hold a CKAsset whose file can't be read here. An absent field (nil) is a real "no image";
+    /// an unreadable file is not, and must never be treated as one.
+    static func unreadableAssets(in record: CKRecord) -> [String] {
+        (assetFields[record.recordType] ?? []).filter { key in
+            guard let value = record[key] else { return false }
+            guard let asset = value as? CKAsset, let url = asset.fileURL else { return true }
+            return !FileManager.default.isReadableFile(atPath: url.path)
+        }
     }
 
     /// The version a record carries (for the uploaded-state table), without reading its assets.

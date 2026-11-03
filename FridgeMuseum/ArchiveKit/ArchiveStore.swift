@@ -142,10 +142,20 @@ extension ArchiveStore {
     /// every id, so copying twice never makes duplicates. A record already in `target` is only updated when the
     /// source copy was edited later (`modifiedAt`); nothing in `target` is ever deleted, and `source` is only read.
     /// Works in small batches with a fresh context each (images stay out of memory), yielding between batches.
+    /// `only`: copy just these records (artworks and children by id) plus the children those artworks belong to —
+    /// used to rescue works the family doesn't have yet when someone leaves without copying the rest.
     /// Returns how many artworks were added or updated.
     @MainActor @discardableResult
-    static func copyMuseum(from source: ModelContainer, to target: ModelContainer) async throws -> Int {
+    static func copyMuseum(from source: ModelContainer, to target: ModelContainer,
+                           only: Set<UUID>? = nil) async throws -> Int {
         let batch = 8
+        let museum = #Predicate<Artwork> { $0.isKept && !$0.isSample }
+        var wantedChildren: Set<UUID>? = nil
+        if let only {
+            let owners = try ModelContext(source).fetch(FetchDescriptor<Artwork>(predicate: museum))
+                .filter { only.contains($0.id) }.compactMap { $0.child?.id }
+            wantedChildren = only.union(owners)
+        }
         // Children first, so artworks can point at them.
         do {
             let read = ModelContext(source)
@@ -154,6 +164,7 @@ extension ArchiveStore {
             let existing = Dictionary(try write.fetch(FetchDescriptor<Child>()).map { ($0.id, $0) },
                                       uniquingKeysWith: { first, _ in first })
             for child in try read.fetch(FetchDescriptor<Child>(sortBy: [SortDescriptor(\.createdAt)])) {
+                if let wantedChildren, !wantedChildren.contains(child.id) { continue }
                 let fields = FamilyChildFields(child)
                 if let mine = existing[child.id] {
                     if isNewer(fields.modifiedAt, than: mine.modifiedAt) { fields.apply(to: mine) }
@@ -166,7 +177,6 @@ extension ArchiveStore {
             try write.save()
         }
 
-        let museum = #Predicate<Artwork> { $0.isKept && !$0.isSample }
         let total = try ModelContext(source).fetchCount(FetchDescriptor<Artwork>(predicate: museum))
         var copied = 0
         var offset = 0
@@ -181,6 +191,7 @@ extension ArchiveStore {
             if artworks.isEmpty { break }
             for artwork in artworks {
                 let id = artwork.id
+                if let only, !only.contains(id) { continue }
                 let mine = try write.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.id == id })).first
                 if let mine, !isNewer(artwork.modifiedAt, than: mine.modifiedAt) { continue }
                 var child: Child?

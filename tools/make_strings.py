@@ -680,6 +680,8 @@ EN_FAMILY = {
     "回到你自己的美術館了，家庭美術館的作品也複製了一份在這裡。":
         "Welcome back to your own museum. The Family Museum’s artworks were copied here too.",
     "這個連結不是冰箱美術館的家庭美術館邀請。": "This link isn’t a My Fridge Museum Family Museum invitation.",
+    "有些作品還沒傳到家庭美術館，已經先複製一份到你的美術館，不會不見。":
+        "Some artworks hadn’t reached the Family Museum yet, so a copy was saved to your museum — nothing is lost.",
 }
 EN.update(EN_FAMILY)
 # ---- end fix/1.3-family
@@ -689,15 +691,15 @@ INFOPLIST = {
     "CFBundleName": ("冰箱美術館", "My Fridge Museum"),
     "NSHumanReadableCopyright": ("© 星光工作室 Starlight Studio", "© Starlight Studio"),
     # 1.2.0 (iCloud sync): also true when sync is on — keep in step with project.yml.
-    "NSCameraUsageDescription": ("用相機拍下孩子的畫作和勞作。照片在手機上處理；開啟 iCloud 同步時，只存到你自己的 iCloud。",
-                                 "Take photos of your kid’s drawings and crafts. Photos are processed on this phone; "
-                                 "with iCloud Sync on, they’re kept only in your own iCloud."),
+    "NSCameraUsageDescription": ("用相機拍下孩子的畫作和勞作。照片在手機上處理；開啟 iCloud 同步或家庭美術館時，才存到 iCloud，我們看不到。",
+                                 "Take photos of your kid’s drawings and crafts. Photos are processed on this phone "
+                                 "and only go to iCloud with iCloud Sync or a Family Museum. We never see them."),
     "NSPhotoLibraryAddUsageDescription": ("把整理好的作品存到「照片」。", "Save finished artworks to Photos."),
     "NSPhotoLibraryUsageDescription": ("為每位小朋友建立「冰箱美術館」相簿，並把整理好的作品放進去。",
                                        "Create a My Fridge Museum album for each child and add finished artworks to it."),
-    "NSMicrophoneUsageDescription": ("錄下孩子介紹自己作品的聲音。錄音存在這支手機；開啟 iCloud 同步時，只存到你自己的 iCloud。",
-                                     "Record your kid talking about their artwork. Recordings stay on this phone; "
-                                     "with iCloud Sync on, they’re kept only in your own iCloud."),
+    "NSMicrophoneUsageDescription": ("錄下孩子介紹自己作品的聲音。錄音存在這支手機；開啟 iCloud 同步或家庭美術館時，才存到 iCloud，我們看不到。",
+                                     "Record your kid talking about their artwork. Recordings stay on this phone "
+                                     "and only go to iCloud with iCloud Sync or a Family Museum. We never see them."),
     "NSSpeechRecognitionUsageDescription": ("在手機上把孩子的錄音轉成文字備註，不會上傳到網路。",
                                             "Turn your kid’s recording into a text note on this phone. Nothing is uploaded."),
 }

@@ -181,6 +181,95 @@ struct FamilySyncTests {
         #expect(FamilySyncPolicy.changes(local: [], uploaded: small).deletes.count == 1)
     }
 
+    /// The guard is proportional: many deletions of records not seen this session are held back, a few go through,
+    /// and deletions of records seen earlier this session (the person deleted them) always go through.
+    @Test func massDeleteGuardIsProportional() {
+        let t = day(2026, 1, 1)
+        let ids = (0..<10).map { _ in UUID() }
+        var uploaded: [String: FamilyStamp] = [:]
+        for id in ids { uploaded[id.uuidString] = FamilyStamp(kind: .artwork, modifiedAt: t) }
+        // 4 of 10 missing: not more than half → sent.
+        let fewGone = FamilySyncPolicy.changes(local: ids.prefix(6).map { item($0, t) }, uploaded: uploaded)
+        #expect(fewGone.deletes.count == 4)
+        #expect(!fewGone.heldBackDeletes)
+        // 6 of 10 missing, never seen this session → held back.
+        let mostGone = FamilySyncPolicy.changes(local: ids.prefix(4).map { item($0, t) }, uploaded: uploaded)
+        #expect(mostGone.deletes.isEmpty)
+        #expect(mostGone.heldBackDeletes)
+        // The same 6, seen earlier this session (deleted here on purpose) → sent.
+        let seen = Set(ids.map(\.uuidString))
+        let deliberate = FamilySyncPolicy.changes(local: ids.prefix(4).map { item($0, t) }, uploaded: uploaded,
+                                                  seenThisSession: seen)
+        #expect(deliberate.deletes.count == 6)
+        #expect(!deliberate.heldBackDeletes)
+        // Mixed: seen ones go, unseen ones wait.
+        let partly = Set(ids.suffix(2).map(\.uuidString))
+        let mixed = FamilySyncPolicy.changes(local: ids.prefix(2).map { item($0, t) }, uploaded: uploaded,
+                                             seenThisSession: partly)
+        #expect(Set(mixed.deletes) == partly)
+        #expect(mixed.heldBackDeletes)
+    }
+
+    /// What leaving keeps even without "copy": never uploaded, changed since, or still rendering.
+    @Test func unsentFindsWorksTheFamilyDoesNotHave() {
+        let t = day(2026, 1, 1)
+        let synced = UUID(), edited = UUID(), fresh = UUID(), rendering = UUID()
+        let uploaded = [synced.uuidString: FamilyStamp(kind: .artwork, modifiedAt: t),
+                        edited.uuidString: FamilyStamp(kind: .artwork, modifiedAt: t),
+                        rendering.uuidString: FamilyStamp(kind: .artwork, modifiedAt: t)]
+        let local = [item(synced, t), item(edited, t.addingTimeInterval(9)), item(fresh, t),
+                     item(rendering, t, render: 1, ready: false)]
+        let unsent = FamilySyncPolicy.unsent(local: local, uploaded: uploaded)
+        #expect(Set(unsent) == [edited.uuidString, fresh.uuidString, rendering.uuidString])
+    }
+
+    // MARK: Unreadable assets
+
+    @Test func unreadableAssetsAreNeverApplied() {
+        #expect(FamilySyncPolicy.incomingAction(winner: .server, hasUnreadableAssets: false) == .apply)
+        #expect(FamilySyncPolicy.incomingAction(winner: .server, hasUnreadableAssets: true) == .refetch)
+        #expect(FamilySyncPolicy.incomingAction(winner: .local, hasUnreadableAssets: true) == .keepLocal)
+        #expect(FamilySyncPolicy.incomingAction(winner: .local, hasUnreadableAssets: false) == .keepLocal)
+    }
+
+    /// "No image" (field absent) and "image file missing" (a CKAsset that can't be read) are told apart.
+    @Test func unreadableAssetIsNotNoAsset() throws {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var fields = sampleArtworkFields()
+        fields.voiceNoteData = nil
+        let record = try FamilyRecordCodec.record(fields, zoneID: zoneID, base: nil, assetDirectory: dir)
+        let readable = FamilyRecordCodec.unreadableAssets(in: record)
+        #expect(readable.isEmpty)   // voiceNote absent: a real "none", not unreadable
+        let rendered = try #require((record["renderedImage"] as? CKAsset)?.fileURL)
+        try FileManager.default.removeItem(at: rendered)
+        let missing = FamilyRecordCodec.unreadableAssets(in: record)
+        #expect(missing == ["renderedImage"])
+        // Child records too.
+        var child = FamilyChildFields(id: UUID())
+        child.avatarImageData = Data([1, 2])
+        let childRecord = try FamilyRecordCodec.record(child, zoneID: zoneID, base: nil, assetDirectory: dir)
+        let avatar = try #require((childRecord["avatarImage"] as? CKAsset)?.fileURL)
+        try FileManager.default.removeItem(at: avatar)
+        let childMissing = FamilyRecordCodec.unreadableAssets(in: childRecord)
+        #expect(childMissing == ["avatarImage"])
+    }
+
+    @Test func olderStateAndMembershipFilesStillDecode() throws {
+        let oldState = Data(#"{"uploaded":{},"systemFields":{},"awaitingChild":{}}"#.utf8)
+        let state = try JSONDecoder().decode(FamilySyncState.self, from: oldState)
+        #expect(state.refetch.isEmpty)
+        var withRefetch = FamilySyncState()
+        withRefetch.refetch = ["a"]
+        let encoded = try JSONEncoder().encode(withRefetch)
+        let decoded = try JSONDecoder().decode(FamilySyncState.self, from: encoded)
+        #expect(decoded == withRefetch)
+        let oldMember = Data(#"{"role":"member","zoneOwnerName":"_x","joinedAt":0}"#.utf8)
+        let membership = try JSONDecoder().decode(FamilyMembership.self, from: oldMember)
+        #expect(membership.stopRequested == nil)
+        #expect(membership.pendingEnd == nil)
+    }
+
     // MARK: Conflicts
 
     @Test func newerEditWinsAConflict() {
@@ -579,6 +668,33 @@ struct FamilySyncTests {
         let refreshed = try ModelContext(personal).fetch(FetchDescriptor<Artwork>())
         #expect(refreshed.count == 3)
         #expect(refreshed.first { $0.id == shared }?.title == "家人後來改的")
+    }
+
+    /// 直接離開 still rescues unsent works: only those (and their child) are copied into the personal store.
+    @Test func copyingOnlyUnsentWorksBringsTheirChild() async throws {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let personal = try ArchiveStore.openPersonalForCopy(url: dir.appendingPathComponent("default.store"))
+        let family = try ArchiveStore.openFamilyForCopy(url: dir.appendingPathComponent("family.store"))
+        let f = ModelContext(family)
+        let kid = Child(name: "小華")
+        let otherKid = Child(name: "表哥")
+        f.insert(kid)
+        f.insert(otherKid)
+        let unsent = Artwork(kind: .flat, child: kid, capturedAt: day(2026, 2, 1), originalImageData: Data([1]))
+        let synced = Artwork(kind: .flat, child: otherKid, capturedAt: day(2026, 2, 2), originalImageData: Data([2]))
+        f.insert(unsent)
+        f.insert(synced)
+        try f.save()
+
+        let copied = try await ArchiveStore.copyMuseum(from: family, to: personal, only: [unsent.id])
+        #expect(copied == 1)
+        let p = ModelContext(personal)
+        let artworks = try p.fetch(FetchDescriptor<Artwork>())
+        #expect(artworks.map(\.id) == [unsent.id])
+        #expect(artworks.first?.child?.id == kid.id)
+        let children = try p.fetch(FetchDescriptor<Child>())
+        #expect(children.map(\.id) == [kid.id])
     }
 
     @Test func newerCompareTreatsUnstampedAsOldest() {

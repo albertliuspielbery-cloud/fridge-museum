@@ -48,6 +48,9 @@ final class FamilySync {
     var invite: FamilyInvite?
     /// Something Bibi says once (RootView shows it as a toast).
     var notice: FamilyNotice?
+    /// The result of a stop / leave that wasn't started from Settings' own buttons (the system sharing screen, or a
+    /// stop resumed at launch): Settings shows it in an alert, RootView as a toast when Settings isn't open.
+    var pendingMessage: String?
 
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var container: ModelContainer?
@@ -58,6 +61,11 @@ final class FamilySync {
     /// Records whose upload failed for a reason a retry won't fix: not queued again this session (a broken record
     /// must not upload its images again after every save).
     @ObservationIgnored private var failedThisSession: Set<String> = []
+    /// Record names found in the store by a scan this session: their disappearance is a real deletion
+    /// (FamilySyncPolicy.massDeleteGuard).
+    @ObservationIgnored private var seenThisSession: Set<String> = []
+    @ObservationIgnored private var refetchTask: Task<Void, Never>?
+    @ObservationIgnored private var refetchRounds = 0
     @ObservationIgnored private let shareDelegate = FamilyShareControllerDelegate()
 
     init(defaults: UserDefaults = .standard) {
@@ -103,7 +111,15 @@ final class FamilySync {
         // "everything was deleted". Nor can it be copied from; the next launch tries again.
         guard !ArchiveStore.isTemporary else { return opened }
         switch decided {
-        case .family: startSync()
+        case .family(let role):
+            startSync()
+            // A 停止分享 that didn't finish last time (offline, failed copy, or the system sharing screen removed
+            // the share) finishes now.
+            if role == .owner, membership?.stopRequested == true {
+                Task {
+                    if let message = await stopSharing() { pendingMessage = message }
+                }
+            }
         case .closingFamily(let reason): Task { await finishEnding(reason, copy: true) }
         case .personal: break
         }
@@ -139,6 +155,7 @@ final class FamilySync {
             MainActor.assumeIsolated { self?.scanNow() }
         })
         scheduleScan(after: 1)
+        scheduleRefetch()
     }
 
     /// Stops syncing for the rest of the session. Doesn't wait for the engine's operations to wind down: this also
@@ -164,8 +181,9 @@ final class FamilySync {
     }
 
     /// Compares the store with the uploaded-state table and queues what changed. Reads small fields only.
-    private func scanNow() {
-        guard let engine, let zoneID, let context = container?.mainContext, endedThisSession == nil else { return }
+    /// The family store's museum records, small fields only.
+    private func localItems() -> [FamilyLocalItem]? {
+        guard let context = container?.mainContext else { return nil }
         var items: [FamilyLocalItem] = []
         var artworks = FetchDescriptor<Artwork>(predicate: #Predicate { $0.isKept && !$0.isSample })
         artworks.propertiesToFetch = [\.id, \.modifiedAt, \.renderVersion, \.processingStateRaw]
@@ -180,12 +198,19 @@ final class FamilySync {
         for c in (try? context.fetch(children)) ?? [] where !c.isDeleted {
             items.append(FamilyLocalItem(id: c.id, stamp: FamilyStamp(kind: .child, modifiedAt: c.modifiedAt)))
         }
-        let changes = FamilySyncPolicy.changes(local: items, uploaded: state.uploaded)
+        return items
+    }
+
+    private func scanNow() {
+        guard let engine, let zoneID, endedThisSession == nil, let items = localItems() else { return }
+        let changes = FamilySyncPolicy.changes(local: items, uploaded: state.uploaded, seenThisSession: seenThisSession)
+        seenThisSession.formUnion(items.map(\.recordName))
         guard !changes.isEmpty else { return }
         let pending = engine.state.pendingRecordZoneChanges
         var add: [CKSyncEngine.PendingRecordZoneChange] = []
         var drop: [CKSyncEngine.PendingRecordZoneChange] = []
-        for name in changes.saves where !failedThisSession.contains(name) {
+        // A record waiting to be fetched again (unreadable asset) isn't uploaded until the server's version is here.
+        for name in changes.saves where !failedThisSession.contains(name) && !state.refetch.contains(name) {
             let change = CKSyncEngine.PendingRecordZoneChange.saveRecord(FamilyRecordCodec.recordID(name, zoneID: zoneID))
             if !pending.contains(change) { add.append(change) }
         }
@@ -279,11 +304,23 @@ final class FamilySync {
         let winner = conflict
             ? FamilySyncPolicy.resolveConflict(localModifiedAt: mine?.modifiedAt, serverModifiedAt: server.modifiedAt)
             : FamilySyncPolicy.resolveIncoming(local: mine, uploaded: state.uploaded[name], server: server)
-        state.systemFields[name] = FamilyRecordCodec.encodeSystemFields(record)
-        guard winner == .server else {
-            // An edit made here is newer: upload it on top of the server's version.
+        let unreadable = !FamilyRecordCodec.unreadableAssets(in: record).isEmpty
+        switch FamilySyncPolicy.incomingAction(winner: winner, hasUnreadableAssets: unreadable) {
+        case .keepLocal:
+            // An edit made here is newer: upload it on top of the server's version (no assets needed for that).
+            state.systemFields[name] = FamilyRecordCodec.encodeSystemFields(record)
             queueSave(name)
             return
+        case .refetch:
+            // The server's version wins, but an image file isn't readable (e.g. a conflict's serverRecord without
+            // downloaded assets). Nothing here changes — not the store, not the change tag, not the uploaded
+            // table — until the whole record is fetched again; meanwhile this record isn't uploaded (scanNow).
+            state.refetch.insert(name)
+            scheduleRefetch()
+            return
+        case .apply:
+            state.systemFields[name] = FamilyRecordCodec.encodeSystemFields(record)
+            state.refetch.remove(name)
         }
         switch server.kind {
         case .child:
@@ -320,6 +357,34 @@ final class FamilySync {
         for (artworkName, wanted) in state.awaitingChild where wanted == childName {
             if let id = UUID(uuidString: artworkName), let a = artwork(id) { a.child = child }
             state.awaitingChild[artworkName] = nil
+        }
+    }
+
+    /// Fetches records whose server version arrived with an unreadable asset again, directly (the sync engine won't
+    /// deliver them twice), and applies them once every asset reads. A few rounds per session at most; the rest
+    /// waits for the next launch (they stay in `state.refetch`, and aren't uploaded meanwhile).
+    private func scheduleRefetch() {
+        guard refetchTask == nil, refetchRounds < 5, engine != nil, let membership, !state.refetch.isEmpty else { return }
+        refetchRounds += 1
+        let names = Array(state.refetch)
+        let owner = membership.zoneOwnerName
+        let isOwner = membership.role == .owner
+        refetchTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            let fetched = await Self.fetchRecords(names: names, zoneOwnerName: owner, isOwner: isOwner)
+            guard let self else { return }
+            self.refetchTask = nil
+            guard self.engine != nil, self.endedThisSession == nil else { return }
+            // Deleted meanwhile: the deletion arrives through the engine.
+            for name in fetched.value.gone { self.state.refetch.remove(name) }
+            for record in fetched.value.records where record.recordType == FamilySyncPolicy.childRecordType {
+                self.applyIncoming(record, conflict: false)
+            }
+            for record in fetched.value.records where record.recordType == FamilySyncPolicy.artworkRecordType {
+                self.applyIncoming(record, conflict: false)
+            }
+            try? self.context?.save()
+            self.saveState()
         }
     }
 
@@ -438,20 +503,45 @@ final class FamilySync {
         if reason == .revoked || reason == .accountChanged { notice = .ended(reason) }
     }
 
-    /// 停止分享 (owner): brings family.store up to date, copies the family works into the personal store, then
-    /// deletes the zone (and with it the share; every member's phone copies its works back when it notices).
-    /// Returns a message when it couldn't finish (nothing is lost; sharing simply continues).
+    /// Before leaving or stopping: fetch the family's latest changes, queue this phone's own, and try to send them.
+    /// Returns whether the fetch got through (each step has a time limit; offline just means "not sent").
+    private func flush() async -> Bool {
+        guard let engine else { return false }
+        let fetched = await CloudSync.withTimeout(seconds: 20) { () async -> Bool in
+            do { try await engine.fetchChanges(); return true } catch { return false }
+        }
+        scanNow()
+        _ = await CloudSync.withTimeout(seconds: 40) { () async -> Bool in
+            do { try await engine.sendChanges(); return true } catch { return false }
+        }
+        return fetched == true
+    }
+
+    /// Records in family.store the family doesn't have (FamilySyncPolicy.unsent).
+    private func unsentIDs() -> Set<UUID> {
+        Set(FamilySyncPolicy.unsent(local: localItems() ?? [], uploaded: state.uploaded).compactMap { UUID(uuidString: $0) })
+    }
+
+    /// 停止分享 (owner): brings family.store up to date (and sends this phone's changes), copies the family works into
+    /// the personal store, then deletes the zone (and with it the share; every member's phone copies its works back
+    /// when it notices). Marked `stopRequested` first, so a stop that doesn't finish (offline, a failed copy, or the
+    /// system sharing screen already removed the share) is resumed at the next launch. Returns a message when it
+    /// couldn't finish (nothing is lost; sharing simply continues until it does).
     func stopSharing() async -> String? {
-        guard case .family(.owner) = mode, endedThisSession == nil, let container, let engine else { return nil }
+        guard case .family(.owner) = mode, endedThisSession == nil, let container, engine != nil,
+              var saved = membership else { return nil }
         isWorking = true
         defer { isWorking = false }
-        do {
-            try await engine.fetchChanges()
-        } catch {
+        if saved.stopRequested != true {
+            saved.stopRequested = true
+            saveMembership(saved)
+        }
+        guard await flush() else {
             return String(localized: "沒有連上網路，家庭美術館還在分享中。請連上網路再試一次。")
         }
         await stopSync()
         do {
+            // Everything, so unsent works are kept too.
             let personal = try ArchiveStore.openPersonalForCopy()
             try await ArchiveStore.copyMuseum(from: container, to: personal)
         } catch {
@@ -469,18 +559,21 @@ final class FamilySync {
         return nil
     }
 
-    /// 離開家庭美術館 (member). `copyWorks`: keep a copy of the family works in the personal museum.
+    /// 離開家庭美術館 (member). `copyWorks`: keep a copy of the family works in the personal museum. Works the family
+    /// doesn't have yet (not uploaded: offline, still rendering) are always copied — they may exist nowhere else.
     /// `alreadyLeft`: the system sharing screen's 移除我 already removed this phone's account from the share.
+    /// Returns a message for the person (a problem, or that unsent works were kept).
     func leave(copyWorks: Bool, alreadyLeft: Bool = false) async -> String? {
         guard mode.opensFamilyStore, endedThisSession == nil, let container, let membership else { return nil }
         isWorking = true
         defer { isWorking = false }
-        if let engine { try? await engine.fetchChanges() }
+        _ = await flush()
+        let unsent = unsentIDs()
         await stopSync()
-        if copyWorks {
+        if copyWorks || !unsent.isEmpty {
             do {
                 let personal = try ArchiveStore.openPersonalForCopy()
-                try await ArchiveStore.copyMuseum(from: container, to: personal)
+                try await ArchiveStore.copyMuseum(from: container, to: personal, only: copyWorks ? nil : unsent)
             } catch {
                 if !alreadyLeft { startSync() }
                 return String(localized: "作品沒辦法複製到你的美術館，所以先不離開。請重新打開 App 再試一次。")
@@ -496,23 +589,29 @@ final class FamilySync {
         }
         endedThisSession = .left
         await finishEnding(.left, copy: false)
+        if !copyWorks && !unsent.isEmpty {
+            return String(localized: "有些作品還沒傳到家庭美術館，已經先複製一份到你的美術館，不會不見。")
+        }
         return nil
     }
 
-    /// The system sharing screen stopped the share (owner) or removed this member.
+    /// The system sharing screen stopped the share (owner) or removed this member. Finishes the same way as the
+    /// buttons do, and shows what happened if it couldn't finish.
     private func sharingStoppedInController() {
         guard let membership, endedThisSession == nil else { return }
         Task {
+            var message: String?
             if membership.role == .owner, case .family(.owner) = mode {
-                _ = await stopSharing()
+                message = await stopSharing()
             } else if case .family = mode {
-                _ = await leave(copyWorks: true, alreadyLeft: true)
+                message = await leave(copyWorks: true, alreadyLeft: true)
             } else {
                 // Stopped before this phone switched over: nothing local to copy.
                 saveMembership(nil)
                 Self.deleteSyncFiles()
                 endedThisSession = membership.role == .owner ? .stopped : .left
             }
+            if let message { pendingMessage = message }
         }
     }
 
@@ -568,9 +667,7 @@ final class FamilySync {
 
     private func present(_ share: CKShare) {
         let controller = UICloudSharingController(share: share, container: CKContainer(identifier: CloudSync.containerID))
-        // 館長 can switch the share to 「知道連結的人」 in this sheet, so an invite link sent over LINE opens for the
-        // family without adding each person's phone number or email first. Invited-only stays the default (.none).
-        controller.availablePermissions = [.allowPrivate, .allowPublic, .allowReadWrite]
+        controller.availablePermissions = [.allowPrivate, .allowReadWrite]
         controller.delegate = shareDelegate
         Self.topViewController()?.present(controller, animated: true)
     }
@@ -720,6 +817,32 @@ final class FamilySync {
         let record = try await database.record(for: CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: zoneID))
         guard let share = record as? CKShare else { throw CKError(.unknownItem) }
         return UncheckedSendableBox(share)
+    }
+
+    struct FetchedRecords {
+        var records: [CKRecord] = []
+        /// No longer on the server.
+        var gone: [String] = []
+    }
+
+    /// Fetches records of the family zone directly (with their assets). Failures leave them for a later round.
+    nonisolated private static func fetchRecords(names: [String], zoneOwnerName: String,
+                                                 isOwner: Bool) async -> UncheckedSendableBox<FetchedRecords> {
+        let ck = CKContainer(identifier: CloudSync.containerID)
+        let database = isOwner ? ck.privateCloudDatabase : ck.sharedCloudDatabase
+        let zoneID = CKRecordZone.ID(zoneName: FamilySyncPolicy.zoneName, ownerName: zoneOwnerName)
+        var fetched = FetchedRecords()
+        guard let results = try? await database.records(for: names.map { CKRecord.ID(recordName: $0, zoneID: zoneID) })
+        else { return UncheckedSendableBox(fetched) }
+        for (id, result) in results {
+            switch result {
+            case .success(let record):
+                fetched.records.append(record)
+            case .failure(let error):
+                if (error as? CKError)?.code == .unknownItem { fetched.gone.append(id.recordName) }
+            }
+        }
+        return UncheckedSendableBox(fetched)
     }
 
     nonisolated private static func deleteFamilyZone() async throws {

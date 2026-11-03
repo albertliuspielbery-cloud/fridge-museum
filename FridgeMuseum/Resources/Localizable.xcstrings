@@ -3665,6 +3665,17 @@
         }
       }
     },
+    "有些作品還沒傳到家庭美術館，已經先複製一份到你的美術館，不會不見。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some artworks hadn’t reached the Family Museum yet, so a copy was saved to your museum — nothing is lost."
+          }
+        }
+      }
+    },
     "有點暗，開手電筒會更清楚" : {
       "extractionState" : "manual",
       "localizations" : {
