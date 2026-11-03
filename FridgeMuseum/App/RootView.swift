@@ -20,6 +20,7 @@ struct RootView: View {
 
     var body: some View {
         @Bindable var app = app
+        @Bindable var family = app.family
         NavigationStack(path: $path) {
             HomeView(open: open, showSettings: { showSettings = true })
                 .navigationDestination(for: Route.self) { route in
@@ -65,6 +66,15 @@ struct RootView: View {
         .sheet(isPresented: $showSyncIntro) {
             SyncIntroSheet()
         }
+        // 家庭美術館 (1.3.0): an invitation link was opened.
+        .sheet(item: $family.invite) { invite in
+            FamilyJoinSheet(invite: invite)
+        }
+        .onChange(of: app.family.notice) { _, notice in
+            guard let notice else { return }
+            app.family.notice = nil
+            app.show(notice.text, seconds: 5)
+        }
         .alert(Text("為每位小朋友建立相簿？"), isPresented: Binding(get: { app.photosPrimer != nil }, set: { if !$0 { app.photosPrimer = nil } }),
                presenting: app.photosPrimer) { primer in
             Button { app.continueSave(after: primer, albums: true, context: modelContext) } label: { Text("建立相簿") }
@@ -92,7 +102,7 @@ struct RootView: View {
             if phase == .active { app.store.refresh() }
             if phase == .background { WidgetSnapshot.shared.flush() }
         }
-        .onChange(of: app.store.isUnlocked) { offerSyncIntroIfNeeded() }
+        .onChange(of: app.store.isPurchased) { offerSyncIntroIfNeeded() }
         .onChange(of: app.paywall) { offerSyncIntroIfNeeded() }
         .onChange(of: showSettings) { offerSyncIntroIfNeeded() }
         .onChange(of: path) { offerSyncIntroIfNeeded() }
@@ -123,7 +133,7 @@ struct RootView: View {
     private var canOfferSyncIntro: Bool {
         !DemoMode.isActive && !showSyncIntro && !showSettings && app.paywall == nil && app.photosPrimer == nil
             && !OnboardingCoordinator.shared.isPresented && !OnboardingCoordinator.shared.isAddingChild
-            && path.isEmpty && app.sync.shouldOfferIntro(isFullVersion: app.store.isUnlocked)
+            && path.isEmpty && !app.family.isFamilyMode && app.sync.shouldOfferIntro(isFullVersion: app.store.isPurchased)
     }
 
     private func open(_ route: Route) {

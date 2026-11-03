@@ -4,6 +4,8 @@ import UIKit
 
 @main
 struct FridgeMuseumApp: App {
+    /// Hands 家庭美術館 invitations (CloudKit share links) to FamilySync.
+    @UIApplicationDelegateAdaptor(FamilyAppDelegate.self) private var appDelegate
     @State private var appModel = AppModel()
     /// Opened once per launch, after CloudSync has decided whether this launch syncs with iCloud (it may ask
     /// CloudKit for the account status — and, once this phone has synced, which Apple Account is signed in — first:
@@ -36,7 +38,14 @@ struct FridgeMuseumApp: App {
             }
             .task {
                 guard container == nil else { return }
-                container = await appModel.sync.openStore(isFullVersion: appModel.store.isUnlocked)
+                // 家庭美術館 (1.3.0): a family launch opens family.store only — the personal store stays closed
+                // (and untouched) this launch; otherwise the personal store opens the 1.2 way.
+                if let family = appModel.family.openStoreIfFamily() {
+                    if appModel.family.grantsFullVersion { appModel.store.familyAccess.grant() }
+                    container = family
+                } else {
+                    container = await appModel.sync.openStore(isFullVersion: appModel.store.isPurchased)
+                }
             }
         }
     }

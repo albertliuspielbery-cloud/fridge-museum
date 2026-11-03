@@ -29,7 +29,14 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    if app.store.isUnlocked {
+                    if !app.store.isPurchased && app.store.isUnlocked {
+                        // 家庭美術館: the family's Full Version (the owner's purchase).
+                        Label {
+                            Text("家庭美術館：大家都是完整版")
+                        } icon: {
+                            Image(systemName: "checkmark.seal.fill").foregroundStyle(Palette.green)
+                        }
+                    } else if app.store.isUnlocked {
                         Label {
                             Text("已解鎖完整版")
                         } icon: {
@@ -81,7 +88,9 @@ struct SettingsView: View {
                     Text("一次買斷，不是訂閱。支援「家人共享」。")
                 }
 
-                syncSection
+                // 家庭美術館 (1.3.0). A family launch doesn't open the personal store, so it doesn't sync it either.
+                FamilySection(museumCount: museum.count)
+                if !app.family.isFamilyMode { syncSection }
 
                 Section {
                     ForEach(children) { c in

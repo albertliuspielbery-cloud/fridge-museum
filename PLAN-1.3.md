@@ -27,6 +27,22 @@
 - 純邏輯（record ↔ 欄位對應、變更比對、衝突決策、模式決策）放 `ArchiveKit/FamilySyncPolicy.swift`，單元測試 `FridgeMuseumTests/FamilySyncTests.swift`。CloudKit 呼叫只在 `App/FamilySync.swift`。模擬器／DemoMode／單元測試不碰 CloudKit（同 `CloudSync.isSupportedEnvironment`）。
 - CloudKit schema：Production 不能自動建 record type。`ci/cloudkit/schema.ckdb` 加 `FMChild`、`FMArtwork`（含 `___recordID` queryable 索引）、`cloudkit.share` 不用另加。跑 cloudkit-schema.yml 匯入開發環境 → Console 部署到 Production（Albert 按或請他同意 Claude 按）。
 
+### 實作時定下或調整的（`fix/1.3-family`）
+- **切換一律「重新打開 App」生效**（建立、加入、離開、停止分享）。沒有在 RootView 重建 container：AppModel 的背景工作、CloudSync 的維護 closure 都握著舊的 context，重建不保證安全。
+- **掃描本機變更的時機**：不在 AppModel 各個存檔點加程式，而是 FamilySync 監聽 `ModelContext.didSave`（AppModel、編輯器、設定頁的存檔都會觸發），2 秒節流；App 進背景時再掃一次。AppModel 只多一行 `let family = FamilySync()`（方便和小工具分支合併）。
+- **正在算圖的作品先不上傳**（`processingState` pending/processing），算完 `renderVersion` 變了才上傳一次；但不會被當成刪除。
+- **防誤刪**：掃描時家庭資料庫一筆都沒有、而已上傳的有 ≥ 3 筆，當作資料庫壞掉，不送刪除（不會把每支手機清空）。family.store 打不開（退回暫存記憶體）時整個 session 不同步。
+- **衝突細節**：下載的紀錄若本機自上次上傳後沒改過，一律用伺服器的（不比兩支手機的時鐘）；本機有沒上傳的修改才比 `modifiedAt`，新的贏、平手用伺服器的。別人刪除、但這支手機有沒上傳的修改 → 保留並重新上傳（資料安全優先）。時間比較容許 10 ms（CloudKit 只存到毫秒）。
+- **不同步的欄位**：`lastSavedToPhotosAt`（「這支手機」存到照片過）、`isKept`／`isSample`（只同步收進的作品，必為 true／false）。
+- **複製（個人 ⇄ 家庭）**：保留原本的 id，所以重複複製不會變兩份；目標已有同 id 的紀錄時，只有來源的 `modifiedAt` 比較新才更新，**目標一筆都不刪**。複製用短暫的第二個 container 開「另一個」檔案（從不在同一個檔案開兩個 container）。唯一會清空資料庫的 `resetFamilyStore`（加入／建立新的家庭美術館前清 family.store）遇到個人資料庫的路徑會直接拒絕。
+- **停止分享（館長）**：先抓最新的變更 → 複製到個人美術館 → **刪掉整個 `FamilyMuseum` zone**（share 跟著消失，不佔館長 iCloud 空間）。家人手機發現 zone 不見了就自動把本機的家庭作品複製進個人美術館。沒網路就不停止、提示再試。
+- **離開（家人）**：先抓最新變更（盡量）→（選了的話）複製 → 從自己的共享資料庫刪掉 share（＝離開，館長的資料不受影響）。沒網路就不離開。
+- **自動結束**：被移除／停止分享（共享 zone 不見、或上傳回 zoneNotFound）、iCloud 登出或換帳號（CKSyncEngine 的 accountChange）→ 自動複製進個人美術館、冰冰提示一次。複製失敗時保留 membership 並標 `pendingEnd`，下次開 App 會開 family.store（不同步）重試，成功才回個人美術館。
+- **邀請**：`UICloudSharingController`，只開放「受邀的人」＋可編輯（`publicPermission = .none`）。用「訊息」「郵件」寄會自動把對方加成參與者；用 LINE 這類 App 傳連結時，要先在分享畫面加對方的 Apple 帳號電話或 email，否則對方打不開（不開「知道連結的任何人」，避免連結外流）。
+- **館長自己的另一台裝置**（同 Apple 帳號）點自己的邀請連結 → 以館長身分加入（同一個私人資料庫 zone）。
+- **1.2 個人同步**：家庭模式時設定頁不顯示 iCloud 同步區、也不跳 1.2 的同步說明；建立家庭美術館、個人同步的判斷都用「這個 Apple 帳號買過」（`StoreBridge.isPurchased`），家庭給的完整版不算。
+- 狀態：沒有網路監看，離線時只會顯示「準備中／已同步」與上次同步時間；上傳失敗（空間不足等）才顯示問題。
+
 ## B. 主畫面小工具（WidgetKit）
 
 - 小／中／大三種尺寸：輪播（每 3 小時換一張）美術館裡的作品（`isInMuseum`、有成品圖），顯示作品圖、小朋友名字、日期；點了打開 App 到那件作品（`fridgemuseum://artwork/<uuid>`）。空的時候顯示冰冰和「拍第一張作品吧」。

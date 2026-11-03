@@ -594,6 +594,96 @@ EN_LOW_LIGHT = {
 EN.update(EN_LOW_LIGHT)
 # ---- end fix/1.2.2
 
+# ---- fix/1.3-family: 家庭美術館 (one museum shared across Apple Accounts). Kept apart for merging.
+EN_FAMILY = {
+    "家庭美術館": "Family Museum",
+    "家庭美術館（完整版）": "Family Museum (Full Version)",
+    "家庭美術館：大家都是完整版": "Family Museum: Full Version for everyone",
+    "建立家庭美術館": "Create a Family Museum",
+    "建立家庭美術館？": "Create a Family Museum?",
+    "建立": "Create",
+    "你手機上的 %lld 件作品會複製一份到家庭美術館，原本的美術館會留在手機上，不會動到。建好之後可以馬上邀請家人；重新打開 App 就會進入家庭美術館。": {
+        "one": "A copy of your 1 artwork goes into the Family Museum. Your own museum stays on this phone, untouched. "
+               "You can invite family right away; the Family Museum opens the next time you open the app.",
+        "other": "Copies of your %lld artworks go into the Family Museum. Your own museum stays on this phone, untouched. "
+                 "You can invite family right away; the Family Museum opens the next time you open the app."},
+    "邀請家人": "Invite Family",
+    "邀請家人／管理成員": "Invite Family / Manage Members",
+    "家庭成員": "Family Members",
+    "館長": "Curator",
+    "停止分享": "Stop Sharing",
+    "停止分享？": "Stop Sharing?",
+    "家人就看不到這個家庭美術館了。家庭美術館的作品會複製一份到你自己的美術館；家人手機上的也會各自留一份。":
+        "Your family won’t see this Family Museum anymore. A copy of its artworks goes into your own museum, "
+        "and each family member keeps a copy on their phone too.",
+    "離開家庭美術館": "Leave Family Museum",
+    "離開家庭美術館？": "Leave the Family Museum?",
+    "複製作品到我的美術館，再離開": "Copy Artworks to My Museum, Then Leave",
+    "直接離開": "Just Leave",
+    "離開後會回到你自己的美術館（重新打開 App 生效）。家庭美術館裡的作品，可以先複製一份到你的美術館。":
+        "You’ll go back to your own museum (the next time you open the app). "
+        "You can copy the Family Museum’s artworks into your museum first.",
+    "家人都可以新增、編輯、刪除作品和小朋友。只有收進美術館的作品會分享；在家庭美術館裡，大家都是完整版。你自己的美術館留在手機上，離開後就會回來。":
+        "Everyone can add, edit, and delete artworks and kids. Only artworks hung in the museum are shared, "
+        "and everyone gets the Full Version here. Your own museum stays on this phone and comes back when you leave.",
+    "用 iCloud 邀請家人，不同的 Apple 帳號也能一起收作品、一起看。館長要有完整版，家人不用買。":
+        "Invite family with iCloud — even with different Apple Accounts, you can collect and enjoy artworks together. "
+        "The curator needs the Full Version; family members don’t.",
+    "未開啟": "Off",
+    "重新打開 App 就會進入家庭美術館": "Opens the next time you open the app",
+    "重新打開 App 就會回到你的美術館": "Your own museum returns the next time you open the app",
+    "館長的 iCloud 空間不足": "Curator’s iCloud storage is full",
+    "從背景把 App 滑掉再打開就會生效。": "Swipe the app away and open it again to switch.",
+    "家庭美術館的作品存在館長的 iCloud。館長整理 iCloud 空間後會自動繼續，新作品先留在手機上。":
+        "Family Museum artworks are stored in the curator’s iCloud. Syncing continues once the curator frees up space; "
+        "new artworks stay on this phone until then.",
+    # Join sheet
+    "加入家庭美術館？": "Join the Family Museum?",
+    "加入「%@」的家庭美術館？": "Join %@’s Family Museum?",
+    "加入後，你和家人都可以新增、編輯作品和小朋友，大家看到的是同一個美術館。":
+        "Once you join, you and your family can all add and edit artworks and kids — everyone sees the same museum.",
+    "在家庭美術館裡，大家都是完整版，不用另外購買。": "Everyone gets the Full Version in a Family Museum — no extra purchase needed.",
+    "你自己的美術館會留在手機上，不會刪掉；離開家庭美術館後就會回來。":
+        "Your own museum stays on this phone and won’t be deleted. It comes back when you leave the Family Museum.",
+    "也把我手機上的 %lld 件作品放進家庭美術館": {
+        "one": "Also put my 1 artwork into the Family Museum",
+        "other": "Also put my %lld artworks into the Family Museum"},
+    "加入": "Join",
+    "加入好了！從背景把 App 滑掉再打開，就會進入家庭美術館。":
+        "You’re in! Swipe the app away and open it again to enter the Family Museum.",
+    "你已經在家庭美術館裡了。要加入別的家庭美術館，請先到設定離開。":
+        "You’re already in a Family Museum. To join a different one, leave it first in Settings.",
+    # Problems and notices
+    "沒有連上網路，家庭美術館還在分享中。請連上網路再試一次。":
+        "No internet connection — the Family Museum is still shared. Connect and try again.",
+    "作品沒辦法複製到你的美術館，所以先不停止分享。請重新打開 App 再試一次。":
+        "Couldn’t copy the artworks to your museum, so sharing hasn’t stopped. Reopen the app and try again.",
+    "作品沒辦法複製到你的美術館，所以先不離開。請重新打開 App 再試一次。":
+        "Couldn’t copy the artworks to your museum, so you haven’t left yet. Reopen the app and try again.",
+    "沒有連上網路，還沒離開家庭美術館。請連上網路再試一次。":
+        "No internet connection — you haven’t left the Family Museum yet. Connect and try again.",
+    "要先登入 iCloud 才能建立家庭美術館。到 iPhone「設定」登入 Apple 帳號後再試一次。":
+        "Sign in to iCloud to create a Family Museum. Sign in to your Apple Account in the iPhone Settings app and try again.",
+    "作品沒辦法複製到家庭美術館，請再試一次。你的美術館沒有任何改變。":
+        "Couldn’t copy the artworks to the Family Museum. Please try again — nothing in your museum changed.",
+    "沒有連上網路，請連上網路再試一次。": "No internet connection. Connect and try again.",
+    "iCloud 空間不足，整理空間後再試一次。": "iCloud storage is full. Free up some space and try again.",
+    "要先登入 iCloud。到 iPhone「設定」登入 Apple 帳號後再試一次。":
+        "Sign in to iCloud first. Sign in to your Apple Account in the iPhone Settings app and try again.",
+    "iCloud 暫時無法使用，請稍後再試一次。": "iCloud isn’t available right now. Please try again later.",
+    "iCloud 帳號換了，家庭美術館先關起來。作品已經複製一份到你的美術館，重新打開 App 就會看到。":
+        "Your iCloud account changed, so the Family Museum is closed for now. Its artworks were copied to your museum — "
+        "reopen the app to see them.",
+    "家庭美術館停止分享了。作品已經複製一份到你的美術館，重新打開 App 就會看到。":
+        "The Family Museum is no longer shared. Its artworks were copied to your museum — reopen the app to see them.",
+    "回到你自己的美術館了。": "Welcome back to your own museum.",
+    "回到你自己的美術館了，家庭美術館的作品也複製了一份在這裡。":
+        "Welcome back to your own museum. The Family Museum’s artworks were copied here too.",
+    "這個連結不是冰箱美術館的家庭美術館邀請。": "This link isn’t a My Fridge Museum Family Museum invitation.",
+}
+EN.update(EN_FAMILY)
+# ---- end fix/1.3-family
+
 INFOPLIST = {
     "CFBundleDisplayName": ("冰箱美術館", "My Fridge Museum"),
     "CFBundleName": ("冰箱美術館", "My Fridge Museum"),

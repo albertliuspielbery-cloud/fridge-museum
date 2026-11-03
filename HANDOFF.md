@@ -113,6 +113,19 @@
 
 **只能實機驗證：** 三種尺寸在不同 iPhone（SE／mini／Pro Max）上的版面與深色模式；新增、刪除、改圖、轉向後小工具在 30 秒內更新；App 被關掉時（進背景那次寫入）是否來得及；3 小時輪播（Apple 會依電量排程，不一定準時）；點小工具冷啟動／熱啟動都打開那件作品；被刪掉的作品顯示「找不到這件作品」；小工具記憶體（30 MB 上限，圖 ≤ 600 px 應該很寬鬆）；上傳流程（兩個描述檔、App Group）第一次跑。
 
+### 1.3.0 家庭美術館（`fix/1.3-family`，未合併）
+- 不同 Apple 帳號共用一個美術館。設計與實作時的調整見 `PLAN-1.3.md` §A（含「實作時定下或調整的」）。
+- 程式：`ArchiveKit/FamilySyncPolicy.swift`（模式決策、變更比對、衝突、record 欄位對應，全部可單元測試）、`App/FamilySync.swift`（CKSyncEngine、建立／邀請／加入／離開／停止分享、接受邀請的 app／scene delegate）、`ArchiveKit/ArchiveStore.swift`（`family.store`、個人 ⇄ 家庭複製）、`UI/FamilyViews.swift`（設定頁區塊、加入確認頁）、`UI/StoreBridge.swift`（`FamilyAccess`：家庭模式大家都是完整版）。測試：`FridgeMuseumTests/FamilySyncTests.swift`。
+- 每次開 App 只開一個資料庫（個人 `default.store` 或家庭 `family.store`），切換都是「重新打開 App」生效。**個人資料庫永遠不刪不清**：建立／加入是把作品複製進 family.store，離開／停止分享／被移除是複製回個人。
+- 館長：私人資料庫 zone `FamilyMuseum` + zone-wide CKShare。家人：共享資料庫。只同步收進美術館的作品（`isKept && !isSample`）和小朋友。
+- Info.plist 加了 `CKSharingSupported`（project.yml）。
+
+**擁有者要手動做的（上傳第一個 1.3.0 TestFlight 之前）**
+1. 跑「CloudKit 資料結構（開發環境）」流程：https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/cloudkit-schema.yml （`schema.ckdb` 新增了 `FMArtwork`、`FMChild`，原有的不變）。
+2. https://icloud.developer.apple.com/dashboard/ → 選容器 → Development → Schema 確認有 `FMArtwork`、`FMChild` →「Deploy Schema Changes…」→ Deploy。TestFlight／App Store 用正式環境，沒部署的話建立家庭美術館後上傳會失敗（設定頁顯示「暫時無法同步」）。
+
+**只能實機驗證的**（兩支手機、兩個 Apple 帳號）：建立 → 邀請（訊息、LINE＋加電話/email）→ 點連結打開 App（App 開著／沒開兩種）→ 加入確認頁 → 重新打開進入家庭美術館；雙向新增／編輯／刪除作品和小朋友、推播即時更新、大量作品第一次上傳；離線編輯後連線；兩支同時改同一件；家人離開（有／沒有複製）、館長停止分享（家人手機自動複製並提示）、在系統分享畫面「停止分享／移除我」；同步中登出 iCloud；館長 iCloud 空間不足；家人沒買也能用完整版、館長離開後回到免費版的額度；館長自己的 iPad 點邀請連結。CloudKit 本身沒辦法在 CI 測（模擬器版本沒簽名、沒有 Apple 帳號）。
+
 ### 1.2.2 暗光／白桌子找紙（`fix/1.2.2`）
 - 擁有者回報：餐廳／家裡暗暗的暖光、白色大理石桌（紋路、反光）上常找不到紙邊。實測（他的照片貼一張白紙）：大理石本身的邊緣對比約 2.5–4.5，沒有影子的白紙邊約 5–9，有一點影子約 20–40；1.2.1 規定 Vision 外框底下對比要 ≥ 5，剛好把對的外框丟掉。
 - 找紙：**先跑和 1.2.1 一模一樣的判斷**（`PaperDecision.legacy`），1.2.1 會裁的照片結果完全相同；只有 1.2.1 會用整張照片時，才用新的「多個偵測器提案、一個分數決定」補救（`PaperCandidateScoring.rescue`：Vision 文件偵測 ≥ 0.3、矩形偵測、移植偵測器沒把握的外框；形狀 × 證據）。補救只在外框像紙、≤ 95% 畫面、邊緣對比 ≥ 4，且有 1.2.1 等級的 Vision 文件（或邊緣在 4–8 的淡邊範圍）時才裁切，否則只當「裁切」的起始角。

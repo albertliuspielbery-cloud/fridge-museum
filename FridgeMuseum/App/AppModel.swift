@@ -64,6 +64,9 @@ final class AppModel {
     let store = StoreBridge()
     /// iCloud sync (Full Version): how this launch's store was opened, status for Settings (App/CloudSync.swift).
     let sync = CloudSync()
+    /// 家庭美術館 (1.3.0): which museum this launch opened, sharing and its sync (App/FamilySync.swift). It notices
+    /// every save itself (ModelContext.didSave), so the save points below need no family hooks.
+    let family = FamilySync()
 
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     /// Background processing per artwork, so deleting (重拍, a replaced sample) can cancel it first.
