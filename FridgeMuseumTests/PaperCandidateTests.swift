@@ -239,17 +239,27 @@ struct LowLightTests {
         var c = LowLightClassifier()
         let dark = LowLightSample(brightnessValue: -1), mid = LowLightSample(brightnessValue: 0.5)
         let bright = LowLightSample(brightnessValue: 2)
-        #expect(!c.update(dark, now: 0))
-        #expect(!c.update(dark, now: 0.5))
-        #expect(c.update(dark, now: 1.1))          // held ≥ 1 s
-        #expect(c.update(mid, now: 2))             // in between: stays dim
-        #expect(c.update(bright, now: 3))
-        #expect(c.update(bright, now: 4))          // 1.0 s < 1.5 s
-        #expect(!c.update(bright, now: 4.6))
+        let r1 = c.update(dark, now: 0)
+        #expect(!r1)
+        let r2 = c.update(dark, now: 0.5)
+        #expect(!r2)
+        let r3 = c.update(dark, now: 1.1)
+        #expect(r3)          // held ≥ 1 s
+        let r4 = c.update(mid, now: 2)
+        #expect(r4)             // in between: stays dim
+        let r5 = c.update(bright, now: 3)
+        #expect(r5)
+        let r6 = c.update(bright, now: 4)
+        #expect(r6)          // 1.0 s < 1.5 s
+        let r7 = c.update(bright, now: 4.6)
+        #expect(!r7)
         // a single dark frame doesn't flip it back
-        #expect(!c.update(dark, now: 5))
-        #expect(!c.update(bright, now: 5.2))
-        #expect(!c.update(dark, now: 6.0))
+        let r8 = c.update(dark, now: 5)
+        #expect(!r8)
+        let r9 = c.update(bright, now: 5.2)
+        #expect(!r9)
+        let r10 = c.update(dark, now: 6.0)
+        #expect(!r10)
         c.reset()
         #expect(!c.isDim)
     }
@@ -258,31 +268,41 @@ struct LowLightTests {
 struct TorchStateTests {
     @Test func userTogglesAndDeviceRefusal() {
         var t = TorchState()
-        #expect(t.toggle(available: true, now: 0))
+        let r11 = t.toggle(available: true, now: 0)
+        #expect(r11)
         t.applied(false, now: 0.1)                 // overheated: the device said no
         #expect(!t.wanted)
-        #expect(t.toggle(available: true, now: 1))
-        #expect(!t.toggle(available: true, now: 2))
-        #expect(!t.toggle(available: false, now: 3))
+        let r12 = t.toggle(available: true, now: 1)
+        #expect(r12)
+        let r13 = t.toggle(available: true, now: 2)
+        #expect(!r13)
+        let r14 = t.toggle(available: false, now: 3)
+        #expect(!r14)
     }
 
     @Test func systemTurningItOffIsAcceptedAfterSettling() {
         var t = TorchState()
         _ = t.toggle(available: true, now: 0)
         t.applied(true, now: 0.05)
-        #expect(!t.deviceReported(active: false, available: true, now: 0.5))   // hardware lag right after the change
+        let r15 = t.deviceReported(active: false, available: true, now: 0.5)
+        #expect(!r15)   // hardware lag right after the change
         #expect(t.wanted)
-        #expect(!t.deviceReported(active: true, available: true, now: 2))
-        #expect(t.deviceReported(active: true, available: false, now: 3))      // thermal: torch unavailable
+        let r16 = t.deviceReported(active: true, available: true, now: 2)
+        #expect(!r16)
+        let r17 = t.deviceReported(active: true, available: false, now: 3)
+        #expect(r17)      // thermal: torch unavailable
         #expect(!t.wanted)
-        #expect(!t.deviceReported(active: false, available: false, now: 5))    // already off: nothing to do
+        let r18 = t.deviceReported(active: false, available: false, now: 5)
+        #expect(!r18)    // already off: nothing to do
     }
 
     @Test func leavingTurnsItOff() {
         var t = TorchState()
-        #expect(!t.leave(now: 0))
+        let r19 = t.leave(now: 0)
+        #expect(!r19)
         _ = t.toggle(available: true, now: 1)
-        #expect(t.leave(now: 2))
+        let r20 = t.leave(now: 2)
+        #expect(r20)
         #expect(!t.wanted)
     }
 }
