@@ -137,7 +137,7 @@ Vision rectangles (`VisionPaths.sheetRectanglesRequest`: aspect 0.45…1, 25°, 
 when unsure, `Result.candidate`). `PaperCandidateScoring.pick` scores shape (area, convexity, perspective-corrected
 aspect vs A4/Letter/4:3/1:1/八開/四開) × evidence (Vision confidence gated by the robust edge contrast measured on the
 360 px copy; the detector's own score). Agreeing sources combine (noisy-or); the corners come from the member with the
-strongest edges. Score ≥ 0.3 → used; 0.1…0.3 → `suggestion` only. `func cachedDetection(id:) -> PaperDetection?`
+strongest edges. Score ≥ 0.3 → used; 0.1…0.3 → `suggestion` only. Caps: an outline over 95 % of the frame and a rectangle no other source agrees with are suggestions at most; a detector / document outline inside the winner scoring ≥ 60 % of it wins; edge contrast with < 3 measurable sides counts as unknown. `func cachedDetection(id:) -> PaperDetection?`
 (no detection run). Live camera: `LivePaperPicker` (document ≥ 0.6 alone; a weaker document + an agreeing rectangle;
 a rectangle alone only when the previous rectangle pass saw it too; rectangle passes only when the document is unsure,
 ≤ 1 per 0.3 s).

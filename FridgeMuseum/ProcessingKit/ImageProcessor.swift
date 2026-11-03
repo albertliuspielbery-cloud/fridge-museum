@@ -262,7 +262,9 @@ actor ImageProcessor {
             }
         }
         let det = PaperDetector.detectFull(small)
-        if let q = det.candidate {
+        // Not when the detector's outline is (nearly) the whole frame and it called it a guess: 1.2.1's "af > 0.96 →
+        // not found" (paper filling the photo, or a white table caught by the bright mask) must stay the whole photo.
+        if let q = det.candidate, !det.isGuess || q.area <= 0.96 {
             candidates.append(PaperCandidate(quad: q, source: .detector, confidence: det.score,
                                              edgeSupport: PaperDetector.edgeContrast(q, planes: planes), fit: det.fit))
         }

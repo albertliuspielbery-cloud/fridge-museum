@@ -111,7 +111,8 @@ final class CameraController: NSObject, @unchecked Sendable {
     @discardableResult
     private func applyTorch(_ on: Bool) -> Bool {
         guard let device, device.hasTorch else { return false }
-        if on && !device.isTorchAvailable { return false }
+        // A tap racing stop(): never light the torch on a stopped (or stopping) session.
+        if on && (!device.isTorchAvailable || !session.isRunning) { return false }
         if !on && device.torchMode == .off { return false }
         do {
             try device.lockForConfiguration()

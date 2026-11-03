@@ -29,7 +29,7 @@ struct PaperCandidate: Sendable, Equatable {
     var source: Source
     /// Vision observation confidence (0…1), or the detector's own score (0…1).
     var confidence: Double
-    /// Robust colour change across the sides (`PaperDetector.edgeContrast`): < 0 = unknown (all sides on the frame).
+    /// Robust colour change across the sides (`PaperDetector.edgeContrast`): < 0 = unknown (< 3 sides measurable).
     var edgeSupport: Double = -1
     /// Detector only: how well its mask fills the quad (0…1).
     var fit: Double = 0
@@ -37,8 +37,18 @@ struct PaperCandidate: Sendable, Equatable {
 
 enum PaperCandidateScoring {
     /// At or above: trust it (crop to it). Tuned so the detector alone keeps its old acceptance (score 0.4) and a
-    /// Vision document at its old 0.5 confidence with a real edge (≥ 5) still passes.
+    /// Vision document at its old 0.5 confidence with a real edge (≥ 5) still passes (tested).
     static let confidentScore = 0.3
+    /// An outline covering more than this much of the frame is at most a suggestion (1.2.1: af > 0.96 → whole photo;
+    /// a sheet filling the photo must not be cropped, nor shadow removal / edge fill turned on for it).
+    static let nearlyFullArea = 0.95
+    static let nearlyFullCap = 0.2
+    /// A rectangle that no other source agrees with is at most a suggestion: on a placemat, tray, board or book it
+    /// would crop to the outer object.
+    static let rectangleAloneCap = 0.25
+    /// An inner paper-like outline (detector / document) fully inside the winner is preferred when it scores at
+    /// least this fraction of the winner (the sheet on a tray, not the tray).
+    static let innerPreference = 0.6
     /// At or above (but not confident): offered as the crop tool's starting corners, not used for the render.
     static let suggestionScore = 0.1
     /// Two quads "agree" when no corner is further apart than this (fraction of the image's long edge).
@@ -72,10 +82,9 @@ enum PaperCandidateScoring {
         return 0.6 + 0.4 * exp(-(d / 0.08) * (d / 0.08))
     }
 
-    /// Area fraction: too small is a label or a phone, almost the whole frame is probably not an outline at all.
+    /// Area fraction: too small is a label or a phone; (nearly) the whole frame is capped at suggestion level.
     static func areaScore(_ area: Double) -> Double {
-        let s = smoothStep(0.04, 0.12, area)
-        return area > 0.95 ? s * 0.4 : s
+        area > nearlyFullArea ? nearlyFullCap : smoothStep(0.04, 0.12, area)
     }
 
     static func shapeScore(_ q: Quad, imageAspect: Double) -> Double {
@@ -83,10 +92,19 @@ enum PaperCandidateScoring {
         return areaScore(q.area) * aspectScore(sheetAspect(q, imageAspect: imageAspect))
     }
 
+    /// Shape of a candidate. The detector's own score already contains its area term, so for it only the
+    /// nearly-full cap applies here (its soft evidence term applies the area itself).
+    static func shapeScore(_ c: PaperCandidate, imageAspect: Double) -> Double {
+        guard c.source == .detector else { return shapeScore(c.quad, imageAspect: imageAspect) }
+        guard c.quad.isConvex else { return 0 }
+        let area = c.quad.area > nearlyFullArea ? nearlyFullCap : 1
+        return area * aspectScore(sheetAspect(c.quad, imageAspect: imageAspect))
+    }
+
     // MARK: Evidence
 
     /// How much an edge under the outline is believed: 0.2 on a featureless surface, 1 from contrast 7 up
-    /// (marble veins alone ≈ 2.5–4.5). Unknown (all sides on the frame edge) → 0.3.
+    /// (marble veins alone ≈ 2.5–4.5). Unknown (fewer than 3 sides measurable) → 0.3.
     static func edgeGate(_ contrast: Double) -> Double {
         guard contrast >= 0 else { return 0.3 }
         return 0.2 + 0.8 * smoothStep(2, 7, contrast)
@@ -101,7 +119,8 @@ enum PaperCandidateScoring {
     static func evidence(_ c: PaperCandidate) -> Double {
         switch c.source {
         case .document:
-            return ((c.confidence - 0.3) / 0.5).clamped(0, 1) * edgeGate(c.edgeSupport)
+            // 0.5 confidence → 0.56; × the gate at edge 5 (0.72) → 0.4: passes, as in 1.2.1.
+            return ((c.confidence - 0.25) / 0.45).clamped(0, 1) * edgeGate(c.edgeSupport)
         case .rectangles:
             // The rectangle detector is easily pleased (a placemat, a table edge, a run of marble veins) and reports
             // high confidence for almost anything it returns: less weight, and it needs an edge clearly above the
@@ -111,13 +130,14 @@ enum PaperCandidateScoring {
             // Its own score already includes edges and mask fit (0.4 = its old acceptance → 0.5). A clean mask with an
             // edge above the marble noise also counts, even when its own (stricter) edge term killed the score.
             let own = ((c.confidence - 0.2) / 0.4).clamped(0, 1)
-            let soft = c.edgeSupport >= 0 ? 0.8 * c.fit * smoothStep(4.5, 12, c.edgeSupport) : 0
+            let soft = c.edgeSupport >= 0
+                ? 0.8 * c.fit * smoothStep(4.5, 12, c.edgeSupport) * smoothStep(0.04, 0.12, c.quad.area) : 0
             return max(own, soft)
         }
     }
 
     static func score(_ c: PaperCandidate, imageAspect: Double) -> Double {
-        shapeScore(c.quad, imageAspect: imageAspect) * evidence(c)
+        shapeScore(c, imageAspect: imageAspect) * evidence(c)
     }
 
     // MARK: Agreement / pick
@@ -135,16 +155,30 @@ enum PaperCandidateScoring {
         cornerDistance(a, b, imageAspect: imageAspect) <= tolerance
     }
 
+    /// Every corner of `inner` lies inside the convex quad `outer`.
+    static func contains(_ outer: Quad, _ inner: Quad) -> Bool {
+        guard outer.isConvex else { return false }
+        let o = outer.points
+        func side(_ a: NormPoint, _ b: NormPoint, _ p: NormPoint) -> Double {
+            (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
+        }
+        let orientation: Double = side(o[0], o[1], o[2]) > 0 ? 1 : -1
+        return inner.points.allSatisfy { p in
+            (0..<4).allSatisfy { k in side(o[k], o[(k + 1) % 4], p) * orientation >= 0 }
+        }
+    }
+
     /// The best outline, or nil when no candidate reaches `suggestionScore`.
     /// Each candidate's evidence is combined (noisy-or) with that of candidates from *other* sources that agree with
     /// it; the corners of an agreeing group come from its member with the strongest edge support (refined /
-    /// edge-snapped corners are the precise ones), the winner's own corners when edges tie.
+    /// edge-snapped corners are the precise ones), the winner's own corners when edges tie. A rectangle nothing
+    /// agrees with stays a suggestion. When the winner fully contains a paper-like detector / document outline that
+    /// scores at least `innerPreference` of it, the inner one wins.
     static func pick(_ candidates: [PaperCandidate], imageAspect: Double) -> Pick? {
         let usable = candidates.filter { $0.quad.isConvex }
-        guard !usable.isEmpty else { return nil }
-        var best: Pick?
+        var scored: [(pick: Pick, candidate: PaperCandidate)] = []
         for (i, c) in usable.enumerated() {
-            let shape = shapeScore(c.quad, imageAspect: imageAspect)
+            let shape = shapeScore(c, imageAspect: imageAspect)
             guard shape > 0 else { continue }
             var miss = 1 - evidence(c)
             var agreeing: Set<PaperCandidate.Source> = [c.source]
@@ -155,14 +189,32 @@ enum PaperCandidateScoring {
                 agreeing.insert(o.source)
                 if o.edgeSupport > cornerSource.edgeSupport + 0.5 { cornerSource = o }
             }
-            let s = shape * (1 - miss)
-            if best == nil || s > best!.score + 1e-9 {
-                best = Pick(quad: cornerSource.quad, source: c.source, score: s,
-                            isConfident: s >= confidentScore, agreeing: agreeing)
+            var s = shape * (1 - miss)
+            if agreeing == [.rectangles] { s = min(s, rectangleAloneCap) }
+            let p = Pick(quad: cornerSource.quad, source: c.source, score: s, isConfident: s >= confidentScore,
+                         agreeing: agreeing)
+            scored.append((pick: p, candidate: c))
+        }
+        // first of equal scores wins (stable)
+        var top: (pick: Pick, candidate: PaperCandidate)?
+        for e in scored where top == nil || e.pick.score > top!.pick.score + 1e-9 { top = e }
+        guard let outer = top else { return nil }
+        var best = outer
+        let innerFloor = max(suggestionScore, outer.pick.score * innerPreference)
+        var innerScore = -1.0
+        for e in scored {
+            // a rectangle inside a sheet is usually a drawn frame, not the sheet
+            if e.candidate.source == .rectangles { continue }
+            if outer.pick.agreeing.contains(e.candidate.source) { continue }
+            if e.candidate.quad.area > outer.candidate.quad.area * 0.85 { continue }
+            if !contains(outer.candidate.quad, e.candidate.quad) { continue }
+            if e.pick.score >= innerFloor, e.pick.score > innerScore {
+                innerScore = e.pick.score
+                best = e
             }
         }
-        guard let b = best, b.score >= suggestionScore else { return nil }
-        return b
+        guard best.pick.score >= suggestionScore else { return nil }
+        return best.pick
     }
 
     /// Where the crop tool's corners start when no paper was found: the best weak outline, else an inset frame

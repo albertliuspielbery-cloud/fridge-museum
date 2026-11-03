@@ -182,28 +182,33 @@ enum PaperDetector {
         return refine(quad, planes: Planes(img))
     }
 
-    /// Same, with the planes built once for several candidates.
+    /// Same, with the planes built once for several candidates. The contrast is -1 (unknown) when fewer than 3 sides
+    /// could be measured (the others lie on the frame edge): one strong side, e.g. a table edge, says little.
     static func refine(_ quad: Quad, planes: Planes) -> (quad: Quad, contrast: Double) {
         let w = planes.w, h = planes.h
         guard w > 8, h > 8 else { return (quad, -1) }
         let q0 = quad.points.map { P($0.x * Double(w), $0.y * Double(h)) }
-        let c0 = edgeFit(q0, planes, snap: false, range: 0, robust: true).con
+        let f0 = edgeFit(q0, planes, snap: false, range: 0, robust: true)
         let q1 = orderQuad(edgeFit(q0, planes, snap: true).q, landscape: w >= h)
-        let c1 = edgeFit(q1, planes, snap: false, range: 0, robust: true).con
+        let f1 = edgeFit(q1, planes, snap: false, range: 0, robust: true)
         let ratio = polyArea(q1) / max(1, polyArea(q0))
-        if c1 > c0 * 1.05, ratio > 0.9, ratio < 1.1 {
+        if f1.con > f0.con * 1.05, ratio > 0.9, ratio < 1.1 {
             let r = normalize(q1, w, h, shrink: 1)
-            if r.isConvex { return (r, c1) }
+            if r.isConvex { return (r, measured(f1.con, sides: f1.sides)) }
         }
-        return (quad, c0)
+        return (quad, measured(f0.con, sides: f0.sides))
     }
 
-    /// Robust colour change across the sides of a normalized quad (sides on the frame edge skipped; -1 = none left).
+    /// Robust colour change across the sides of a normalized quad (sides on the frame edge skipped); -1 = unknown
+    /// (fewer than 3 sides measurable).
     static func edgeContrast(_ quad: Quad, planes: Planes) -> Double {
         guard planes.w > 8, planes.h > 8 else { return -1 }
         let q = quad.points.map { P($0.x * Double(planes.w), $0.y * Double(planes.h)) }
-        return edgeFit(q, planes, snap: false, range: 0, robust: true).con
+        let f = edgeFit(q, planes, snap: false, range: 0, robust: true)
+        return measured(f.con, sides: f.sides)
     }
+
+    private static func measured(_ con: Double, sides: Int) -> Double { sides >= 3 ? con : -1 }
 
     // MARK: - Pieces (ports)
 

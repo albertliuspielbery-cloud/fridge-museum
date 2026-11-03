@@ -95,6 +95,8 @@ final class CameraModel {
         // The system switched it off (overheating, another app, an interruption): accept it, don't turn it back on.
         if torch.deviceReported(active: status.torchActive, available: status.torchAvailable, now: Self.now) {
             torchOn = false
+            // keep the device's mode in step with the button (no-op if it is already off)
+            Task { _ = await controller.setTorch(false) }
         }
     }
 

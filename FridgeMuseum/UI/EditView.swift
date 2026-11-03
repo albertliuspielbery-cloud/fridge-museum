@@ -651,6 +651,10 @@ struct EditView: View {
                             DragGesture(minimumDistance: 0, coordinateSpace: .named("cropStage"))
                                 .onChanged { value in
                                     activeCorner = i
+                                    // A tap on a dashed (suggested) corner must not apply the suggestion: only a
+                                    // real drag (a few points) adopts it.
+                                    if suggestedCorners != nil,
+                                       abs(value.translation.width) + abs(value.translation.height) < 4 { return }
                                     var q = cropBase
                                     suggestedCorners = nil
                                     q[i] = NormPoint(x: Double((value.location.x - rect.minX) / rect.width),
@@ -659,6 +663,8 @@ struct EditView: View {
                                 }
                                 .onEnded { _ in
                                     activeCorner = nil
+                                    // only a tap on a suggested corner: nothing was changed
+                                    if suggestedCorners != nil { return }
                                     model.cornersChanged()
                                 }
                         )
