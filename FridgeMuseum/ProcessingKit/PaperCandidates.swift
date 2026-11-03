@@ -271,6 +271,9 @@ enum PaperCandidateScoring {
         guard p.quad.isConvex, p.quad.area >= 0.04, p.quad.area <= nearlyFullArea else { return false }
         guard aspectScore(sheetAspect(p.quad, imageAspect: imageAspect)) >= 0.9 else { return false }
         guard p.edgeSupport >= 4 else { return false }
+        // The detector's own outline was rejected by it (score < 0.4); without a Vision document agreeing it may be a
+        // placemat or tray found by the brightness mask.
+        if p.agreeing.contains(.detector) && !p.agreeing.contains(.document) { return false }
         return p.hasStrongDocument || p.edgeSupport <= clearEdge
     }
 
@@ -305,6 +308,28 @@ enum PaperDecision {
         var refined: Quad
         /// `refine`'s raw contrast (1.2.1's value: -1 only when no side could be measured).
         var rawContrast: Double
+    }
+
+    /// The glue in ImageProcessor.detectPaperSync: each convex Vision outline refined on the 360 px planes (1.2.1's
+    /// `refine`); the document becomes the 1.2.1 input (original quad, refined quad, raw contrast), and every outline
+    /// becomes a scoring candidate with its refined corners and known edge support.
+    static func prepare(vision: [PaperCandidate], planes: PaperDetector.Planes)
+        -> (document: VisionDocument?, candidates: [PaperCandidate]) {
+        var document: VisionDocument?
+        var out: [PaperCandidate] = []
+        for var c in vision where c.quad.isConvex {
+            let original = c.quad
+            let refined = PaperDetector.refine(original, planes: planes)
+            if c.source == .document {
+                document = VisionDocument(original: original, confidence: c.confidence, refined: refined.quad,
+                                          rawContrast: refined.rawContrast)
+            }
+            c.quad = refined.quad
+            c.edgeSupport = PaperDetector.knownContrast(refined.rawContrast, sides: refined.sides)
+            c.edgeSides = refined.sides
+            out.append(c)
+        }
+        return (document, out)
     }
 
     /// 1.2.1's `detectPaperSync`, verbatim: Vision document (confidence ≥ 0.5, plausible), refined; deferred to the

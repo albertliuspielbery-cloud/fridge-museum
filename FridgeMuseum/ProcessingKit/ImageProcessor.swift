@@ -250,22 +250,10 @@ actor ImageProcessor {
         guard let src = try? source(id: id, data: data, maxEdge: Self.previewMaxEdge),
               let small = try? smallImage(id: id, data: data) else { return none }
         let planes = PaperDetector.Planes(small)
-        var candidates: [PaperCandidate] = []
-        var document: PaperDecision.VisionDocument?
-        if let cg = context.createCGImage(src, from: src.extent) {
-            for var c in VisionPaths.paperCandidates(cgImage: cg) where c.quad.isConvex {
-                let original = c.quad
-                let refined = PaperDetector.refine(original, planes: planes)
-                if c.source == .document {
-                    document = PaperDecision.VisionDocument(original: original, confidence: c.confidence,
-                                                            refined: refined.quad, rawContrast: refined.rawContrast)
-                }
-                c.quad = refined.quad
-                c.edgeSupport = PaperDetector.knownContrast(refined.rawContrast, sides: refined.sides)
-                c.edgeSides = refined.sides
-                candidates.append(c)
-            }
-        }
+        let vision = context.createCGImage(src, from: src.extent).map { VisionPaths.paperCandidates(cgImage: $0) } ?? []
+        let prepared = PaperDecision.prepare(vision: vision, planes: planes)
+        let document = prepared.document
+        var candidates = prepared.candidates
         let det = PaperDetector.detectFull(small)
         // Not when the detector rejected its outline for covering (nearly) the whole frame (paper filling the photo,
         // or a white table caught by the bright mask).

@@ -495,6 +495,14 @@ struct PaperDecisionTests {
              bottomRight: .init(x: 0.75, y: 0.668), bottomLeft: .init(x: 0.251, y: 0.67))
     }
     let tray = Quad.inset(0.08)
+
+    /// What refine might snap an outline to (a little different from Vision's).
+    func snapped(_ q: Quad) -> Quad {
+        Quad(topLeft: .init(x: q.topLeft.x + 0.004, y: q.topLeft.y + 0.002),
+             topRight: .init(x: q.topRight.x - 0.003, y: q.topRight.y + 0.001),
+             bottomRight: .init(x: q.bottomRight.x - 0.002, y: q.bottomRight.y - 0.003),
+             bottomLeft: .init(x: q.bottomLeft.x + 0.001, y: q.bottomLeft.y - 0.002))
+    }
     /// 2 : 1, not a known sheet.
     let offRatio = Quad(topLeft: .init(x: 0.1, y: 0.3), topRight: .init(x: 0.85, y: 0.3),
                         bottomRight: .init(x: 0.85, y: 0.675), bottomLeft: .init(x: 0.1, y: 0.675))
@@ -541,11 +549,11 @@ struct PaperDecisionTests {
             for conf in [0.3, 0.45, 0.5, 0.55, 0.7, 0.95] {
                 for contrast in [-1.0, 2, 4, 4.99, 5, 6, 7.99, 8, 12, 30] {
                     for sides in [1, 2, 4] {
-                        for det in dets {
-                            let doc = PaperDecision.VisionDocument(original: quad, confidence: conf, refined: quad,
+                        for (det, refined) in dets.flatMap({ d in [(d, quad), (d, snapped(quad))] }) {
+                            let doc = PaperDecision.VisionDocument(original: quad, confidence: conf, refined: refined,
                                                                    rawContrast: contrast)
                             let usedByOld = conf >= 0.5 && quad.isPlausible
-                            let old = old121(visionQuad: usedByOld ? quad : nil, refined: quad, contrast: contrast, det: det)
+                            let old = old121(visionQuad: usedByOld ? quad : nil, refined: refined, contrast: contrast, det: det)
                             #expect(PaperDecision.legacy(document: doc, detector: det) == (old.isGuess ? nil : old))
                             let new = PaperDecision.decide(document: doc, detector: det,
                                                            candidates: candidates(doc, sides: sides, det: det),
@@ -604,6 +612,39 @@ struct PaperDecisionTests {
     @Test func dimMarbleRescue() {
         let r = decide(conf: 0.7, contrast: 4, quad: a4, det: detector(nil, score: 0, guess: true))
         #expect(r == PaperDetection(quad: a4, isGuess: false, method: .vision))
+    }
+
+    /// The detector's own rejected outline (score < 0.4) needs an agreeing Vision document to crop in a rescue.
+    @Test func detectorOnlyRescueIsASuggestion() {
+        let det = detector(a4, score: 0.35, guess: true)
+        let alone = PaperDecision.decide(document: nil, detector: det, candidates: candidates(nil, sides: 4, det: det),
+                                         imageAspect: aspect)
+        #expect(alone.isGuess && alone.suggestion == a4)
+        let weakDoc = PaperDecision.VisionDocument(original: a4, confidence: 0.4, refined: a4, rawContrast: 6)
+        let agreed = PaperDecision.decide(document: weakDoc, detector: det,
+                                          candidates: candidates(weakDoc, sides: 4, det: det), imageAspect: aspect)
+        #expect(!agreed.isGuess && agreed.quad == a4)
+    }
+
+    /// The detectPaperSync glue: the document input is exactly refine(_:in:) of Vision's outline.
+    @Test func prepareMatchesRefine() throws {
+        var img = RGBA8Image(width: 360, height: 270, fill: (120, 85, 55))
+        for y in 60..<210 { for x in 70..<290 { img.set(x, y, (240, 238, 232)) } }
+        let raw = Quad(topLeft: .init(x: 75.0 / 360, y: 63.0 / 270), topRight: .init(x: 286.0 / 360, y: 58.0 / 270),
+                       bottomRight: .init(x: 291.0 / 360, y: 212.0 / 270), bottomLeft: .init(x: 68.0 / 360, y: 207.0 / 270))
+        let rect = Quad(topLeft: .init(x: 0.1, y: 0.1), topRight: .init(x: 0.6, y: 0.1),
+                        bottomRight: .init(x: 0.6, y: 0.6), bottomLeft: .init(x: 0.1, y: 0.6))
+        let vision = [PaperCandidate(quad: raw, source: .document, confidence: 0.8),
+                      PaperCandidate(quad: rect, source: .rectangles, confidence: 0.9)]
+        let prepared = PaperDecision.prepare(vision: vision, planes: PaperDetector.Planes(img))
+        let doc = try #require(prepared.document)
+        let expected = PaperDetector.refine(raw, in: img)
+        #expect(doc.original == raw && doc.confidence == 0.8)
+        #expect(doc.refined == expected.quad)
+        #expect(doc.rawContrast == expected.contrast)
+        #expect(prepared.candidates.count == 2)
+        #expect(prepared.candidates[0].quad == expected.quad)
+        #expect(prepared.candidates[1].quad == PaperDetector.refine(rect, in: img).quad)
     }
 
     @Test func rescueGuardrails() {
