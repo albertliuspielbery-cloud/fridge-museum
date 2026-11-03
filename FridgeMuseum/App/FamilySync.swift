@@ -309,6 +309,7 @@ final class FamilySync {
         case .keepLocal:
             // An edit made here is newer: upload it on top of the server's version (no assets needed for that).
             state.systemFields[name] = FamilyRecordCodec.encodeSystemFields(record)
+            state.refetch.remove(name)   // the local copy is the one going up; no refetch needed
             queueSave(name)
             return
         case .refetch:
@@ -413,6 +414,7 @@ final class FamilySync {
             let name = record.recordID.recordName
             state.systemFields[name] = FamilyRecordCodec.encodeSystemFields(record)
             if let stamp = FamilyRecordCodec.stamp(of: record) { state.uploaded[name] = stamp }
+            state.refetch.remove(name)   // the server now has this phone's copy
             removeOutboxFiles(name)
         }
         var ended = false
