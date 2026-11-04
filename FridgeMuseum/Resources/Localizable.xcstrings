@@ -3069,6 +3069,28 @@
         }
       }
     },
+    "兌換代碼" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redeem Code"
+          }
+        }
+      }
+    },
+    "已用代碼解鎖完整版" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full Version unlocked with your code"
+          }
+        }
+      }
+    },
     "恢復購買" : {
       "extractionState" : "manual",
       "localizations" : {

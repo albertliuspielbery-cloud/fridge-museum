@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftData
 import SwiftUI
 import UIKit
@@ -15,6 +16,7 @@ struct SettingsView: View {
     @State private var editingChild: Child?
     @State private var showNewChild = false
     @State private var restoring = false
+    @State private var redeemingCode = false
 
     static let privacyURL = URL(string: "https://albertliuspielbery-cloud.github.io/fridge-museum/privacy.html")!
     static let supportURL = URL(string: "https://albertliuspielbery-cloud.github.io/fridge-museum/support.html")!
@@ -82,6 +84,13 @@ struct SettingsView: View {
                         }
                     }
                     .disabled(restoring)
+                    if !app.store.isUnlocked {
+                        // Free Full Version codes (App Store Connect one-time offer codes). Apple's own sheet; the
+                        // purchase then arrives through Transaction.updates like any other.
+                        Button { redeemingCode = true } label: {
+                            Label("兌換代碼", systemImage: "gift")
+                        }
+                    }
                 } header: {
                     Text("完整版")
                 } footer: {
@@ -181,6 +190,14 @@ struct SettingsView: View {
             }
             .sheet(item: $editingChild) { ChildEditorView(child: $0) }
             .sheet(isPresented: $showNewChild) { ChildEditorView(child: nil) }
+            .offerCodeRedemption(isPresented: $redeemingCode) { result in
+                Task {
+                    await app.store.purchases.refreshEntitlements()
+                    if case .success = result, app.store.isUnlocked {
+                        app.show(String(localized: "已用代碼解鎖完整版"))
+                    }
+                }
+            }
             .overlay(alignment: .topLeading) { if DemoMode.scene("settings") { ReadyMarker() } }
         }
     }
