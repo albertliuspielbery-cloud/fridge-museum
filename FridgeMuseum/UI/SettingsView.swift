@@ -88,7 +88,15 @@ struct SettingsView: View {
                         // Free Full Version codes (App Store Connect one-time offer codes). Apple's own sheet; the
                         // purchase then arrives through Transaction.updates like any other.
                         Button { redeemingCode = true } label: {
-                            Label("兌換代碼", systemImage: "gift")
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("兌換代碼")
+                                    Text("兌換後通常會自動解鎖；若沒有解鎖，請按「恢復購買」")
+                                        .font(.fm(13)).foregroundStyle(Palette.muted)
+                                }
+                            } icon: {
+                                Image(systemName: "gift")
+                            }
                         }
                     }
                 } header: {

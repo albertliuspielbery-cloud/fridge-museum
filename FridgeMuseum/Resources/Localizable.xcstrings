@@ -3069,6 +3069,17 @@
         }
       }
     },
+    "兌換後通常會自動解鎖；若沒有解鎖，請按「恢復購買」" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usually unlocks automatically. If it doesn’t, tap Restore Purchases."
+          }
+        }
+      }
+    },
     "兌換代碼" : {
       "extractionState" : "manual",
       "localizations" : {
