@@ -104,7 +104,7 @@ jobs:
             # 帳號沒有登記裝置，打包時不能用自動簽名，所以先用「本機簽名（-）」打包：這樣 iCloud、推播、App Group 的
             # entitlements 仍然寫進簽章，匯出時雲端簽名才會照著申請描述檔。先匯出到本機、檢查兩個 target 的 entitlements
             # 都在，才真的上傳（少了 iCloud 的 App 一開就會閃退，不能讓它上去）。
-            echo "版本號（Build）：$BUILD（Apple 雲端簽名）"
+            echo "版本號（Build）：${BUILD}（Apple 雲端簽名）"
             AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
             set +e
             xcodebuild -project FridgeMuseum.xcodeproj -scheme FridgeMuseum -configuration Release               -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive" archive               DEVELOPMENT_TEAM="$APPLE_TEAM_ID" APP_BUNDLE_ID="$APP_BUNDLE_ID"               CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="-" AD_HOC_CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO               FM_APP_PROFILE="" FM_WIDGET_PROFILE="" CURRENT_PROJECT_VERSION="$BUILD"               > "$RUNNER_TEMP/archive.log" 2>&1

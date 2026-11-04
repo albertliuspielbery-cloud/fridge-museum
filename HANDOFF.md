@@ -10,7 +10,7 @@
 
 | 項目 | 狀態 |
 |---|---|
-| iOS App | **1.1.0** 已送審（2026-10-29，App＋「完整版」內購，等待審查；手動發布；`v1.1.0` 標籤＝送審版本）。**1.2.2** 已上傳 TestFlight（2026-11-03；1.2.1 在 10-30）：iCloud 同步（完整版）、分享卡片、拍照自動轉正（1.2.1 修平放／連拍方向）、筆刷放大、美術館大圖／小圖／一次轉向、新手教學。1.2.2 加強昏暗／白桌紙張偵測（先跑 1.2.1 原判斷，找不到才救援）＋相機手電筒。1.2.x 還要實機測（平放拍照、手電筒；iCloud 後台看得到 10/30 上傳約 220 MB）。**1.3.0**（`fix/1.3.0`，CI 綠、獨立審查第 2 輪 GO，等 Albert 同意）：家庭美術館＋主畫面小工具；上傳前要先做 App Group 與 CloudKit schema 兩個手動步驟（見下）。**1.2.2**（`fix/1.2.2`，未合併）：暗光／白桌子找紙、相機手電筒 |
+| iOS App | **1.1.0** 已送審（2026-10-29，App＋「完整版」內購，等待審查；手動發布；`v1.1.0` 標籤＝送審版本）。**1.2.2** 已上傳 TestFlight（2026-11-03；1.2.1 在 10-30）：iCloud 同步（完整版）、分享卡片、拍照自動轉正（1.2.1 修平放／連拍方向）、筆刷放大、美術館大圖／小圖／一次轉向、新手教學。1.2.2 加強昏暗／白桌紙張偵測（先跑 1.2.1 原判斷，找不到才救援）＋相機手電筒。1.2.x 還要實機測（平放拍照、手電筒；iCloud 後台看得到 10/30 上傳約 220 MB）。**1.3.0** 已上傳 TestFlight（2026-11-04，已合併 main）：家庭美術館＋主畫面小工具；要用兩個 Apple 帳號實機測。上架憑證已滿且都 <14 天時，上傳自動改用 Apple 雲端簽名（先匯出檢查 iCloud／推播／App Group entitlements 才上傳）；小工具 App ID 一定要在 App Groups 裡指派 group.tw.starlight.fridgemuseum，否則雲端簽名回 Authentication failed。**1.2.2**（`fix/1.2.2`，未合併）：暗光／白桌子找紙、相機手電筒 |
 | App 內購買 | `tw.starlight.fridgemuseum.full`「完整版 / Full Version」已建立：NT$190、家人共享開、地區 TW/HK/US/CA/GB/AU/SG。審查截圖已上傳（10/28 第 2 次執行成功），但流程結束時讀到的狀態仍是 MISSING_METADATA，要到 ASC 確認是否已變 Ready to Submit |
 | 網頁測試版 | **0.9.0** 上線中：https://claude.ai/artifact/MQTbRzJLuHZUzNpgRvADPf （只有擁有者看得到）。原始碼在 `web/` |
 | repo | `albertliuspielbery-cloud/fridge-museum`（**公開**）。main = App 1.2.2（1.1.0 在審查中，修正請從 `v1.1.0` 標籤開分支）。開發分支用 `fix/**`（push 也會跑模擬器測試） |
@@ -97,7 +97,7 @@
 - 連拍：相機快門上方「連拍」開關。每張直接成為待收作品（給目前「拍給」的孩子），不開編輯器；照樣找紙角，匯出等連拍結束才一張一張跑（AppModel `beginBurst/endBurst`，沿用 deferral；`runDeferred` 現在一次只跑一張、編輯器一開就暫停）。「完成」回廚房，便利貼「繼續」從最舊的一張開始，收進／存到手機／不要這張後自動開下一張（逐張時上一張的完整算圖排到佇列，等沒有編輯器開著才跑；改過的作品標成 processingState = pending，App 被關掉時下次開啟會重算）。開 App 時沒處理完的作品也走同一個佇列。「全部存到照片」在編輯器開著時暫停，單張存到手機排在批次目前那張後面（`ExportGate`，先來先做，一次只做一張 4096 匯出）。
 - 備份提醒：首頁沒有便利貼時，若有 ≥10 件沒存到照片、或最舊的一件超過 14 天，顯示「還有 N 張只在 App 裡」；「之後再說」隱藏 14 天（UserDefaults `backupSnoozedUntil`）；這次開 App 才收的作品不算（第一次使用不會跳）。設定頁「備份到照片」顯示已存 X／Y 件。用既有的 `Artwork.lastSavedToPhotosAt`，沒改資料模型。
 
-### 1.3.0 主畫面小工具（`fix/1.3.0`，未合併）
+### 1.3.0 主畫面小工具（已合併 main）
 - 小／中／大三種尺寸。薄荷冰箱門底色、白相紙上的作品、水果磁鐵（依作品 id 固定 lemon/tomato/berry），下面是小朋友名字和日期（系統依語言顯示 zh-Hant／en 日期）。每 3 小時（00、03、06…點，當地時間）換一件；同一個時段一定是同一件（`WidgetSchedule`：第 n 個時段顯示第 n mod 件數件，一整天依序輪過去）。點作品打開 App 到那件作品頁（`fridgemuseum://artwork/<uuid>`）。美術館沒有作品（或 App 還沒寫過資料）：冰冰＋「拍第一張作品吧」。
 - 選哪些：收進美術館的（`isKept && !isSample`）、有成品圖或小圖的，最多 24 件：最愛優先，其次最新（作品日期）；輪播順序是新到舊。
 - 資料流：App 存檔（任何 ModelContext 的 `didSave`，包括編輯、刪除、同步整理）後最多 30 秒寫一次、開 App 寫一次、進背景立刻寫（`App/WidgetSnapshot.swift`，背景執行緒、自己的 ModelContext）。寫到 App Group `group.tw.starlight.fridgemuseum`：`WidgetImages/<id>-<renderVersion>.jpg`（長邊 ≤ 600、JPEG 0.85；已存在就不重做）＋ `widget.json`（原子寫入），寫完才刪沒用到的圖，內容有變才 `reloadAllTimelines()`。小工具不開資料庫。拿不到 App Group 容器（模擬器未簽名、描述檔沒有 App Group）就安靜跳過；單元測試、DemoMode 不寫。
@@ -113,7 +113,7 @@
 
 **只能實機驗證：** 三種尺寸在不同 iPhone（SE／mini／Pro Max）上的版面與深色模式；新增、刪除、改圖、轉向後小工具在 30 秒內更新；App 被關掉時（進背景那次寫入）是否來得及；3 小時輪播（Apple 會依電量排程，不一定準時）；點小工具冷啟動／熱啟動都打開那件作品；被刪掉的作品顯示「找不到這件作品」；小工具記憶體（30 MB 上限，圖 ≤ 600 px 應該很寬鬆）；上傳流程（兩個描述檔、App Group）第一次跑。
 
-### 1.3.0 家庭美術館（`fix/1.3.0`，未合併）
+### 1.3.0 家庭美術館（已合併 main）
 - 不同 Apple 帳號共用一個美術館。設計與實作時的調整見 `PLAN-1.3.md` §A（含「實作時定下或調整的」）。
 - 程式：`ArchiveKit/FamilySyncPolicy.swift`（模式決策、變更比對、衝突、record 欄位對應，全部可單元測試）、`App/FamilySync.swift`（CKSyncEngine、建立／邀請／加入／離開／停止分享、接受邀請的 app／scene delegate）、`ArchiveKit/ArchiveStore.swift`（`family.store`、個人 ⇄ 家庭複製）、`UI/FamilyViews.swift`（設定頁區塊、加入確認頁）、`UI/StoreBridge.swift`（`FamilyAccess`：家庭模式大家都是完整版）。測試：`FridgeMuseumTests/FamilySyncTests.swift`。
 - 每次開 App 只開一個資料庫（個人 `default.store` 或家庭 `family.store`），切換都是「重新打開 App」生效。**個人資料庫永遠不刪不清**：建立／加入是把作品複製進 family.store，離開／停止分享／被移除是複製回個人。
