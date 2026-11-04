@@ -91,6 +91,8 @@ jobs:
           SIGN="$RUNNER_TEMP/sign"; KC="$RUNNER_TEMP/ci.keychain-db"
           cleanup(){ rm -rf "$KEY" "$SIGN"; security delete-keychain "$KC" 2>/dev/null || true; }
           trap cleanup EXIT
+          # Xcode 匯出失敗時的詳細記錄（例如為什麼申請不到描述檔）在暫存資料夾裡，複製出來跟著記錄一起上傳
+          keep_distlogs(){ mkdir -p "$RUNNER_TEMP/distlogs"; cp -R "${TMPDIR:-/tmp}"/*.xcdistributionlogs "$RUNNER_TEMP/distlogs/" 2>/dev/null || true; }
 
           # 1. 用 API 金鑰準備上架用的憑證和描述檔（App 識別碼不存在會自動登記；不需要登記 iPhone）
           python3 -m pip install -q --break-system-packages pyjwt cryptography 2>/dev/null || python3 -m pip install -q pyjwt cryptography
@@ -128,7 +130,7 @@ jobs:
             xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive"               -exportOptionsPlist "$RUNNER_TEMP/export-export.plist" -exportPath "$RUNNER_TEMP/check" "${AUTH[@]}"               > "$RUNNER_TEMP/export.log" 2>&1
             status=$?
             set -e
-            ci/summarize_log.sh "$RUNNER_TEMP/export.log" "$status" 雲端簽名 || exit 65
+            ci/summarize_log.sh "$RUNNER_TEMP/export.log" "$status" 雲端簽名 || { keep_distlogs; exit 65; }
             CHK="$RUNNER_TEMP/check/unzipped"; mkdir -p "$CHK"; unzip -q "$RUNNER_TEMP"/check/*.ipa -d "$CHK"
             APPDIR=$(ls -d "$CHK"/Payload/*.app); WDIR=$(ls -d "$APPDIR"/PlugIns/*.appex | head -1)
             codesign -d --entitlements - --xml "$APPDIR" > "$RUNNER_TEMP/app.ent" 2>/dev/null
@@ -150,7 +152,7 @@ jobs:
             xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive"               -exportOptionsPlist "$RUNNER_TEMP/export-upload.plist" -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}"               >> "$RUNNER_TEMP/export.log" 2>&1
             status=$?
             set -e
-            ci/summarize_log.sh "$RUNNER_TEMP/export.log" "$status" 上傳 || exit 65
+            ci/summarize_log.sh "$RUNNER_TEMP/export.log" "$status" 上傳 || { keep_distlogs; exit 65; }
             {
               echo "### 已上傳版本 $BUILD 到 App Store Connect（Apple 雲端簽名）"
               echo "Apple 處理完（通常 5～30 分鐘）就會出現在 TestFlight：https://appstoreconnect.apple.com/apps"
@@ -210,7 +212,7 @@ jobs:
             > "$RUNNER_TEMP/export.log" 2>&1
           status=$?
           set -e
-          ci/summarize_log.sh "$RUNNER_TEMP/export.log" "$status" 上傳 || exit 65
+          ci/summarize_log.sh "$RUNNER_TEMP/export.log" "$status" 上傳 || { keep_distlogs; exit 65; }
           {
             echo "### 已上傳版本 $BUILD 到 App Store Connect"
             echo "Apple 處理完（通常 5～30 分鐘）就會出現在 TestFlight：https://appstoreconnect.apple.com/apps"
@@ -223,4 +225,5 @@ jobs:
           path: |
             ${{ runner.temp }}/archive.log
             ${{ runner.temp }}/export.log
+            ${{ runner.temp }}/distlogs
           if-no-files-found: ignore
