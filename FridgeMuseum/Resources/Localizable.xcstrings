@@ -3080,6 +3080,17 @@
         }
       }
     },
+    "邀請沒有送出" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invitation not sent"
+          }
+        }
+      }
+    },
     "兌換代碼" : {
       "extractionState" : "manual",
       "localizations" : {

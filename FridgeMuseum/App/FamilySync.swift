@@ -880,7 +880,7 @@ final class FamilySync {
         }
     }
 
-    nonisolated private static func message(for error: any Error) -> String {
+    nonisolated fileprivate static func message(for error: any Error) -> String {
         switch SyncEvent.classify(error) {
         case .network: String(localized: "沒有連上網路，請連上網路再試一次。")
         case .quotaFull: String(localized: "iCloud 空間不足，整理空間後再試一次。")
@@ -1029,7 +1029,21 @@ struct UncheckedSendableBox<Value>: @unchecked Sendable {
 final class FamilyShareControllerDelegate: NSObject, UICloudSharingControllerDelegate {
     var onStop: (() -> Void)?
 
-    func cloudSharingController(_ csc: UICloudSharingController, failedToSaveShareWithError error: any Error) {}
+    /// The system sheet only logs this; without an alert the invitation silently doesn't go out. The codes let the
+    /// owner send a screenshot that says what CloudKit refused.
+    func cloudSharingController(_ csc: UICloudSharingController, failedToSaveShareWithError error: any Error) {
+        let ns = error as NSError
+        var codes = "\(ns.domain) \(ns.code)"
+        if let partial = (error as? CKError)?.partialErrorsByItemID, !partial.isEmpty {
+            codes += " [" + partial.values.map { "\(($0 as NSError).code)" }.joined(separator: ",") + "]"
+        }
+        let message = FamilySync.message(for: error) + "\n\n" + codes + "\n" + error.localizedDescription
+        let alert = UIAlertController(title: String(localized: "邀請沒有送出"), message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: String(localized: "好"), style: .default))
+        var top: UIViewController = csc
+        while let presented = top.presentedViewController { top = presented }
+        top.present(alert, animated: true)
+    }
 
     func itemTitle(for csc: UICloudSharingController) -> String? {
         String(localized: "家庭美術館")
