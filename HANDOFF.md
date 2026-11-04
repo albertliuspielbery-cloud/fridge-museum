@@ -122,8 +122,8 @@
 - 審查（NO-GO）後修正：讀不到的圖檔不當成沒有圖（重抓，不套用、不上傳）；離開／停止分享前先送出本機變更，「直接離開」也一定把沒上傳的作品複製回個人美術館；停止分享沒做完會在下次開 App 接著做；邀請只開放受邀的人；防誤刪改成按比例；刪除小朋友時他的作品會同步成未分類。細節見 `PLAN-1.3.md`。
 
 **擁有者要手動做的（上傳第一個 1.3.0 TestFlight 之前）**
-1. 跑「CloudKit 資料結構（開發環境）」流程：https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/cloudkit-schema.yml （`schema.ckdb` 新增了 `FMArtwork`、`FMChild`，原有的不變）。
-2. https://icloud.developer.apple.com/dashboard/ → 選容器 → Development → Schema 確認有 `FMArtwork`、`FMChild` →「Deploy Schema Changes…」→ Deploy。TestFlight／App Store 用正式環境，沒部署的話建立家庭美術館後上傳會失敗（設定頁顯示「暫時無法同步」）。
+1. 跑「CloudKit 資料結構（開發環境）」流程：https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/cloudkit-schema.yml （`schema.ckdb` 新增了 `FMArtwork`、`FMChild`、`cloudkit.share`，原有的不變）。**`cloudkit.share` 是 2026-11-04 補的**：第一次實機測試按建立家庭美術館跳「iCloud 暫時無法使用」，因為正式環境沒有分享的類型，存 CKShare 被拒。
+2. https://icloud.developer.apple.com/dashboard/ → 選容器 → Development → Schema 確認有 `FMArtwork`、`FMChild`、`cloudkit.share` →「Deploy Schema Changes…」→ Deploy。TestFlight／App Store 用正式環境，沒部署的話建立家庭美術館後上傳會失敗（設定頁顯示「暫時無法同步」）。
 
 **只能實機驗證的**（兩支手機、兩個 Apple 帳號）：建立 → 邀請（訊息、LINE＋加電話/email）→ 點連結打開 App（App 開著／沒開兩種）→ 加入確認頁 → 重新打開進入家庭美術館；雙向新增／編輯／刪除作品和小朋友、推播即時更新、大量作品第一次上傳；離線編輯後連線；兩支同時改同一件（衝突後圖片不會不見）；離線時「直接離開」（沒上傳的作品要出現在個人美術館）；停止分享時沒網路、下次開 App 自動接著停；家人離開（有／沒有複製）、館長停止分享（家人手機自動複製並提示）、在系統分享畫面「停止分享／移除我」；同步中登出 iCloud；館長 iCloud 空間不足；家人沒買也能用完整版、館長離開後回到免費版的額度；館長自己的 iPad 點邀請連結。CloudKit 本身沒辦法在 CI 測（模擬器版本沒簽名、沒有 Apple 帳號）。
 
