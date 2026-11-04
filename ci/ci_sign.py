@@ -123,9 +123,10 @@ def create_dist_cert(body):
         certs.sort(key=lambda c: c['attributes'].get('expirationDate') or '')
         old = [c for c in certs if _created_days_ago(c) >= min_age]
         if not old:
-            print('::error::上架憑證數量已達 Apple 上限，而且每一張都是 ' + str(min_age) + ' 天內建立的（可能有 App 正在審查或測試中），'
-                  '為了不讓那些 build 變成無效簽章，這次先不刪。請過幾天再上傳。 Apple 訊息：' + e.msg[:300])
-            raise SystemExit(1)
+            # 不刪任何憑證，改用 Apple 雲端簽名（cloud-managed certificate，不佔憑證數量；星光小冒險 2026-11-03 用同樣做法上傳成功）。
+            # prepare_signing 看到 None 就寫 cloud 檔，ios.yml 改走自動簽名。
+            print('::warning::上架憑證數量已達 Apple 上限，而且每一張都是 ' + str(min_age) + ' 天內建立的；不刪憑證，改用 Apple 雲端簽名。')
+            return None
         print('憑證已滿，刪除最舊的一張（約 ' + str(_created_days_ago(old[0])) + ' 天前建立）：' + old[0]['id'])
         call('DELETE', '/certificates/' + old[0]['id'])
         return call('POST', '/certificates', body)['data']
@@ -192,6 +193,11 @@ def prepare_signing(out, bid, widget_bid):
     csr_b64 = base64.b64encode(csr.public_bytes(serialization.Encoding.DER)).decode()
     cert = create_dist_cert({'data': {'type': 'certificates', 'attributes': {
         'certificateType': 'DISTRIBUTION', 'csrContent': csr_b64}}})
+    if cert is None:
+        with open(f'{out}/cloud', 'w') as f:
+            f.write('1')
+        print('簽名準備完成：改用 Apple 雲端簽名（不建立憑證、不做描述檔）')
+        return
     crt = x509.load_der_x509_certificate(base64.b64decode(cert['attributes']['certificateContent']))
     pw = secrets.token_hex(12)
     enc = (serialization.PrivateFormat.PKCS12.encryption_builder().kdf_rounds(50000)

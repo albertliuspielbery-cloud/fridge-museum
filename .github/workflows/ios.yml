@@ -95,6 +95,68 @@ jobs:
           # 1. 用 API 金鑰準備上架用的憑證和描述檔（App 識別碼不存在會自動登記；不需要登記 iPhone）
           python3 -m pip install -q --break-system-packages pyjwt cryptography 2>/dev/null || python3 -m pip install -q pyjwt cryptography
           python3 ci/ci_sign.py "$SIGN"
+          BUILD=$(date -u +%Y%m%d%H%M)
+
+          if [ -f "$SIGN/cloud" ]; then
+            # 憑證已滿而且都很新（不刪，免得審查中的 build 變無效簽章）：改用 Apple 雲端簽名，不佔憑證數量。
+            # 帳號沒有登記裝置，打包時不能用自動簽名，所以先用「本機簽名（-）」打包：這樣 iCloud、推播、App Group 的
+            # entitlements 仍然寫進簽章，匯出時雲端簽名才會照著申請描述檔。先匯出到本機、檢查兩個 target 的 entitlements
+            # 都在，才真的上傳（少了 iCloud 的 App 一開就會閃退，不能讓它上去）。
+            echo "版本號（Build）：$BUILD（Apple 雲端簽名）"
+            AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+            set +e
+            xcodebuild -project FridgeMuseum.xcodeproj -scheme FridgeMuseum -configuration Release               -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive" archive               DEVELOPMENT_TEAM="$APPLE_TEAM_ID" APP_BUNDLE_ID="$APP_BUNDLE_ID"               CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="-" AD_HOC_CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO               FM_APP_PROFILE="" FM_WIDGET_PROFILE="" CURRENT_PROJECT_VERSION="$BUILD"               > "$RUNNER_TEMP/archive.log" 2>&1
+            status=$?
+            set -e
+            ci/summarize_log.sh "$RUNNER_TEMP/archive.log" "$status" 打包 || exit 65
+            cloud_plist(){
+              cat > "$RUNNER_TEMP/export-$1.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>$1</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>iCloudContainerEnvironment</key><string>Production</string>
+          </dict></plist>
+          PLIST
+            }
+            cloud_plist export
+            set +e
+            xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive"               -exportOptionsPlist "$RUNNER_TEMP/export-export.plist" -exportPath "$RUNNER_TEMP/check" "${AUTH[@]}"               > "$RUNNER_TEMP/export.log" 2>&1
+            status=$?
+            set -e
+            ci/summarize_log.sh "$RUNNER_TEMP/export.log" "$status" 雲端簽名 || exit 65
+            CHK="$RUNNER_TEMP/check/unzipped"; mkdir -p "$CHK"; unzip -q "$RUNNER_TEMP"/check/*.ipa -d "$CHK"
+            APPDIR=$(ls -d "$CHK"/Payload/*.app); WDIR=$(ls -d "$APPDIR"/PlugIns/*.appex | head -1)
+            codesign -d --entitlements - --xml "$APPDIR" > "$RUNNER_TEMP/app.ent" 2>/dev/null
+            codesign -d --entitlements - --xml "$WDIR" > "$RUNNER_TEMP/widget.ent" 2>/dev/null
+            miss=""
+            for k in com.apple.developer.icloud-container-identifiers com.apple.developer.icloud-services aps-environment com.apple.security.application-groups; do
+              grep -q "$k" "$RUNNER_TEMP/app.ent" || miss="$miss App:$k"
+            done
+            grep -q "<string>production</string>" "$RUNNER_TEMP/app.ent" || miss="$miss App:aps-environment=production"
+            grep -q com.apple.security.application-groups "$RUNNER_TEMP/widget.ent" || miss="$miss 小工具:com.apple.security.application-groups"
+            if [ -n "$miss" ]; then
+              echo "::error::雲端簽名後的 App 少了 entitlements：$miss。沒有上傳（少了 iCloud 會一開就閃退）。"
+              cat "$RUNNER_TEMP/app.ent" "$RUNNER_TEMP/widget.ent"
+              exit 1
+            fi
+            echo "entitlements 檢查通過（App：iCloud、推播 production、App Group；小工具：App Group）"
+            cloud_plist upload
+            set +e
+            xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/FridgeMuseum.xcarchive"               -exportOptionsPlist "$RUNNER_TEMP/export-upload.plist" -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}"               >> "$RUNNER_TEMP/export.log" 2>&1
+            status=$?
+            set -e
+            ci/summarize_log.sh "$RUNNER_TEMP/export.log" "$status" 上傳 || exit 65
+            {
+              echo "### 已上傳版本 $BUILD 到 App Store Connect（Apple 雲端簽名）"
+              echo "Apple 處理完（通常 5～30 分鐘）就會出現在 TestFlight：https://appstoreconnect.apple.com/apps"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
           # 2. 把憑證放進這次專用的暫時鑰匙圈
           PW=$(cat "$SIGN/p12pass")
@@ -110,7 +172,6 @@ jobs:
           #    描述檔每個 target 各用各的：project.yml 的 Release 設定 PROVISIONING_PROFILE_SPECIFIER = $(FM_APP_PROFILE)
           #    （App）／$(FM_WIDGET_PROFILE)（小工具），這裡只傳名字。不要再傳全域的 PROVISIONING_PROFILE_SPECIFIER：
           #    那會把 App 的描述檔套到小工具上而打包失敗。
-          BUILD=$(date -u +%Y%m%d%H%M)
           echo "版本號（Build）：$BUILD"
           set +e
           xcodebuild -project FridgeMuseum.xcodeproj -scheme FridgeMuseum -configuration Release \
