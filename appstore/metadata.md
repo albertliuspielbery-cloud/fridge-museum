@@ -40,7 +40,7 @@ Keep every drawing they make
 
 zh-Hant
 ```
-整理抽屜那天開連拍，一張接一張拍：紙自動拉正、底色變白，勞作自動去背。新的「家庭美術館」讓爸爸媽媽、爺爺奶奶一起收藏孩子的作品，主畫面小工具每天換一件來看。
+整理抽屜那天開連拍，一張接一張拍：紙自動拉正、底色變白，勞作自動去背。新的「家庭美術館」讓爸爸媽媽、爺爺奶奶一起收藏孩子的作品，主畫面小工具每隔幾個小時換一件來看。
 ```
 字元數：67
 
@@ -96,7 +96,7 @@ zh-Hant
 【iCloud 同步與家庭美術館（完整版）】
 ・用同一個 Apple 帳號的 iPhone、iPad 都看得到作品，換手機也不怕
 ・開一間「家庭美術館」，邀請另一半、爺爺奶奶加入，大家拍的作品都收進同一間美術館，用不同的 Apple 帳號也可以
-・加入的家人不用另外購買，也能使用完整版的功能
+・加入的家人在家庭美術館裡，不用另外購買也能使用完整版的功能
 ・作品存在你自己的 iCloud，開發者看不到；隨時可以在設定關掉，關掉不會刪掉手機上的作品
 
 【主畫面小工具】
@@ -162,7 +162,7 @@ SAVE TO PHOTOS
 ICLOUD SYNC AND FAMILY MUSEUM (FULL VERSION)
 • See your artworks on any iPhone or iPad signed in to the same Apple Account
 • Open a Family Museum and invite your partner or the grandparents. Everyone's photos go into one shared museum, even with different Apple Accounts
-• Family members who join don't need to buy it
+• Family members get it free while in the Family Museum
 • Artworks are kept in your own iCloud; the developer can't see them. Turn sync off in Settings anytime; nothing on the phone is deleted
 
 HOME SCREEN WIDGET
@@ -207,7 +207,7 @@ kids,children,art,organizer,craft,scan,portfolio,preschool,kindergarten,school,k
 
 zh-Hant
 ```
-・家庭美術館（完整版）：邀請家人加入，用不同的 Apple 帳號也能一起收藏孩子的作品，加入的家人不用另外購買
+・家庭美術館（完整版）：邀請家人加入，用不同的 Apple 帳號也能一起收藏孩子的作品，加入的家人在家庭美術館裡不用另外購買
 ・iCloud 同步（完整版）：同一個 Apple 帳號的 iPhone、iPad 都看得到作品，換手機也不怕
 ・主畫面小工具：小、中、大三種尺寸，每隔幾個小時換一件作品，點一下就打開
 ・分享卡片：把作品放進冰箱門上的相紙，傳給家人剛剛好
@@ -219,7 +219,7 @@ zh-Hant
 
 en-US
 ```
-• Family Museum (Full Version): invite family to collect your child's art together, even with different Apple Accounts. Family members don't need to buy anything
+• Family Museum (Full Version): invite family to collect your child's art together, even with different Apple Accounts. Family members don't need to buy anything while in it
 • iCloud Sync (Full Version): see your artworks on every iPhone and iPad signed in to your Apple Account
 • Home Screen widget in three sizes. It shows a different artwork every few hours; tap to open it
 • Share cards: the artwork on a photo print on the fridge door, ready to send
@@ -269,7 +269,7 @@ en-US
 | 醫療或治療資訊、健康或身心健康主題 | 無 |
 | 模擬賭博、賭博、競賽 | 無／否 |
 | 不受限制的網頁存取 | 否（設定裡只有兩個連結，開到 Safari 的隱私權政策和支援頁，App 內沒有瀏覽器） |
-| 使用者生成內容（與他人分享） | 否（作品只存在自己手機；分享是 iPhone 系統分享選單，App 內沒有讓其他使用者看到的地方） |
+| 使用者生成內容（與他人分享） | 否（1.3.0 起有「家庭美術館」，但只在館長邀請、而且接受邀請的家人之間私下共享，透過 Apple 的 iCloud 分享；沒有公開內容、沒有陌生人互動或留言。其他分享是 iPhone 系統分享選單） |
 | 傳訊與聊天 | 否 |
 | 廣告 | 否 |
 | 家長監護功能、年齡驗證 | 否 |
@@ -298,7 +298,7 @@ Thank you for reviewing My Fridge Museum.
 What it does: parents photograph their children's drawings and crafts. The app straightens the paper, whitens the background, and cuts crafts out from the table, then organizes each piece by child, semester, and age. It is a tool for parents, not an app for children.
 
 Testing without real children's art:
-- On a fresh install the fridge is empty and shows two sample tiles, "看範例畫作 / 看範例勞作" (English: "See Sample"). Tapping one opens a bundled real drawing or craft photo in the editor so you can try every tool (Crop, Adjust, Brush, Compare; on crafts with several separate objects, Tap What to Keep also appears). Samples never count toward the free quota and are not added to the museum.
+- On a fresh install the fridge is empty and shows two sample tiles, "看範例畫作 / 看範例勞作" (English: "See Sample"). Tapping one opens a bundled real drawing or craft photo in the editor so you can try every tool. Samples never count toward the free quota.
 - To add your own items, use the camera (any sheet of paper with a drawing on it works) or the "相簿 / Photos" button on the home screen to import images from the photo library.
 
 In-app purchase (non-consumable "Full Version", tw.starlight.fridgemuseum.full):
@@ -306,9 +306,8 @@ In-app purchase (non-consumable "Full Version", tw.starlight.fridgemuseum.full):
 - The quickest way to see it: tap the gear at the top right of the home screen (Settings) > "解鎖完整版 / Unlock Full Version". "恢復購買 / Restore Purchases" is in the same section and on the paywall.
 - The Full Version IAP is already approved. Family Sharing is enabled. Ask to Buy shows a "Waiting for approval" state and unlocks automatically when approved.
 - Settings > "兌換代碼 / Redeem Code" opens Apple's offer code redemption sheet (one-time codes for the Full Version).
-- No sign-in is needed; use a Sandbox Apple Account to purchase. Restore Purchases is in Settings and on the paywall.
-- The UI follows the device language.
-- iPhone only. If the camera is unavailable, use the "Photos" button to import.
+- No sign-in is needed; use a Sandbox Apple Account to purchase.
+- iPhone only; the UI follows the device language. Without a camera, use "Photos" to import.
 
 Permissions:
 - Camera: to photograph artwork. If denied, importing from Photos still works.
@@ -318,7 +317,7 @@ Permissions:
 
 New in this version (Full Version features):
 - iCloud Sync (Settings > "iCloud 同步 / iCloud Sync"): artworks are stored in the user's own private CloudKit database. It needs an iCloud account on the device; sync starts the next time the app is opened.
-- Family Museum (Settings > "家庭美術館 / Family Museum"): the owner creates a CloudKit zone share and invites family members through Apple's standard sharing screen (UICloudSharingController). Only invited people can join; there is no public link. Opening the invitation shows a confirmation sheet in the app. Members get the Full Version features while they are in the family museum. Testing it fully needs two devices with different Apple Accounts; with one device you can create the family museum and open the invitation screen.
+- Family Museum (Settings > "家庭美術館 / Family Museum"): the owner creates a CloudKit zone share and invites family members through Apple's standard sharing screen (UICloudSharingController). Only invited people can join; there is no public link. Opening the invitation shows a confirmation sheet in the app. Members get the Full Version features while they are in the family museum. To try it: 1) sign in to iCloud on the device and buy the Full Version with a Sandbox Apple Account (creating a family museum needs the purchase); 2) Settings > "家庭美術館 / Family Museum" > "建立家庭美術館 / Create a Family Museum"; Apple's sharing screen opens to invite someone; 3) relaunch to enter the family museum. Joining needs a second device with a different Apple Account: open the invitation link, tap "加入 / Join", relaunch.
 - Home Screen widget (small, medium, large): shows artworks from the museum, written by the app to its App Group container. Tapping opens that artwork.
 
 Privacy: all image processing (including the craft cutout, which uses Apple's Vision framework) runs on the device. Photos are never sent to the developer: there is no account, no analytics, no ads, and no server of our own. iCloud Sync and the Family Museum use the user's own iCloud (CloudKit private and shared databases), which the developer cannot access. No generative AI is used on the children's work.
