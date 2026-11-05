@@ -100,6 +100,7 @@ struct EditView: View {
     }
 
     var body: some View {
+        let _ = fridgeColor  // read it, so the body depends on 冰箱顏色
         VStack(spacing: 10) {
             stage
                 .frame(maxWidth: .infinity, minHeight: 190, maxHeight: .infinity)

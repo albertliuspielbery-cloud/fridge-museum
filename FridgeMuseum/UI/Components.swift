@@ -45,6 +45,7 @@ struct FridgeDoorShape: View {
     var handleHeight: CGFloat = 70
 
     var body: some View {
+        let _ = fridgeColor  // read it, so the body depends on 冰箱顏色
         let shape = UnevenRoundedRectangle(topLeadingRadius: top, bottomLeadingRadius: bottom,
                                            bottomTrailingRadius: bottom, topTrailingRadius: top, style: .continuous)
         ZStack(alignment: .topLeading) {
@@ -91,19 +92,27 @@ struct MagnetWordmark: View {
         let id: Int
         let text: String
         let color: Color
+        /// White on most magnets; dark on the light yellow / orange ones so the letter stays readable.
+        let ink: Color
         let angle: Double
     }
+
+    private static let lightInk = Color(0xFFFFFF, 0x1E2340)
+    private static let darkInk = Color(0x4A2F24, 0x1E2340)
 
     private var pieces: [Piece] {
         let angles: [Double] = [-6, 4, -3, 5, -4]
         if AppLanguage.isChinese {
             let colors = [Palette.red, Palette.blue, Palette.yellow, Palette.green, Palette.purple]
-            return "冰箱美術館".enumerated().map { Piece(id: $0.offset, text: String($0.element), color: colors[$0.offset % 5],
-                                                     angle: angles[$0.offset % 5]) }
+            return "冰箱美術館".enumerated().map {
+                Piece(id: $0.offset, text: String($0.element), color: colors[$0.offset % 5],
+                      ink: $0.offset % 5 == 2 ? Self.darkInk : Self.lightInk, angle: angles[$0.offset % 5])
+            }
         }
         let colors = [Palette.orange, Palette.green, Palette.blue]
         return ["My", "Fridge", "Museum"].enumerated().map {
-            Piece(id: $0.offset, text: $0.element, color: colors[$0.offset], angle: angles[($0.offset + 1) % 5] * 0.8)
+            Piece(id: $0.offset, text: $0.element, color: colors[$0.offset],
+                  ink: $0.offset == 0 ? Self.darkInk : Self.lightInk, angle: angles[($0.offset + 1) % 5] * 0.8)
         }
     }
 
@@ -130,7 +139,7 @@ struct MagnetWordmark: View {
                 ForEach(pieces) { piece in
                     Text(verbatim: piece.text)
                         .font(.fmDisplay((zh ? 26 : 21) * scale, relativeTo: .largeTitle))
-                        .foregroundStyle(Color(0xFFFFFF, 0x1E2340))
+                        .foregroundStyle(piece.ink)
                         .lineLimit(1)
                         .fixedSize()
                         .frame(minWidth: zh ? tile : nil, minHeight: zh ? tile : 34 * scale)
@@ -302,6 +311,7 @@ struct CrayonHeader: View {
     @AppStorage(FridgeColor.storageKey) private var fridgeColor = FridgeColor.mint.rawValue
 
     var body: some View {
+        _ = fridgeColor  // read it, so the body depends on 冰箱顏色
         let ink = self.ink ?? Palette.doorInk
         return HStack(alignment: .firstTextBaseline, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {

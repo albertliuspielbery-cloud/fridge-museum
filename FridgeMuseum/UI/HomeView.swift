@@ -49,6 +49,7 @@ struct HomeView: View {
     }
 
     var body: some View {
+        let _ = fridgeColor  // read it, so the body depends on 冰箱顏色
         ScrollViewReader { proxy in
             content
                 .onChange(of: samplesBottom) { revealSamplesIfHidden(proxy) }

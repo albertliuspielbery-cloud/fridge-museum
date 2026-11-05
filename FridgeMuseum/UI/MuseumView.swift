@@ -112,6 +112,7 @@ struct MuseumView: View {
     }
 
     var body: some View {
+        let _ = fridgeColor  // read it, so the body depends on 冰箱顏色
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 childShelf
