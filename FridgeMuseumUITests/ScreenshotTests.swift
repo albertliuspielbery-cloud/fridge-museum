@@ -8,7 +8,12 @@ final class ScreenshotTests: XCTestCase {
     static let allScenarios = [
         "home-empty", "home-full", "success", "edit-flat", "edit-craft", "crop-loupe", "adjust", "brush-craft",
         "label", "paywall", "museum", "museum-filter", "museum-small", "museum-large", "detail",
-        "share-card", "settings", "onboarding",
+        "share-card", "settings", "onboarding", "home-color",
+    ]
+
+    /// Extra shots that are another scenario with a setting changed (UserDefaults from launch arguments).
+    static let variants: [String: (scenario: String, arguments: [String])] = [
+        "home-color": ("home-full", ["-fridgeColor", "peach"]),
     ]
 
     override func setUp() {
@@ -41,12 +46,13 @@ final class ScreenshotTests: XCTestCase {
     private func shoot(_ scenario: String, lang: String, look: String) {
         let app = XCUIApplication()
         let zh = lang.hasPrefix("zh")
+        let variant = Self.variants[scenario]
         app.launchArguments = [
-            "-FMDemo", scenario,
+            "-FMDemo", variant?.scenario ?? scenario,
             "-FMAppearance", look,
             "-AppleLanguages", zh ? "(zh-Hant)" : "(en)",
             "-AppleLocale", zh ? "zh_TW" : "en_US",
-        ]
+        ] + (variant?.arguments ?? [])
         if let dir = Bundle(for: ScreenshotTests.self).resourcePath {
             app.launchEnvironment["FM_SEED_DIR"] = dir
         }
