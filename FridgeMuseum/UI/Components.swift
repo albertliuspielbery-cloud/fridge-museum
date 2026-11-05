@@ -39,6 +39,7 @@ struct Wallpaper: View {
 
 /// One fridge door: mint enamel with a darker side panel (3D), a highlight strip and a handle.
 struct FridgeDoorShape: View {
+    @AppStorage(FridgeColor.storageKey) private var fridgeColor = FridgeColor.mint.rawValue
     var top: CGFloat
     var bottom: CGFloat
     var handleHeight: CGFloat = 70
@@ -80,6 +81,71 @@ struct Fridge<Freezer: View, Main: View>: View {
             Image("fridge-bow").resizable().scaledToFit().frame(width: 44).offset(x: 10, y: -12)
                 .accessibilityHidden(true)
         }
+    }
+}
+
+/// The home title: Bibi waving next to 冰箱美術館 spelled in fridge magnets (one per character in Chinese, one per word
+/// in English). Shrinks to fit the row; VoiceOver reads it as one header.
+struct MagnetWordmark: View {
+    private struct Piece: Identifiable {
+        let id: Int
+        let text: String
+        let color: Color
+        let angle: Double
+    }
+
+    private var pieces: [Piece] {
+        let angles: [Double] = [-6, 4, -3, 5, -4]
+        if AppLanguage.isChinese {
+            let colors = [Palette.red, Palette.blue, Palette.yellow, Palette.green, Palette.purple]
+            return "冰箱美術館".enumerated().map { Piece(id: $0.offset, text: String($0.element), color: colors[$0.offset % 5],
+                                                     angle: angles[$0.offset % 5]) }
+        }
+        let colors = [Palette.orange, Palette.green, Palette.blue]
+        return ["My", "Fridge", "Museum"].enumerated().map {
+            Piece(id: $0.offset, text: $0.element, color: colors[$0.offset], angle: angles[($0.offset + 1) % 5] * 0.8)
+        }
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            row(scale: 1)
+            row(scale: 0.86)
+            row(scale: 0.74)
+            row(scale: 0.62)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("冰箱美術館"))
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    private func row(scale: CGFloat) -> some View {
+        let zh = AppLanguage.isChinese
+        let tile: CGFloat = 40 * scale
+        return HStack(alignment: .center, spacing: 6 * scale) {
+            Image("bibi-wave")  // the asset has its own dark appearance
+                .resizable().scaledToFit()
+                .frame(height: 64 * scale)
+            HStack(spacing: (zh ? 4 : 6) * scale) {
+                ForEach(pieces) { piece in
+                    Text(verbatim: piece.text)
+                        .font(.fmDisplay((zh ? 26 : 21) * scale, relativeTo: .largeTitle))
+                        .foregroundStyle(Color(0xFFFFFF, 0x1E2340))
+                        .lineLimit(1)
+                        .fixedSize()
+                        .frame(minWidth: zh ? tile : nil, minHeight: zh ? tile : 34 * scale)
+                        .padding(.horizontal, zh ? 0 : 9 * scale)
+                        .background {
+                            RoundedRectangle(cornerRadius: 9 * scale, style: .continuous)
+                                .fill(Color.black.opacity(0.14)).offset(y: 2.5 * scale)
+                            RoundedRectangle(cornerRadius: 9 * scale, style: .continuous).fill(piece.color)
+                        }
+                        .rotationEffect(.degrees(piece.angle))
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .fixedSize()
     }
 }
 
@@ -231,10 +297,13 @@ struct CrayonHeader: View {
     var subtitle: String?
     var count: Int?
     var tape: TapeStyle = .mint
-    var ink: Color = Palette.doorInk
+    /// nil: the fridge door ink (follows 冰箱顏色).
+    var ink: Color? = nil
+    @AppStorage(FridgeColor.storageKey) private var fridgeColor = FridgeColor.mint.rawValue
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        let ink = self.ink ?? Palette.doorInk
+        return HStack(alignment: .firstTextBaseline, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: title)
                     .font(.fmDisplay(23, relativeTo: .title2))

@@ -5,6 +5,8 @@ import SwiftUI
 /// Home = the kitchen: a fridge door with Bibi on the freezer (speech bubble = today's quota), this visit's works
 /// taped to the main door with crayon placards, and the counter dock (mode switch, shutter, Photos, museum).
 struct HomeView: View {
+    /// Repaints the fridge door when 冰箱顏色 changes in Settings.
+    @AppStorage(FridgeColor.storageKey) private var fridgeColor = FridgeColor.mint.rawValue
     let open: (Route) -> Void
     let showSettings: () -> Void
 
@@ -141,20 +143,11 @@ struct HomeView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Title | window art | Settings (top-right, iOS convention). Siblings in one HStack, so the art can never
-            // sit on top of the button.
-            HStack(alignment: .top, spacing: 8) {
-                Text("冰箱美術館")
-                    .font(.fmDisplay(AppLanguage.isChinese ? 40 : 34, relativeTo: .largeTitle))
-                    .foregroundStyle(Palette.title)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
-                    .fixedSize(horizontal: false, vertical: true)
+            // Title (Bibi + magnet letters) | Settings (top-right, iOS convention). Siblings in one HStack, so the
+            // title can never sit on top of the button. (The kitchen window art made room for the wordmark in 1.3.0.)
+            HStack(alignment: .center, spacing: 8) {
+                MagnetWordmark()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityAddTraits(.isHeader)
-                Image("kitchen-window").resizable().scaledToFit().frame(width: 72)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
                 Button(action: showSettings) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 18, weight: .semibold))

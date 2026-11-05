@@ -3080,6 +3080,72 @@
         }
       }
     },
+    "冰箱顏色" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fridge Color"
+          }
+        }
+      }
+    },
+    "薄荷綠" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mint"
+          }
+        }
+      }
+    },
+    "奶油黃" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Butter"
+          }
+        }
+      }
+    },
+    "蜜桃粉" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peach"
+          }
+        }
+      }
+    },
+    "天空藍" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sky"
+          }
+        }
+      }
+    },
+    "薰衣草紫" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lavender"
+          }
+        }
+      }
+    },
     "邀請沒有送出" : {
       "extractionState" : "manual",
       "localizations" : {

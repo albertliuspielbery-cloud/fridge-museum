@@ -32,17 +32,69 @@ extension Color {
     }
 }
 
+/// 冰箱顏色 (Settings, free). Only the fridge doors change; Bibi, the widget, share cards and the rest of the kitchen
+/// stay as they are. Mint is the original look.
+enum FridgeColor: String, CaseIterable, Identifiable {
+    case mint, butter, peach, sky, lavender
+
+    static let storageKey = "fridgeColor"
+
+    static var current: FridgeColor {
+        FridgeColor(rawValue: UserDefaults.standard.string(forKey: storageKey) ?? "") ?? .mint
+    }
+
+    var id: String { rawValue }
+
+    var name: String {
+        switch self {
+        case .mint: String(localized: "薄荷綠")
+        case .butter: String(localized: "奶油黃")
+        case .peach: String(localized: "蜜桃粉")
+        case .sky: String(localized: "天空藍")
+        case .lavender: String(localized: "薰衣草紫")
+        }
+    }
+
+    struct Tones {
+        let door, hi, lo, seam, ink, muted, crop: Color
+    }
+
+    var tones: Tones { Self.table[self]! }
+
+    private static let table: [FridgeColor: Tones] = [
+        .mint: Tones(door: Color(0x8ED3C0, 0x33766F), hi: Color(0xB9E7DA, 0x4F9890), lo: Color(0x5DB4A0, 0x24585A),
+                     seam: Color(0x6CC0AC, 0x2A625D), ink: Color(0x173A31, 0xFFFFFF), muted: Color(0x22564A, 0xE2F6F1),
+                     crop: Color(0x4F8270, 0x22534D)),
+        .butter: Tones(door: Color(0xF6DC8C, 0x8A7330), hi: Color(0xFBEBB8, 0xA8904A), lo: Color(0xE3BE5C, 0x6A5622),
+                       seam: Color(0xECCB6E, 0x775F27), ink: Color(0x4A3410, 0xFFFFFF), muted: Color(0x5A4518, 0xFBF1D6),
+                       crop: Color(0xB8963C, 0x5A4A1E)),
+        .peach: Tones(door: Color(0xF7B9A8, 0x8E5546), hi: Color(0xFBD5CB, 0xAC7062), lo: Color(0xE8907C, 0x6C3E33),
+                      seam: Color(0xEFA391, 0x7A473B), ink: Color(0x4A2018, 0xFFFFFF), muted: Color(0x5E2E22, 0xFBE5DE),
+                      crop: Color(0xC06F5C, 0x5A3329)),
+        .sky: Tones(door: Color(0xA9CDEB, 0x3B6690), hi: Color(0xCFE3F5, 0x5683AD), lo: Color(0x7AAEDB, 0x2B4D6E),
+                    seam: Color(0x8FBCE2, 0x325879), ink: Color(0x15324D, 0xFFFFFF), muted: Color(0x1F4566, 0xDCEAF7),
+                    crop: Color(0x5C8DBB, 0x24405C)),
+        .lavender: Tones(door: Color(0xC7B8E8, 0x5E5090), hi: Color(0xDDD3F2, 0x7A6CAD), lo: Color(0xA592D6, 0x45396E),
+                         seam: Color(0xB4A3DE, 0x4F437C), ink: Color(0x2E2350, 0xFFFFFF), muted: Color(0x3E3266, 0xECE6F9),
+                         crop: Color(0x8775BE, 0x3A3060)),
+    ]
+}
+
 enum Palette {
     // Kitchen wall + fridge
     static let wall = Color(0xFCEBD2, 0x1E2340)
     static let wallMotif = Color(0xF3D6AB, 0x283058)
     static let title = Color(0x4A2F24, 0xF6EFE4)
-    static let door = Color(0x8ED3C0, 0x33766F)
-    static let doorHi = Color(0xB9E7DA, 0x4F9890)
-    static let doorLo = Color(0x5DB4A0, 0x24585A)
-    static let doorSeam = Color(0x6CC0AC, 0x2A625D)
-    static let doorInk = Color(0x173A31, 0xFFFFFF)
-    static let doorMuted = Color(0x22564A, 0xE2F6F1)
+    // The fridge doors follow 冰箱顏色 in Settings (FridgeColor). A view that paints them must observe the choice
+    // (`@AppStorage(FridgeColor.storageKey)`) so it redraws when it changes.
+    static var door: Color { FridgeColor.current.tones.door }
+    static var doorHi: Color { FridgeColor.current.tones.hi }
+    static var doorLo: Color { FridgeColor.current.tones.lo }
+    static var doorSeam: Color { FridgeColor.current.tones.seam }
+    static var doorInk: Color { FridgeColor.current.tones.ink }
+    static var doorMuted: Color { FridgeColor.current.tones.muted }
+    /// The door while 裁切 is open (a darker shade, so the paper corners stand out).
+    static var doorCrop: Color { FridgeColor.current.tones.crop }
 
     // Surfaces + text
     static let surface = Color(0xFFFBF4, 0x272C4E)

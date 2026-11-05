@@ -35,6 +35,8 @@ enum EditTool: String, CaseIterable, Identifiable {
 /// The studio: the artwork on a mint stage, compare slider, tools (裁切 / 調整 / 筆刷 / 說明牌) and
 /// 收進這次 / 存到手機. The quota is only checked when keeping or saving — never mid-edit.
 struct EditView: View {
+    /// Repaints the fridge door when 冰箱顏色 changes in Settings.
+    @AppStorage(FridgeColor.storageKey) private var fridgeColor = FridgeColor.mint.rawValue
     @Bindable var artwork: Artwork
     @Environment(AppModel.self) private var app
     @Environment(\.modelContext) private var modelContext
@@ -302,7 +304,7 @@ struct EditView: View {
         .background {
             ZStack {
                 shape.fill(Palette.doorLo).offset(x: 9, y: 5)
-                shape.fill(tool == .crop ? Color(0x4F8270, 0x22534D) : Palette.door)
+                shape.fill(tool == .crop ? Palette.doorCrop : Palette.door)
                 Capsule().fill(Palette.doorHi.opacity(0.7)).frame(width: 12, height: 110)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .padding(.leading, 18).padding(.top, 60)

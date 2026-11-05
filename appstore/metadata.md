@@ -213,6 +213,7 @@ zh-Hant
 ・分享卡片：把作品放進冰箱門上的相紙，傳給家人剛剛好
 ・拍照自動轉正；昏暗或白色桌面也比較找得到紙邊，相機新增手電筒
 ・筆刷可以放大來塗，美術館可以切換大圖、小圖
+・冰箱換新裝：設定裡可以把冰箱門換成 5 種顏色，首頁標題換成冰冰和冰箱磁鐵字
 ・設定新增「兌換代碼」
 ```
 
@@ -224,6 +225,7 @@ en-US
 • Share cards: the artwork on a photo print on the fridge door, ready to send
 • Photos are turned upright automatically, paper edges are easier to find on dim or white tables, and the camera has a flashlight
 • Zoom in while using the brush, and switch the museum between large and small tiles
+• A new look: pick one of 5 fridge door colors in Settings, and a new title with Bibi and fridge-magnet letters
 • Redeem Code in Settings
 ```
 

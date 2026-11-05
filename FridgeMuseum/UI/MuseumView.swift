@@ -4,6 +4,8 @@ import SwiftUI
 /// 美術館 — every kept artwork, per child or all, filterable by 畫作/勞作, school year & semester, age, tags and ⭐,
 /// grouped into semester sections with crayon headers.
 struct MuseumView: View {
+    /// Repaints the fridge door when 冰箱顏色 changes in Settings.
+    @AppStorage(FridgeColor.storageKey) private var fridgeColor = FridgeColor.mint.rawValue
     enum ChildFilter: Hashable {
         case all
         case unassigned

@@ -133,6 +133,12 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    FridgeColorPicker()
+                } header: {
+                    Text("冰箱顏色")
+                }
+
+                Section {
                     Toggle(isOn: $useAlbums) {
                         Text("存到照片時依小朋友分相簿")
                     }
@@ -403,5 +409,47 @@ struct LicensesView: View {
         guard let url = Bundle.main.url(forResource: file, withExtension: "txt"),
               let s = try? String(contentsOf: url, encoding: .utf8) else { return "SIL Open Font License 1.1 — https://openfontlicense.org" }
         return s
+    }
+}
+
+/// 冰箱顏色: five door colors, free for everyone. Applies right away: every view that paints a door observes the key.
+struct FridgeColorPicker: View {
+    @AppStorage(FridgeColor.storageKey) private var selection = FridgeColor.mint.rawValue
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(FridgeColor.allCases) { color in
+                let selected = selection == color.rawValue
+                Button { selection = color.rawValue } label: {
+                    VStack(spacing: 6) {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(color.tones.door)
+                            .overlay(alignment: .topLeading) {
+                                Capsule().fill(color.tones.hi).frame(width: 4, height: 16).padding(6)
+                            }
+                            .overlay(alignment: .trailing) {
+                                Capsule().fill(color.tones.lo).frame(width: 4, height: 14).padding(.trailing, 6)
+                            }
+                            .frame(width: 40, height: 52)
+                            .padding(4)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                                    .stroke(selected ? Palette.ink : Color.clear, lineWidth: 2.5)
+                            }
+                        Text(verbatim: color.name)
+                            .font(.fm(12, bold: selected))
+                            .foregroundStyle(selected ? Palette.ink : Palette.muted)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(verbatim: color.name))
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .padding(.vertical, 6)
     }
 }
