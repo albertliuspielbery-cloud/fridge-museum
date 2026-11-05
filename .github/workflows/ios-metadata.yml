@@ -10,7 +10,7 @@ on:
       version:
         description: '版本號（要和上傳的建置版本一樣）'
         type: string
-        default: '1.1.0'
+        default: '1.3.0'
       screenshots:
         description: '上傳截圖'
         type: boolean

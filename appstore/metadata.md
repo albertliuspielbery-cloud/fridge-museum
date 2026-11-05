@@ -1,6 +1,6 @@
 # App Store 上架資料 — 冰箱美術館 / My Fridge Museum
 
-2026-10-29　星光工作室 Starlight Studio　版本 1.1.0（App Store 第一個公開版本）
+2026-11-05　星光工作室 Starlight Studio　版本 1.3.0（1.1.0 是第一個公開版本，2026-10-29 送審）
 
 每個欄位的內容放在程式碼區塊裡，可以直接整段複製貼到 App Store Connect。區塊後面的數字是字元數（Apple 算的是字元，換行也算一個），已經對照 Apple 的上限。
 
@@ -40,13 +40,13 @@ Keep every drawing they make
 
 zh-Hant
 ```
-整理抽屜那天開連拍，一張接一張拍：紙自動拉正、底色變白，勞作自動去背，再收進每個孩子的美術館。全部在手機上處理，App 不會上傳照片。
+整理抽屜那天開連拍，一張接一張拍：紙自動拉正、底色變白，勞作自動去背。新的「家庭美術館」讓爸爸媽媽、爺爺奶奶一起收藏孩子的作品，主畫面小工具每天換一件來看。
 ```
 字元數：67
 
 en-US
 ```
-Burst-shoot a whole drawer of art. Drawings come out straight and white, crafts are lifted off the table, and each piece is filed in that child's museum, on your iPhone.
+Burst-shoot a drawer of art: drawings come out straight and white, crafts lifted off the table. New: a Family Museum to share with family, and a Home Screen widget.
 ```
 字元數：169
 
@@ -63,6 +63,7 @@ zh-Hant
 ・整理抽屜那天開「連拍」，一張拍完換下一張，回到廚房再一張張整理，或「全部收進」
 ・也可以從「照片」挑選已經拍好的作品
 ・拍到收過的作品，會提醒「這張好像收過了」；兩張都想留也可以
+・拍好的作品會自動轉正；暗暗的餐桌、白色桌面也比較找得到紙邊，需要時可以開手電筒
 
 【畫作：紙拉正，底色變白】
 ・自動找出紙張四角，把斜拍的紙拉正
@@ -89,10 +90,21 @@ zh-Hant
 ・按「存到手機」存進「照片」App，畫作最長邊可達 4096 像素，細節清楚
 ・允許完整照片權限時，每個孩子會有一本「冰箱美術館 – 名字」相簿；只允許「加入照片」也能存，會放在「最近項目」
 ・可以在圖片下方加上名字、年齡和日期，也能用 iPhone 的分享選單傳給家人
-・作品只存在這支手機裡。還沒存到照片的作品多了，會提醒你備份；設定裡看得到「已存到照片」幾件，也能一次全部存好
+・做成「分享卡片」：作品放在冰箱門上的相紙裡，有直式和方形，傳 LINE 剛剛好
+・沒開 iCloud 同步時，作品只存在這支手機裡。還沒存到照片的作品多了，會提醒你備份；設定裡看得到「已存到照片」幾件，也能一次全部存好
+
+【iCloud 同步與家庭美術館（完整版）】
+・用同一個 Apple 帳號的 iPhone、iPad 都看得到作品，換手機也不怕
+・開一間「家庭美術館」，邀請另一半、爺爺奶奶加入，大家拍的作品都收進同一間美術館，用不同的 Apple 帳號也可以
+・加入的家人不用另外購買，也能使用完整版的功能
+・作品存在你自己的 iCloud，開發者看不到；隨時可以在設定關掉，關掉不會刪掉手機上的作品
+
+【主畫面小工具】
+・把冰箱美術館的小工具放到主畫面，有小、中、大三種尺寸，每隔幾個小時換一件作品
+・點一下就打開那件作品
 
 【隱私】
-・所有處理都在這支 iPhone 上完成，App 不會上傳你的照片
+・所有處理都在這支 iPhone 上完成，照片不會傳給開發者；開啟 iCloud 同步時只存到你自己的 iCloud
 ・不需要註冊帳號，沒有廣告、沒有追蹤，不蒐集任何資料
 ・不用生成式 AI 改動孩子的作品：只整理紙張和背景，不會重畫或添加任何內容
 ・拍照、整理、存到手機都不用連網
@@ -100,7 +112,7 @@ zh-Hant
 【免費版與完整版】
 ・免費版：平面畫作每天可以收 3 張（當地午夜重置），立體勞作可以試用 3 件
 ・作品收進美術館或存到手機才算，同一件作品只算一次；看範例不算
-・完整版：一次買斷，不是訂閱，不會每月扣款。平面畫作不限張數、立體勞作不限件數；全家共享，一次買，家人的 iPhone 也能用；之後的更新都免費
+・完整版：一次買斷，不是訂閱，不會每月扣款。平面畫作不限張數、立體勞作不限件數；iCloud 同步和家庭美術館；全家共享，一次買，家人的 iPhone 也能用；之後的更新都免費
 
 冰箱美術館是給家長用的整理工具。
 
@@ -116,18 +128,19 @@ ONE PHOTO, OR A WHOLE STACK
 • Tap "Artist" to choose a child first, and new photos go straight to their museum
 • Clearing out a drawer? Turn on Burst, snap one after another, then sort them back in the kitchen or tap "Hang Them All Up"
 • Or choose photos you've already taken from your library
-• Snap something that's already in the museum and you'll see "Looks like you kept this one already". Keeping both is fine
+• A reminder when you snap something you've already kept
+• Photos are turned upright automatically, paper edges are easier to find on dim or white tables, and a flashlight button helps when it's dark
 
 DRAWINGS: STRAIGHT AND WHITE
 • Finds the paper's corners and straightens a photo taken at an angle
 • Evens out the light, so yellowed or dim paper turns clean white
 • Keeps pale yellow crayon, watercolor, and pencil from washing out
-• Removes little specks, and reduces shadows that reach in from the edge of the sheet
+• Removes specks and reduces shadows at the edge of the sheet
 • Colored paper keeps its color
 • Fine-tune the corners, rotate or straighten, and drag the slider to compare before and after
 
 CRAFTS: LIFTED OFF THE TABLE
-• On-device AI separates the craft from the table, then places it on white, warm white, light gray, or a soft glow, with an optional natural shadow
+• On-device AI lifts the craft off the table onto a clean background, with an optional soft shadow
 • Something else in the shot? Tap the parts you want to keep
 • If a bit was cut away by mistake, paint it back with the Restore Artwork brush
 
@@ -141,20 +154,30 @@ A MUSEUM FOR EACH CHILD
 
 SAVE TO PHOTOS
 • Save to Photos at high resolution, up to 4096 pixels on the long side for drawings
-• With full Photos access, each child gets an album such as "My Fridge Museum – Mia". With add-only access, artworks save to Recents
+• With full Photos access, each child gets their own album
 • Add the name, age, and date below the image if you like, or send it to family with the iPhone share sheet
-• Artworks live only on this phone. When several haven't been saved to Photos yet, the app gently reminds you, and Settings shows how many are saved, with Save All to Photos for the rest
+• Make a share card: the artwork on a photo print on the fridge door, in portrait or square
+• Without iCloud Sync, artworks live only on this phone; a gentle reminder helps you back them up to Photos
+
+ICLOUD SYNC AND FAMILY MUSEUM (FULL VERSION)
+• See your artworks on any iPhone or iPad signed in to the same Apple Account
+• Open a Family Museum and invite your partner or the grandparents. Everyone's photos go into one shared museum, even with different Apple Accounts
+• Family members who join don't need to buy it
+• Artworks are kept in your own iCloud; the developer can't see them. Turn sync off in Settings anytime; nothing on the phone is deleted
+
+HOME SCREEN WIDGET
+• Small, medium, or large, with a different artwork every few hours. Tap to open it
 
 PRIVACY
-• Everything is processed on your iPhone. The app never uploads your photos
+• Everything is processed on your iPhone. Your photos are never sent to us; with iCloud Sync on, they're kept only in your own iCloud
 • No account, no ads, no tracking, and no data collected
 • No generative AI changes your child's work. The app tidies the paper and background; it never redraws or adds anything
-• Taking photos, organizing, and saving all work without an internet connection
+• Taking photos, organizing, and saving work offline
 
 FREE AND FULL VERSION
 • Free: keep up to 3 drawings a day (resets at midnight) and try 3 crafts
 • A piece counts only when it's hung up in the museum or saved to Photos, and only once. Samples don't count
-• Full Version: a one-time purchase, not a subscription, with no recurring charges. Unlimited drawings and crafts, Family Sharing so one purchase covers the whole family, and future updates are free
+• Full Version: a one-time purchase, not a subscription. Unlimited drawings and crafts, iCloud Sync and the Family Museum, Family Sharing so one purchase covers the whole family, and future updates are free
 
 My Fridge Museum is an organizing tool for parents.
 
@@ -178,33 +201,31 @@ kids,children,art,organizer,craft,scan,portfolio,preschool,kindergarten,school,k
 ```
 字元數：96（UTF-8 96 bytes）
 
-## 6. 此版本新增內容 What's New（1.1.0）
+## 6. 此版本新增內容 What's New（1.3.0）
 
-<!-- 1.1.0 是第一個在 App Store 公開上架的版本（1.0、1.0.1 只在 TestFlight），所以 App Store 不會顯示這段，ASC 也可能不讓你填。先寫好留著：下一版可以參考，或直接留空。 -->
+<!-- 1.3.0 涵蓋 1.2.x（只在 TestFlight）和 1.3.0 的新功能。 -->
 
 zh-Hant
 ```
-・連拍：一張接一張拍，回到廚房再一張張整理，或「全部收進」
-・拍給：先選好孩子，新拍的作品直接收進他的美術館
-・美術館可以一次選好幾件，一起設定孩子、標籤、日期、最愛，或存到手機、刪除
-・孩子的頭像可以用照片或他自己的作品
-・拍到收過的作品，會提醒「這張好像收過了」
-・還沒存到照片的作品多了，會提醒你備份；設定裡看得到已存幾件
-・付費頁把完整版包含的內容寫得更清楚
+・家庭美術館（完整版）：邀請家人加入，用不同的 Apple 帳號也能一起收藏孩子的作品，加入的家人不用另外購買
+・iCloud 同步（完整版）：同一個 Apple 帳號的 iPhone、iPad 都看得到作品，換手機也不怕
+・主畫面小工具：小、中、大三種尺寸，每隔幾個小時換一件作品，點一下就打開
+・分享卡片：把作品放進冰箱門上的相紙，傳給家人剛剛好
+・拍照自動轉正；昏暗或白色桌面也比較找得到紙邊，相機新增手電筒
+・筆刷可以放大來塗，美術館可以切換大圖、小圖
+・設定新增「兌換代碼」
 ```
-字元數：183
 
 en-US
 ```
-• Burst: snap one after another, then sort them in the kitchen or hang them all up
-• Artist: choose a child first, and new photos go straight to their museum
-• Select several artworks in the museum to set the artist, tags, date, or favorite, or to save or delete them
-• Child avatars from a photo or one of their artworks
-• A reminder when you snap something that's already in the museum
-• A gentle backup reminder, and Settings shows how many artworks are saved to Photos
-• A clearer paywall that lists what the Full Version includes
+• Family Museum (Full Version): invite family to collect your child's art together, even with different Apple Accounts. Family members don't need to buy anything
+• iCloud Sync (Full Version): see your artworks on every iPhone and iPad signed in to your Apple Account
+• Home Screen widget in three sizes. It shows a different artwork every few hours; tap to open it
+• Share cards: the artwork on a photo print on the fridge door, ready to send
+• Photos are turned upright automatically, paper edges are easier to find on dim or white tables, and the camera has a flashlight
+• Zoom in while using the brush, and switch the museum between large and small tiles
+• Redeem Code in Settings
 ```
-字元數：534
 
 ## 7. 截圖文字（依截圖順序）
 
@@ -280,7 +301,8 @@ Testing without real children's art:
 In-app purchase (non-consumable "Full Version", tw.starlight.fridgemuseum.full):
 - Free use allows 3 drawings per day and 3 crafts in total. The paywall appears only when you tap "收進這次 / Hang It Up" or "存到手機 / Save to Photos" after that quota is used, i.e. on the 4th drawing of the day or the 4th craft. It never interrupts editing.
 - The quickest way to see it: tap the gear at the top right of the home screen (Settings) > "解鎖完整版 / Unlock Full Version". "恢復購買 / Restore Purchases" is in the same section and on the paywall.
-- The Full Version IAP is submitted with this version. Family Sharing is enabled. Ask to Buy shows a "Waiting for approval" state and unlocks automatically when approved.
+- The Full Version IAP is already approved. Family Sharing is enabled. Ask to Buy shows a "Waiting for approval" state and unlocks automatically when approved.
+- Settings > "兌換代碼 / Redeem Code" opens Apple's offer code redemption sheet (one-time codes for the Full Version).
 - No sign-in is needed; use a Sandbox Apple Account to purchase. Restore Purchases is in Settings and on the paywall.
 - The UI follows the device language.
 - iPhone only. If the camera is unavailable, use the "Photos" button to import.
@@ -291,7 +313,12 @@ Permissions:
 - Microphone and speech recognition: only when recording an optional voice note; transcription uses on-device recognition.
 - Child avatars chosen from Photos use the system photo picker, which needs no permission.
 
-Privacy: all image processing (including the craft cutout, which uses Apple's Vision framework) runs on the device. Photos are never uploaded, there is no account, no analytics, no ads, and the app makes no network requests of its own. No generative AI is used on the children's work.
+New in this version (Full Version features):
+- iCloud Sync (Settings > "iCloud 同步 / iCloud Sync"): artworks are stored in the user's own private CloudKit database. It needs an iCloud account on the device; sync starts the next time the app is opened.
+- Family Museum (Settings > "家庭美術館 / Family Museum"): the owner creates a CloudKit zone share and invites family members through Apple's standard sharing screen (UICloudSharingController). Only invited people can join; there is no public link. Opening the invitation shows a confirmation sheet in the app. Members get the Full Version features while they are in the family museum. Testing it fully needs two devices with different Apple Accounts; with one device you can create the family museum and open the invitation screen.
+- Home Screen widget (small, medium, large): shows artworks from the museum, written by the app to its App Group container. Tapping opens that artwork.
+
+Privacy: all image processing (including the craft cutout, which uses Apple's Vision framework) runs on the device. Photos are never sent to the developer: there is no account, no analytics, no ads, and no server of our own. iCloud Sync and the Family Museum use the user's own iCloud (CloudKit private and shared databases), which the developer cannot access. No generative AI is used on the children's work.
 
 Contact: starlight.kids.app@gmail.com
 ```

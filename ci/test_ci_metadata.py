@@ -160,7 +160,7 @@ assert not [x for x in w if x[0] in ('POST', 'DELETE')], w
 assert S['shots'][k]['assetDeliveryState']['state'] == 'COMPLETE'
 print('--- released app: whatsNew sent')
 S['versions']['v0'] = {'versionString': '1.0.5', 'appStoreState': 'READY_FOR_SALE', 'appVersionState': 'READY_FOR_DISTRIBUTION'}
-w = run('--no-screenshots'); print(w); assert any('whatsNew' in v for v in S['vlocs'].values())
+w = run('--no-screenshots', '--version', M.parse_metadata_md()['whatsNewVersion']); print(w); assert any('whatsNew' in v for v in S['vlocs'].values())
 print('--- whatsNew not sent when --version differs from metadata.md section 6')
 for v in S['vlocs'].values():
     v['whatsNew'] = 'keep me'
