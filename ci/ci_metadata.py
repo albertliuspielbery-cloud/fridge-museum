@@ -29,7 +29,7 @@ LIMITS = {'name': 30, 'subtitle': 30, 'promotionalText': 170, 'description': 400
           'whatsNew': 4000, 'reviewNotes': 4000}
 LOCALES = ('zh-Hant', 'en-US')
 SHOT_SIZE = (1320, 2868)
-SHOT_COUNT = 6
+SHOT_COUNT = 7
 MAX_SHOTS_PER_SET = 10
 
 # 版本狀態（appVersionState 新欄位，appStoreState 舊欄位，兩個都看）

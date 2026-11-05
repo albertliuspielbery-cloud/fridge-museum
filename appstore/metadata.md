@@ -231,7 +231,7 @@ en-US
 
 ## 7. 截圖文字（依截圖順序）
 
-標題：中文 ≤ 12 字、英文 ≤ 30 字元。副標可選。商店截圖共 6 張，6.9 吋（1320×2868），來源 `ci-shots-store` 分支，檔名 `<lang>-<look>-<scenario>.png`。
+標題：中文 ≤ 12 字、英文 ≤ 30 字元。副標可選。商店截圖共 7 張，6.9 吋（1320×2868），來源 `ci-shots-store` 分支，檔名 `<lang>-<look>-<scenario>.png`。
 
 | # | 畫面（scenario） | zh 標題 | zh 副標 | en 標題 | en 副標 |
 |---|---|---|---|---|---|
@@ -241,6 +241,7 @@ en-US
 | 4 | museum 每個孩子的美術館 | 每個孩子的美術館（8） | 每個孩子都有頭像，依學期、年齡、標籤找作品 | A museum for each child (23) | Each with an avatar; filter by semester, age, or tag |
 | 5 | detail 作品說明牌 | 每件作品的說明牌（8） | 當時幾歲、哪個學期，錄下孩子說的話 | A label for every piece (23) | Age, semester, and their own words |
 | 6 | success 已掛上冰箱 | 收進這次，馬上拍下一張（11） | 一整疊要拍，就開連拍 | Hang it up, snap the next (25) | A whole stack? Turn on Burst |
+| 7 | home-color 蜜桃粉冰箱（1.3.0） | 冰箱換上喜歡的顏色（9） | 5 種顏色，在設定裡點一下就換 | Pick your fridge color (22) | Five colors, one tap in Settings |
 
 說明：
 - 第 1 張首頁有「拍給」小標籤，副標對應它；第 4 張書架上有每個孩子的頭像（示範資料是顏色頭像，不是照片），副標只說「有頭像」。

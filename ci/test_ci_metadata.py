@@ -150,8 +150,8 @@ for i in range(5):
 # change one file name to force 1 re-upload
 first = S['order'][zh_set][5]; S['shots'][first]['fileName'] = 'stale.png'
 print('--- third run with 11 shots in zh set'); w = run(); print(w)
-assert len(S['order'][zh_set]) == 6 and all(S['shots'][i]['fileName'].startswith('zh-Hant-0') for i in S['order'][zh_set])
-assert [S['shots'][i]['fileName'][8:10] for i in S['order'][zh_set]] == ['01', '02', '03', '04', '05', '06'], [S['shots'][i]['fileName'] for i in S['order'][zh_set]]
+assert len(S['order'][zh_set]) == M.SHOT_COUNT and all(S['shots'][i]['fileName'].startswith('zh-Hant-0') for i in S['order'][zh_set])
+assert [S['shots'][i]['fileName'][8:10] for i in S['order'][zh_set]] == [f'{i:02d}' for i in range(1, M.SHOT_COUNT + 1)], [S['shots'][i]['fileName'] for i in S['order'][zh_set]]
 print('--- fourth run no writes'); w = run(); assert not w, w
 print('--- kept UPLOAD_COMPLETE screenshot: waited for, nothing re-uploaded or deleted')
 k = S['order'][zh_set][2]; S['shots'][k]['assetDeliveryState'] = {'state': 'UPLOAD_COMPLETE'}
