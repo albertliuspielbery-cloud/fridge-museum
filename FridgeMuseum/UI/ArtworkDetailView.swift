@@ -18,56 +18,17 @@ struct ArtworkDetailView: View {
     /// The print, decoded once per render version (downsampled off the main actor), not on every body pass.
     @State private var display: UIImage?
     @State private var labelModel: EditModel?
+    /// The page's size: 700 pt and wider (iPad) puts the print on the left and the label column on the right.
+    @State private var pageSize: CGSize = .zero
+
+    private var isWide: Bool { pageSize.width >= 700 }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                printPanel
-                Placard(title: artwork.placardTitle, lines: [artwork.placardArtist, artwork.placardMedium, artwork.placardTerm])
-                    .padding(.horizontal, 6)
-                    .overlay(alignment: .topTrailing) {
-                        Button { showLabel = true } label: {
-                            Image(systemName: "pencil")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(Palette.tealInk)
-                                .frame(width: 34, height: 34)
-                                .background(Circle().fill(Palette.tealSoft))
-                        }
-                        .buttonStyle(.plain)
-                        .padding(14)
-                        .environment(\.colorScheme, .light)
-                        .accessibilityLabel(Text("編輯說明牌"))
-                    }
-                if !artwork.tags.isEmpty {
-                    FlowLayout(spacing: 6) {
-                        ForEach(artwork.tags, id: \.self) { t in
-                            ChipLabel(title: "#\(t)", selected: false)
-                        }
-                    }
-                }
-                if !artwork.note.isEmpty || artwork.voiceNoteData != nil || !artwork.voiceTranscript.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label("孩子說", systemImage: "quote.bubble")
-                            .font(.fm(15, bold: true)).foregroundStyle(Palette.muted)
-                        if !artwork.note.isEmpty {
-                            Text(verbatim: artwork.note).font(.fm(16)).foregroundStyle(Palette.ink)
-                        }
-                        VoiceNoteRow(artwork: artwork)
-                    }
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Palette.surface))
-                } else {
-                    VoiceNoteRow(artwork: artwork)
-                }
-            }
-            .padding(.horizontal, Metrics.gutter)
-            .padding(.top, 8)
-            .padding(.bottom, 20)
+        Group {
+            if isWide { wideLayout } else { narrowLayout }
         }
-        .scrollIndicators(.hidden)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { pageSize = $0 }
         .background(Wallpaper())
-        .safeAreaInset(edge: .bottom, spacing: 0) { actionBar }
         .navigationTitle(Text(verbatim: artwork.placardTitle))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -128,7 +89,85 @@ struct ArtworkDetailView: View {
         .modifier(ShareCardDemoScene(artwork: artwork))
     }
 
-    private var printPanel: some View {
+    /// iPhone and narrow iPad windows: one column, actions pinned at the bottom.
+    private var narrowLayout: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                printPanel(maxPrintHeight: DemoMode.compactDetail ? 250 : 420)
+                labelColumn
+            }
+            .padding(.horizontal, Metrics.gutter)
+            .padding(.top, 8)
+            .padding(.bottom, 20)
+            .frame(maxWidth: Metrics.readableWidth)
+            .frame(maxWidth: .infinity)
+        }
+        .scrollIndicators(.hidden)
+        .safeAreaInset(edge: .bottom, spacing: 0) { actionBar }
+    }
+
+    /// iPad: the print fills the left; the label, tags, the child's words and the actions sit in a 360 pt column.
+    private var wideLayout: some View {
+        HStack(alignment: .top, spacing: 24) {
+            printPanel(maxPrintHeight: max(300, pageSize.height * 0.72))
+                .frame(maxWidth: .infinity)
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) { labelColumn }
+                        .padding(.top, 8)
+                        .padding(.bottom, 20)
+                }
+                .scrollIndicators(.hidden)
+                actionBar
+            }
+            .frame(width: 360)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 8)
+    }
+
+    @ViewBuilder private var labelColumn: some View {
+        Placard(title: artwork.placardTitle, lines: [artwork.placardArtist, artwork.placardMedium, artwork.placardTerm])
+            .padding(.horizontal, 6)
+            .overlay(alignment: .topTrailing) {
+                Button { showLabel = true } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Palette.tealInk)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(Palette.tealSoft))
+                }
+                .buttonStyle(.plain)
+                .padding(14)
+                .environment(\.colorScheme, .light)
+                .hoverEffect(.lift)
+                .accessibilityLabel(Text("編輯說明牌"))
+            }
+        if !artwork.tags.isEmpty {
+            FlowLayout(spacing: 6) {
+                ForEach(artwork.tags, id: \.self) { t in
+                    ChipLabel(title: "#\(t)", selected: false)
+                }
+            }
+        }
+        if !artwork.note.isEmpty || artwork.voiceNoteData != nil || !artwork.voiceTranscript.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("孩子說", systemImage: "quote.bubble")
+                    .font(.fm(15, bold: true)).foregroundStyle(Palette.muted)
+                if !artwork.note.isEmpty {
+                    Text(verbatim: artwork.note).font(.fm(16)).foregroundStyle(Palette.ink)
+                }
+                VoiceNoteRow(artwork: artwork)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Palette.surface))
+        } else {
+            VoiceNoteRow(artwork: artwork)
+        }
+    }
+
+    private func printPanel(maxPrintHeight: CGFloat) -> some View {
         HungPrint(id: artwork.id, tilt: 1.2, tape: .stripe, padding: 10) {
             Group {
                 if let display {
@@ -137,7 +176,8 @@ struct ArtworkDetailView: View {
                     ArtworkImage(artwork: artwork)
                 }
             }
-            .frame(maxHeight: DemoMode.compactDetail ? 250 : 420)
+            // The paper hugs the artwork: without a width cap a wide page stretched the print into a banner.
+            .frame(maxWidth: maxPrintHeight * printAspect, maxHeight: maxPrintHeight)
         }
         .padding(.horizontal, 30)
         .padding(.top, 34)
@@ -169,10 +209,19 @@ struct ArtworkDetailView: View {
             .buttonStyle(PrimaryCapsuleStyle())
             .disabled(isSaving)
         }
-        .padding(.horizontal, Metrics.gutter)
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, isWide ? 0 : Metrics.gutter)
         .padding(.top, 10)
         .padding(.bottom, 6)
         .background(Palette.wall.opacity(0.94).ignoresSafeArea(edges: .bottom))
+    }
+
+    /// Width ÷ height of the print (the decoded image, else the stored pixel size, else a sheet of paper).
+    private var printAspect: CGFloat {
+        if let display, display.size.height > 0 { return display.size.width / display.size.height }
+        if artwork.pixelWidth > 0, artwork.pixelHeight > 0 { return CGFloat(artwork.pixelWidth) / CGFloat(artwork.pixelHeight) }
+        return 0.75
     }
 
     private var shareItem: ShareableArtwork? {
