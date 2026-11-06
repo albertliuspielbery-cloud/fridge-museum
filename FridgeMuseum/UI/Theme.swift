@@ -182,6 +182,8 @@ extension Font {
 
 enum Metrics {
     static let gutter: CGFloat = 16
+    /// iPad (1.4.0): the home fridge and other single-column pages stop growing here and sit centered on the wall.
+    static let readableWidth: CGFloat = 760
     static let doorRadius: CGFloat = 34
 }
 

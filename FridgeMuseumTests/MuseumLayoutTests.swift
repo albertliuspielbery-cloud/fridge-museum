@@ -26,6 +26,10 @@ struct MuseumLayoutTests {
         #expect(MuseumViewMode.small.columns(forWidth: 700) == 6)
         #expect(MuseumViewMode.standard.columns(forWidth: 700) == 3)
         #expect(MuseumViewMode.large.columns(forWidth: 700) == 2)
+        // iPad landscape (1.4.0)
+        #expect(MuseumViewMode.small.columns(forWidth: 1180) == 8)
+        #expect(MuseumViewMode.standard.columns(forWidth: 1180) == 4)
+        #expect(MuseumViewMode.large.columns(forWidth: 1180) == 3)
     }
 
     @Test func smallerModesAreDenser() {

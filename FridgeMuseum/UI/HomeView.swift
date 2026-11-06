@@ -7,6 +7,7 @@ import SwiftUI
 struct HomeView: View {
     /// Repaints the fridge door when 冰箱顏色 changes in Settings.
     @AppStorage(FridgeColor.storageKey) private var fridgeColor = FridgeColor.mint.rawValue
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let open: (Route) -> Void
     let showSettings: () -> Void
 
@@ -82,6 +83,8 @@ struct HomeView: View {
             }
             .padding(.top, 8)
             .padding(.bottom, 24)
+            .frame(maxWidth: Metrics.readableWidth)
+            .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
         .background(Wallpaper())
@@ -274,7 +277,8 @@ struct HomeView: View {
     private func workWall(title: String, items: [Artwork], count: Int?) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             CrayonHeader(title: title, count: count)
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)], alignment: .leading, spacing: 26) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 18), count: horizontalSizeClass == .regular ? 3 : 2),
+                      alignment: .leading, spacing: 26) {
                 ForEach(items) { a in
                     Button { open(.detail(a.id)) } label: {
                         FridgeWork(artwork: a, processing: app.processingIDs.contains(a.id))

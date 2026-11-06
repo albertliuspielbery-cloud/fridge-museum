@@ -16,6 +16,9 @@ on:
       looks:
         description: '外觀（light,dark）'
         default: 'light,dark'
+      device:
+        description: '裝置（iphone 或 ipad；ipad 拍 13 吋）'
+        default: 'iphone'
 
 permissions:
   contents: write
@@ -40,7 +43,9 @@ jobs:
       - name: 挑一台 iPhone 模擬器並固定狀態列
         id: sim
         run: |
-          if [[ "$GITHUB_REF_NAME" == store/* ]]; then
+          if [[ "${{ inputs.device }}" == ipad ]]; then
+            UDID=$(xcrun simctl list devices available -j | python3 ci/pick_simulator.py --ipad "iPad Pro 13-inch (M5)" "iPad Pro 13-inch (M4)" "iPad Air 13-inch (M3)")
+          elif [[ "$GITHUB_REF_NAME" == store/* ]]; then
             # App Store 截圖要 6.9 吋（1320×2868）
             UDID=$(xcrun simctl list devices available -j | python3 ci/pick_simulator.py "iPhone 17 Pro Max" "iPhone 16 Pro Max")
           else

@@ -38,12 +38,13 @@ enum MuseumViewMode: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// Grid columns for a content width in points (iPhone portrait is 375–440 pt).
+    /// iPad (1.4.0): 600 pt and up is an iPad (or a wide Split View pane), 1000 pt and up an iPad in landscape.
     func columns(forWidth width: CGFloat) -> Int {
-        let wide = width >= 600
         switch self {
-        case .standard: return wide ? 3 : 2
-        case .large: return wide ? 2 : 1
+        case .standard: return width >= 1000 ? 4 : width >= 600 ? 3 : 2
+        case .large: return width >= 1000 ? 3 : width >= 600 ? 2 : 1
         case .small:
+            if width >= 1000 { return 8 }
             if width >= 600 { return 6 }
             return width >= 428 ? 5 : 4
         }

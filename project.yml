@@ -76,6 +76,12 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        # iPad (1.4.0): every orientation, so Split View / Stage Manager work.
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         # 主畫面小工具 (1.3.0): fridgemuseum://artwork/<uuid> opens that artwork (FridgeMuseumApp.onOpenURL).
         CFBundleURLTypes:
           - CFBundleURLName: tw.starlight.fridgemuseum.artwork-link
@@ -99,7 +105,7 @@ targets:
         # with that container assigned (ci/ci_sign.py turns the capabilities on; the container is assigned by hand —
         # HANDOFF.md「1.2.0 iCloud 同步」).
         CODE_SIGN_ENTITLEMENTS: FridgeMuseum/FridgeMuseum.entitlements
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_STYLE: Automatic
@@ -150,7 +156,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).widget
         CODE_SIGN_ENTITLEMENTS: FridgeMuseumWidget/FridgeMuseumWidget.entitlements
         CODE_SIGN_STYLE: Automatic
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
         LOCALIZATION_PREFERS_STRING_CATALOGS: YES

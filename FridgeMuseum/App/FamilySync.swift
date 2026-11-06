@@ -671,7 +671,14 @@ final class FamilySync {
         let controller = UICloudSharingController(share: share, container: CKContainer(identifier: CloudSync.containerID))
         controller.availablePermissions = [.allowPrivate, .allowReadWrite]
         controller.delegate = shareDelegate
-        Self.topViewController()?.present(controller, animated: true)
+        guard let top = Self.topViewController() else { return }
+        // iPad shows it as a popover, which crashes without an anchor.
+        if let popover = controller.popoverPresentationController {
+            popover.sourceView = top.view
+            popover.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+        top.present(controller, animated: true)
     }
 
     private static func topViewController() -> UIViewController? {
