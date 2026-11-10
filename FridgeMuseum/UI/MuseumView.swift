@@ -122,7 +122,7 @@ struct MuseumView: View {
         let _ = fridgeColor  // read it, so the body depends on 冰箱顏色
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if duplicatePairs > duplicateNoticeDismissedAt && !selecting {
+                if duplicatePairs > duplicateNoticeDismissedAt && !selecting && !DemoMode.isActive {
                     duplicateNotice
                 }
                 childShelf
