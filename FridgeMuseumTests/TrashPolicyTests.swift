@@ -46,6 +46,7 @@ struct TrashPolicyTests {
         let b = Artwork(kind: .flat, child: nil, capturedAt: deleted, originalImageData: Data())
         fields.apply(to: b, child: nil)
         #expect(b.deletedAt == deleted)
-        #expect(b.autoTags == ["動物", "紅色"])
+        // Auto tags are re-derived from the fingerprint on arrival (none here), never copied.
+        #expect(b.autoTags.isEmpty)
     }
 }
