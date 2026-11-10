@@ -88,6 +88,9 @@ struct Fridge<Freezer: View, Main: View>: View {
 /// The home title: Bibi waving next to 冰箱美術館 spelled in fridge magnets (one per character in Chinese, one per word
 /// in English). Shrinks to fit the row; VoiceOver reads it as one header.
 struct MagnetWordmark: View {
+    /// 1 on iPhone; bigger on the iPad home (1.4.0).
+    var size: CGFloat = 1
+
     private struct Piece: Identifiable {
         let id: Int
         let text: String
@@ -118,10 +121,10 @@ struct MagnetWordmark: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            row(scale: 1)
-            row(scale: 0.86)
-            row(scale: 0.74)
-            row(scale: 0.62)
+            row(scale: size)
+            row(scale: size * 0.86)
+            row(scale: size * 0.74)
+            row(scale: size * 0.62)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("冰箱美術館"))
@@ -308,6 +311,8 @@ struct CrayonHeader: View {
     var tape: TapeStyle = .mint
     /// nil: the fridge door ink (follows 冰箱顏色).
     var ink: Color? = nil
+    /// Title size: 23 on iPhone, bigger on the iPad home.
+    var size: CGFloat = 23
     @AppStorage(FridgeColor.storageKey) private var fridgeColor = FridgeColor.mint.rawValue
 
     var body: some View {
@@ -316,7 +321,7 @@ struct CrayonHeader: View {
         return HStack(alignment: .firstTextBaseline, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: title)
-                    .font(.fmDisplay(23, relativeTo: .title2))
+                    .font(.fmDisplay(size, relativeTo: .title2))
                     .foregroundStyle(ink)
                     .background(alignment: .bottomLeading) {
                         Capsule().fill(Palette.yellow.opacity(0.55)).frame(height: 8).offset(y: 3)

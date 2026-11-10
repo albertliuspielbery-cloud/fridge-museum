@@ -3602,6 +3602,50 @@
         }
       }
     },
+    "下一張貼這裡" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next one goes here"
+          }
+        }
+      }
+    },
+    "按下方快門" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap the shutter below"
+          }
+        }
+      }
+    },
+    "收進美術館的作品，會掛在這扇門上。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artworks you hang in the museum show up on this door."
+          }
+        }
+      }
+    },
+    "%@的美術館" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@’s Museum"
+          }
+        }
+      }
+    },
     "邀請沒有送出" : {
       "extractionState" : "manual",
       "localizations" : {

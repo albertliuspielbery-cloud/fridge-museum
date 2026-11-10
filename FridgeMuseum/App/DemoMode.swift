@@ -114,6 +114,13 @@ enum DemoMode {
         switch scenario {
         case "home-full":
             app.sessionArtworkIDs = seeded.session
+            // iPad screenshots (1.4.0): -FMDemoSessionCount N shows N of the museum's works as this session.
+            let n = UserDefaults.standard.integer(forKey: "FMDemoSessionCount")
+            if n > 0 {
+                let kept = ((try? context.fetch(FetchDescriptor<Artwork>(sortBy: [SortDescriptor(\.createdAt)]))) ?? [])
+                    .filter(\.isInMuseum)
+                app.sessionArtworkIDs = kept.suffix(n).map(\.id)
+            }
         case "success":
             app.sessionArtworkIDs = seeded.session
             app.show(String(localized: "這是第 \(seeded.session.count) 張，按快門拍下一張。"), style: .hung(count: seeded.session.count),

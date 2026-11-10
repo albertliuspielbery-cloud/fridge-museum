@@ -14,6 +14,8 @@ final class ScreenshotTests: XCTestCase {
     /// Extra shots that are another scenario with a setting changed (UserDefaults from launch arguments).
     static let variants: [String: (scenario: String, arguments: [String])] = [
         "home-color": ("home-full", ["-fridgeColor", "peach"]),
+        "home-one": ("home-full", ["-FMDemoSessionCount", "1"]),
+        "home-five": ("home-full", ["-FMDemoSessionCount", "5"]),
     ]
 
     private static var suffix: String {
