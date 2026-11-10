@@ -86,12 +86,16 @@ struct BatchEditTests {
         let keepID = list[2].id
         app.sessionArtworkIDs = list.map(\.id)
 
+        // 1.4.0: museum artworks go to 最近刪除 first.
+        #expect(app.deleteAll(Array(list.prefix(2)), context: context) == 2)
+        #expect(list[0].isTrashed && list[1].isTrashed && !list[2].isTrashed)
+        #expect(app.sessionArtworkIDs == [keepID])
+        #expect(try context.fetch(FetchDescriptor<Artwork>()).count == 3)
+        // Deleting them again (from 最近刪除) deletes them for good.
         #expect(app.deleteAll(Array(list.prefix(2)), context: context) == 2)
         #expect(!AppModel.isAlive(list[0]) && !AppModel.isAlive(list[1]))
-        #expect(app.sessionArtworkIDs == [keepID])
         let left = try context.fetch(FetchDescriptor<Artwork>())
-        let leftIDs = left.map { $0.id }
-        #expect(leftIDs == [keepID])
+        #expect(left.map { $0.id } == [keepID])
         // Already gone: nothing to delete.
         #expect(app.deleteAll(Array(list.prefix(2)), context: context) == 0)
     }

@@ -53,7 +53,7 @@ struct MuseumView: View {
     @AppStorage(MuseumViewMode.storageKey) private var viewModeRaw = MuseumViewMode.standard.rawValue
     @State private var contentWidth: CGFloat = 0
     @State private var showTrash = false
-    static let maxWallWidth: CGFloat = 1180
+    nonisolated static let maxWallWidth: CGFloat = 1180
     @State private var viewer: MuseumViewerStart?
     @Environment(\.displayScale) private var displayScale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

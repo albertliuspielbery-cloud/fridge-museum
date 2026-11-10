@@ -7,7 +7,8 @@ extension AppModel {
     @discardableResult
     func batchEdit(_ artworks: [Artwork], context: ModelContext, _ change: (Artwork) -> Void) -> Int {
         var count = 0
-        for artwork in artworks where Self.isAlive(artwork) {
+        // Artworks in 最近刪除 are left alone (1.4.0).
+        for artwork in artworks where Self.isAlive(artwork) && artwork.deletedAt == nil {
             let before = ArtworkEdits(artwork)
             change(artwork)
             // Only a real change counts as an edit (e.g. 加標籤 with tags it already has doesn't).
@@ -56,7 +57,7 @@ extension AppModel {
     /// through the deferred drain (one at a time, oldest first — never all at once).
     @discardableResult
     func rotateAll(_ artworks: [Artwork], clockwise: Bool, context: ModelContext) -> Int {
-        let alive = artworks.filter { Self.isAlive($0) }
+        let alive = artworks.filter { Self.isAlive($0) && $0.deletedAt == nil }
         for artwork in alive {
             artwork.recipe = Self.turned(artwork.recipe, clockwise: clockwise)
             artwork.touch()
