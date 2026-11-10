@@ -465,7 +465,8 @@ struct HomeView: View {
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)],
                               alignment: .leading, spacing: 26) {
                         ForEach(Array(items.dropFirst().prefix(4).enumerated()), id: \.element.id) { i, a in
-                            smallWork(a, magnet: Self.magnets[i % Self.magnets.count])
+                            // Landscape is short: the small prints drop their placards so the door fits.
+                            smallWork(a, magnet: Self.magnets[i % Self.magnets.count], placard: pad != .landscape)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -476,8 +477,8 @@ struct HomeView: View {
 
     private func bigWork(_ a: Artwork) -> some View {
         Button { open(.detail(a.id)) } label: {
-            FridgeWork(artwork: a, processing: app.processingIDs.contains(a.id), maxPrintHeight: 440,
-                       compactPlacard: false)
+            FridgeWork(artwork: a, processing: app.processingIDs.contains(a.id),
+                       maxPrintHeight: pad == .landscape ? 300 : 440, compactPlacard: false)
         }
         .buttonStyle(.plain)
         .hoverEffect(.lift)
@@ -486,8 +487,8 @@ struct HomeView: View {
 
     private func smallWork(_ a: Artwork, magnet: String, placard: Bool = true) -> some View {
         Button { open(.detail(a.id)) } label: {
-            FridgeWork(artwork: a, processing: app.processingIDs.contains(a.id), maxPrintHeight: 190,
-                       showsPlacard: placard, magnet: magnet)
+            FridgeWork(artwork: a, processing: app.processingIDs.contains(a.id),
+                       maxPrintHeight: pad == .landscape ? 125 : 190, showsPlacard: placard, magnet: magnet)
         }
         .buttonStyle(.plain)
         .hoverEffect(.lift)
@@ -502,7 +503,7 @@ struct HomeView: View {
                 Text("按下方快門").font(.fm(15))
             }
             .foregroundStyle(Palette.doorMuted)
-            .frame(maxWidth: .infinity, minHeight: 420)
+            .frame(maxWidth: .infinity, minHeight: pad == .landscape ? 300 : 420)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .strokeBorder(Palette.doorMuted.opacity(0.55), style: StrokeStyle(lineWidth: 3, dash: [12, 9]))
