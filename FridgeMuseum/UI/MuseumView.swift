@@ -257,6 +257,12 @@ struct MuseumView: View {
         .sheet(isPresented: $showTrash) { RecentlyDeletedView() }
         .sheet(isPresented: $showDuplicates, onDismiss: { Task { await countDuplicates() } }) { DuplicatesView() }
         .task(id: artworks.count) { await countDuplicates() }
+        .task {
+            // Screenshots (1.4.0): open 最近刪除 / 找重複作品 over the museum.
+            try? await Task.sleep(for: .seconds(1))
+            if DemoMode.scene("trash") { showTrash = true }
+            if DemoMode.scene("duplicates") { showDuplicates = true }
+        }
         .sheet(item: $editingChild) { child in
             ChildEditorView(child: child)
         }

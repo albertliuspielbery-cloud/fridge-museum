@@ -26,6 +26,9 @@ struct DuplicatesView: View {
                 }
             }
             .background(Palette.wall.ignoresSafeArea())
+            .overlay(alignment: .topLeading) {
+                if DemoMode.scene("duplicates"), loaded { ReadyMarker() }
+            }
             .navigationTitle(Text("找重複作品"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

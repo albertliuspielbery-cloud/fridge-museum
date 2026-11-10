@@ -55,7 +55,7 @@ enum DemoMode {
         switch scenario {
         case "museum-small": .small
         case "museum-large": .large
-        case "museum", "museum-filter": .standard
+        case "museum", "museum-filter", "trash", "duplicates": .standard
         default: nil
         }
     }
@@ -135,7 +135,14 @@ enum DemoMode {
             path.wrappedValue.append(Route.edit(seeded.pendingFlat))
             try? await Task.sleep(for: .seconds(2))
             app.paywall = PaywallRequest(kind: .flat, artworkID: seeded.pendingFlat, action: .keep)
-        case "museum", "museum-filter", "museum-small", "museum-large":
+        case "museum", "museum-filter", "museum-small", "museum-large", "duplicates":
+            path.wrappedValue.append(Route.museum)
+        case "trash":
+            // 最近刪除 (1.4.0): three works deleted a few days ago, then the museum opens the sheet.
+            let kept = ((try? context.fetch(FetchDescriptor<Artwork>(sortBy: [SortDescriptor(\.createdAt)]))) ?? [])
+                .filter(\.isInMuseum)
+            for (i, a) in kept.prefix(3).enumerated() { a.deletedAt = Date().addingTimeInterval(-Double(i * 5 + 2) * 86_400) }
+            try? context.save()
             path.wrappedValue.append(Route.museum)
         case "detail", "share-card":
             path.wrappedValue.append(Route.detail(seeded.featured))

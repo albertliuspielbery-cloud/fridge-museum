@@ -41,6 +41,9 @@ struct RecentlyDeletedView: View {
                 }
             }
             .background(Palette.wall.ignoresSafeArea())
+            .overlay(alignment: .topLeading) {
+                if DemoMode.scene("trash"), !alive.isEmpty { ReadyMarker() }
+            }
             .navigationTitle(Text("最近刪除"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
