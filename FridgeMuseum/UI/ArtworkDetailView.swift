@@ -20,6 +20,7 @@ struct ArtworkDetailView: View {
     @State private var labelModel: EditModel?
     /// The page's size: 700 pt and wider (iPad) puts the print on the left and the label column on the right.
     @State private var pageSize: CGSize = .zero
+    @AppStorage(AutoTags.settingKey) private var showAutoTags = true
 
     private var isWide: Bool { pageSize.width >= 700 }
 
@@ -145,10 +146,17 @@ struct ArtworkDetailView: View {
                 .hoverEffect(.lift)
                 .accessibilityLabel(Text("編輯說明牌"))
             }
-        if !artwork.tags.isEmpty {
+        let autoNames = showAutoTags ? artwork.autoTagNames.filter { !artwork.tags.contains($0) } : []
+        if !artwork.tags.isEmpty || !autoNames.isEmpty {
             FlowLayout(spacing: 6) {
                 ForEach(artwork.tags, id: \.self) { t in
                     ChipLabel(title: "#\(t)", selected: false)
+                }
+                // 自動標籤: lighter, so they read as suggestions the app added.
+                ForEach(autoNames, id: \.self) { t in
+                    ChipLabel(title: "#\(t)", selected: false)
+                        .opacity(0.6)
+                        .accessibilityLabel(Text("自動標籤 \(t)"))
                 }
             }
         }

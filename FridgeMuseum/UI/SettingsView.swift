@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var editingChild: Child?
     @State private var showNewChild = false
     @State private var showTrash = false
+    @AppStorage(AutoTags.settingKey) private var showAutoTags = true
     @Query(filter: #Predicate<Artwork> { $0.isKept && !$0.isSample && $0.deletedAt != nil }) private var trashed: [Artwork]
     @State private var restoring = false
     @State private var redeemingCode = false
@@ -151,6 +152,14 @@ struct SettingsView: View {
                 }
 
                 backupSection
+
+                Section {
+                    Toggle(isOn: $showAutoTags) {
+                        Text("自動標籤")
+                    }
+                } footer: {
+                    Text("依作品的主要顏色自動加上標籤（例如 #紅色），可以用來篩選作品。全部在這台裝置上判斷。")
+                }
 
                 Section {
                     Button { showTrash = true } label: {

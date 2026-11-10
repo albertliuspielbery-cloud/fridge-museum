@@ -54,6 +54,7 @@ struct MuseumView: View {
     @State private var contentWidth: CGFloat = 0
     @State private var showTrash = false
     @State private var showDuplicates = false
+    @AppStorage(AutoTags.settingKey) private var showAutoTags = true
     /// 找重複作品 notice: how many look-alike pairs the wall has, and how many there were when the parent closed it.
     @State private var duplicatePairs = 0
     @AppStorage("duplicateNoticeDismissedAt") private var duplicateNoticeDismissedAt = 0
@@ -98,7 +99,7 @@ struct MuseumView: View {
             if favoritesOnly && !a.isFavorite { return false }
             if let t = termFilter, a.schoolTerm != t { return false }
             if let y = ageFilter, a.ageAtCreation?.years != y { return false }
-            if let t = tagFilter, !a.tags.contains(t) { return false }
+            if let t = tagFilter, !a.tags.contains(t), !(showAutoTags && a.autoTagNames.contains(t)) { return false }
             return true
         }
         if !newestFirst { list.reverse() }
@@ -370,7 +371,7 @@ struct MuseumView: View {
         var seen = Set<String>()
         var out: [String] = []
         for a in childScoped {
-            for t in a.tags where !seen.contains(t) {
+            for t in a.tags + (showAutoTags ? a.autoTagNames : []) where !seen.contains(t) {
                 seen.insert(t)
                 out.append(t)
             }

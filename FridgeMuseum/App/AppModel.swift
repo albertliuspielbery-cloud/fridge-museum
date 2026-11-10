@@ -321,6 +321,7 @@ final class AppModel {
     func processUnfinished(context: ModelContext) {
         guard !DemoMode.isActive else { return }
         purgeTrash(context: context)
+        backfillAutoTags(context: context)
         queueUnfinished(context: context, syncedOnly: false)
         Task { [weak self] in await self?.backfillFingerprints(context: context) }
     }
@@ -505,6 +506,7 @@ final class AppModel {
             artwork.renderedImageData = out.imageData
             artwork.thumbnailData = out.thumbnailData
             artwork.fingerprintData = fingerprint
+            artwork.refreshAutoTags()  // 自動標籤 (colours) follow the fingerprint
             artwork.pixelWidth = out.pixelWidth
             artwork.pixelHeight = out.pixelHeight
             artwork.renderVersion += 1
@@ -627,6 +629,7 @@ final class AppModel {
                     artwork.renderedImageData = copy.imageData
                     artwork.thumbnailData = copy.thumbnailData
                     artwork.fingerprintData = copy.fingerprintData
+                    artwork.refreshAutoTags()  // 自動標籤 (colours) follow the fingerprint
                     artwork.pixelWidth = copy.pixelWidth
                     artwork.pixelHeight = copy.pixelHeight
                     artwork.renderVersion += 1
@@ -843,6 +846,18 @@ final class AppModel {
         if !expired.isEmpty { try? context.save() }
     }
 
+    /// 自動標籤 (1.4.0): artworks fingerprinted by an older build get their colour tags (cheap: reads the < 1 KB
+    /// fingerprint, writes only when the tags change).
+    func backfillAutoTags(context: ModelContext) {
+        let all = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { !$0.isSample && $0.fingerprintData != nil }))) ?? []
+        var changed = false
+        for artwork in all where artwork.autoTags.isEmpty {
+            artwork.refreshAutoTags()
+            if !artwork.autoTags.isEmpty { changed = true }
+        }
+        if changed { try? context.save() }
+    }
+
     func deleteForever(_ artwork: Artwork, context: ModelContext, save: Bool = true) {
         let id = artwork.id
         processTasks.removeValue(forKey: id)?.cancel()
@@ -901,6 +916,7 @@ final class AppModel {
             // Skip it if it was deleted or re-rendered meanwhile (the render stored a fresh fingerprint).
             guard let fingerprint, Self.isAlive(artwork), artwork.renderVersion == version else { continue }
             artwork.fingerprintData = fingerprint
+            artwork.refreshAutoTags()  // 自動標籤 (colours) follow the fingerprint
             changed += 1
             if changed % 25 == 0 { try? context.save() }
         }
