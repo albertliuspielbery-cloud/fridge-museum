@@ -206,7 +206,7 @@ struct HomeView: View {
     private var padHeader: some View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
-                MagnetWordmark(size: pad == .landscape ? 1.25 : 1.4)
+                MagnetWordmark(size: pad == .landscape ? 1.1 : 1.4)
                 privacyLine(size: 16)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -365,7 +365,7 @@ struct HomeView: View {
             Image(bibiFace)
                 .resizable()
                 .scaledToFit()
-                .frame(width: compact ? 170 : 240)
+                .frame(width: compact ? 150 : 240)
                 .padding(.leading, compact ? 40 : 34)
                 .accessibilityHidden(true)
                 .animation(.easeInOut(duration: 0.2), value: bibiFace)
@@ -384,7 +384,7 @@ struct HomeView: View {
                 .padding(.trailing, 50)
                 .accessibilityLabel(Text(verbatim: app.store.bubbleText(for: app.captureKind)))
         }
-        .padding(.vertical, compact ? 14 : 26)
+        .padding(.vertical, compact ? 8 : 26)
     }
 
     /// 拍給 as fridge magnets: the first two characters of the current child's name (nothing when unassigned).
@@ -579,7 +579,6 @@ struct HomeView: View {
                 }
                 museumButton.frame(maxWidth: .infinity)
             }
-            TipsCard()
         }
         .padding(.leading, 26)
         .padding(.trailing, 44)
