@@ -72,7 +72,18 @@ def transform(loc, fn):
     return loc
 
 
+def plain(loc):
+    """The fallback ("other") can't vary further: a plural localization falls back to its "other" case."""
+    if "stringUnit" in loc:
+        return loc
+    for var in loc.get("variations", {}).values():
+        return plain(var.get("other") or next(iter(var.values())))
+    return loc
+
+
 def by_device(loc, ipad):
+    if "variations" in loc:  # e.g. plural: vary per device, and keep a plain fallback
+        return {"variations": {"device": {"iphone": loc, "ipad": ipad, "other": plain(loc)}}}
     return {"variations": {"device": {"ipad": ipad, "other": loc}}}
 
 

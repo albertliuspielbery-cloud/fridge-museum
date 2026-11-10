@@ -1122,6 +1122,12 @@
                 }
               },
               "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Copies of your %lld artworks go into the Family Museum. Your own museum stays on this phone, untouched. You can invite family right away; the Family Museum opens the next time you open the app."
+                }
+              },
+              "iphone" : {
                 "variations" : {
                   "plural" : {
                     "one" : {
