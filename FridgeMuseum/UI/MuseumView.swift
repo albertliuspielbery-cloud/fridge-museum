@@ -53,6 +53,10 @@ struct MuseumView: View {
     @AppStorage(MuseumViewMode.storageKey) private var viewModeRaw = MuseumViewMode.standard.rawValue
     @State private var contentWidth: CGFloat = 0
     @State private var showTrash = false
+    @State private var showDuplicates = false
+    /// 找重複作品 notice: how many look-alike pairs the wall has, and how many there were when the parent closed it.
+    @State private var duplicatePairs = 0
+    @AppStorage("duplicateNoticeDismissedAt") private var duplicateNoticeDismissedAt = 0
     nonisolated static let maxWallWidth: CGFloat = 1180
     @State private var viewer: MuseumViewerStart?
     @Environment(\.displayScale) private var displayScale
@@ -117,6 +121,9 @@ struct MuseumView: View {
         let _ = fridgeColor  // read it, so the body depends on 冰箱顏色
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                if duplicatePairs > duplicateNoticeDismissedAt && !selecting {
+                    duplicateNotice
+                }
                 childShelf
                 filterBar
                 let list = filtered
@@ -247,6 +254,8 @@ struct MuseumView: View {
             }
         }
         .sheet(isPresented: $showTrash) { RecentlyDeletedView() }
+        .sheet(isPresented: $showDuplicates, onDismiss: { Task { await countDuplicates() } }) { DuplicatesView() }
+        .task(id: artworks.count) { await countDuplicates() }
         .sheet(item: $editingChild) { child in
             ChildEditorView(child: child)
         }
@@ -473,11 +482,63 @@ struct MuseumView: View {
             } label: {
                 Text("顯示方式")
             }
+            Section {
+                Button { showDuplicates = true } label: {
+                    Label("找重複作品", systemImage: "square.on.square")
+                }
+                Button { showTrash = true } label: {
+                    Label("最近刪除", systemImage: "trash")
+                }
+            }
         } label: {
             Image(systemName: viewMode.systemImage)
         }
         .accessibilityLabel(Text("顯示方式"))
         .accessibilityValue(Text(verbatim: viewMode.title))
+    }
+
+    /// 有 N 組作品很像: shown when there are more look-alike pairs than when the parent last closed the notice
+    /// (e.g. after family members sync the same drawing).
+    private var duplicateNotice: some View {
+        HStack(spacing: 12) {
+            Image("bibi-think").resizable().scaledToFit().frame(height: 52)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("有 \(duplicatePairs) 組作品很像").font(.fm(16, bold: true)).foregroundStyle(Palette.cardInk)
+                Text("可能拍了兩次，或家人也收了同一張。").font(.fm(13.5)).foregroundStyle(Palette.cardMuted)
+            }
+            Spacer(minLength: 0)
+            Button { showDuplicates = true } label: { Text("看看") }
+                .buttonStyle(.borderedProminent)
+                .tint(Palette.teal)
+            Button {
+                duplicateNoticeDismissedAt = duplicatePairs
+            } label: {
+                Image(systemName: "xmark").font(.system(size: 13, weight: .bold)).foregroundStyle(Palette.cardMuted)
+                    .frame(width: 30, height: 30)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("不用了"))
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.card))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Palette.cardLine, lineWidth: 2))
+        .environment(\.colorScheme, .light)
+        .padding(.horizontal, Metrics.gutter)
+    }
+
+    private func countDuplicates() async {
+        let entries = artworks.compactMap { a -> DuplicateFinder.Entry? in
+            guard let fp = ArtFingerprint(data: a.fingerprintData) else { return nil }
+            return DuplicateFinder.Entry(id: a.id, kindRaw: a.kindRaw, fingerprint: fp)
+        }
+        let ignored = DuplicateIgnoreList.load()
+        let count = await Task.detached(priority: .utility) {
+            DuplicateFinder.pairs(among: entries, ignoring: ignored).count
+        }.value
+        duplicatePairs = count
+        // Fewer pairs than when it was closed (some were sorted out): lower the bar, so new ones show again.
+        if count < duplicateNoticeDismissedAt { duplicateNoticeDismissedAt = count }
     }
 
     private func setViewMode(_ mode: MuseumViewMode) {

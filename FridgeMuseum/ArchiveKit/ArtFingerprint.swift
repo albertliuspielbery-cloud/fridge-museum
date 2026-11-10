@@ -344,4 +344,39 @@ enum DuplicateFinder {
         }
         return best?.id
     }
+
+    // MARK: 找重複作品 (1.4.0)
+
+    /// Two artworks, in a stable order (so "not a duplicate" can be remembered either way round).
+    struct Pair: Hashable, Sendable {
+        let first: UUID
+        let second: UUID
+
+        init(_ x: UUID, _ y: UUID) {
+            if x.uuidString < y.uuidString { first = x; second = y } else { first = y; second = x }
+        }
+
+        var key: String { first.uuidString + "|" + second.uuidString }
+    }
+
+    struct Entry: Sendable {
+        var id: UUID
+        var kindRaw: String
+        var fingerprint: ArtFingerprint
+    }
+
+    /// Every likely-duplicate pair in the museum (same kind, within the 這張好像收過了 threshold), closest first,
+    /// leaving out pairs the parent said are not duplicates. O(n²) on < 1 KB fingerprints; run off the main actor.
+    static func pairs(among entries: [Entry], ignoring ignored: Set<String> = []) -> [Pair] {
+        var found: [(pair: Pair, score: Float)] = []
+        for i in entries.indices {
+            for j in entries.indices where j > i && entries[j].kindRaw == entries[i].kindRaw {
+                guard let s = entries[i].fingerprint.score(against: entries[j].fingerprint, cutoff: ArtFingerprint.matchThreshold),
+                      s <= ArtFingerprint.matchThreshold else { continue }
+                let pair = Pair(entries[i].id, entries[j].id)
+                if !ignored.contains(pair.key) { found.append((pair, s)) }
+            }
+        }
+        return found.sorted { $0.score < $1.score }.map(\.pair)
+    }
 }

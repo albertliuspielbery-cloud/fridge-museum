@@ -3844,6 +3844,138 @@
         }
       }
     },
+    "找重複作品" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find Duplicates"
+          }
+        }
+      }
+    },
+    "這兩件很像，要留哪一件？（還有 %lld 組）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These two look alike. Which one stays? (%lld to go)"
+          }
+        }
+      }
+    },
+    "沒留的那件會移到「最近刪除」，30 天內可以復原；它的標題、備註、標籤和錄音會併到留下的那件。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The other one moves to Recently Deleted for 30 days. Its title, note, tags, and recording are added to the one you keep."
+          }
+        }
+      }
+    },
+    "不是重複，兩件都留" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not duplicates, keep both"
+          }
+        }
+      }
+    },
+    "留這張" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep This One"
+          }
+        }
+      }
+    },
+    "整理好了！" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All sorted!"
+          }
+        }
+      }
+    },
+    "沒有找到重複的作品" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No duplicates found"
+          }
+        }
+      }
+    },
+    "沒留的作品在「最近刪除」，30 天內可以復原。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ones you didn’t keep are in Recently Deleted for 30 days."
+          }
+        }
+      }
+    },
+    "有 %lld 組作品很像" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld pairs look alike"
+          }
+        }
+      }
+    },
+    "可能拍了兩次，或家人也收了同一張。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maybe taken twice, or someone in the family hung the same one."
+          }
+        }
+      }
+    },
+    "看看" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Look"
+          }
+        }
+      }
+    },
+    "不用了" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dismiss"
+          }
+        }
+      }
+    },
     "邀請沒有送出" : {
       "extractionState" : "manual",
       "localizations" : {
