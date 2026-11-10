@@ -246,8 +246,7 @@ struct CameraScreen: View {
             if camera.isInterrupted {
                 VStack(spacing: 14) {
                     Image("bibi-think").resizable().scaledToFit().frame(height: 120)
-                    Text("相機暫時停住了
-分割畫面時，請把冰箱美術館放大成全螢幕再拍")
+                    Text("相機暫時停住了\n分割畫面時，請把冰箱美術館放大成全螢幕再拍")
                         .font(.fm(16))
                         .multilineTextAlignment(.center)
                 }
