@@ -51,18 +51,19 @@ struct ArtworkDetailView: View {
                 } label: {
                     Image(systemName: "ellipsis.circle").foregroundStyle(Palette.ink)
                 }
+                // iPad: the dialog's popover points at the More button.
+                .confirmationDialog(Text("刪除這件作品？"), isPresented: $confirmDelete, titleVisibility: .visible) {
+                    Button(role: .destructive) {
+                        deleteOnDisappear = true
+                        dismiss()
+                    } label: {
+                        Text("刪除")
+                    }
+                } message: {
+                    Text("只會刪除 App 裡的資料，已存到照片的不受影響。")
+                }
                 .accessibilityLabel(Text("更多"))
             }
-        }
-        .confirmationDialog(Text("刪除這件作品？"), isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button(role: .destructive) {
-                deleteOnDisappear = true
-                dismiss()
-            } label: {
-                Text("刪除")
-            }
-        } message: {
-            Text("只會刪除 App 裡的資料，已存到照片的不受影響。")
         }
         .task(id: artwork.renderVersion) {
             guard let data = artwork.renderedImageData ?? artwork.thumbnailData else { return }

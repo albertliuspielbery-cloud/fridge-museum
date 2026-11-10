@@ -51,10 +51,12 @@ struct PaywallView: View {
                 .padding(.horizontal, 22)
                 .padding(.top, 4)
                 .padding(.bottom, 12)
+                .frame(maxWidth: 520)  // iPad: a readable column, centered
+                .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
             .background(Palette.surface)
-            .safeAreaInset(edge: .bottom) { buttons }
+            .safeAreaInset(edge: .bottom) { buttons.frame(maxWidth: 520).frame(maxWidth: .infinity) }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
@@ -113,7 +115,7 @@ struct PaywallView: View {
         let craft = PaywallText.perkCraft(QuotaTracker.craftFreeTrial)
         // The limit the person just hit comes first.
         let items: [String] = (isCraft ? [craft, flat] : [flat, craft])
-            + [PaywallText.perkICloud, PaywallText.perkFamily, PaywallText.perkUpdates]
+            + [PaywallText.perkICloud, PaywallText.perkFamilyMuseum, PaywallText.perkFamily, PaywallText.perkUpdates]
         return VStack(alignment: .leading, spacing: 12) {
             Text(PaywallText.perksTitle)
                 .font(.fm(15, bold: true))
@@ -351,6 +353,7 @@ enum PaywallText {
     static func perkCraft(_ n: Int) -> String { text("paywall.perk.craft \(n)") }
     static var perkICloud: String { text("paywall.perk.icloud") }
     static var perkFamily: String { text("paywall.perk.family") }
+    static var perkFamilyMuseum: String { text("paywall.perk.familyMuseum") }
     static var perkUpdates: String { text("paywall.perk.updates") }
     static var ticketKicker: String { text("paywall.ticketKicker") }
     static var productName: String { text("paywall.productName") }

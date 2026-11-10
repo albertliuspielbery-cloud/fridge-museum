@@ -52,6 +52,7 @@ struct MuseumView: View {
     /// 大圖 / 標準 / 小圖 (MuseumLayout.swift).
     @AppStorage(MuseumViewMode.storageKey) private var viewModeRaw = MuseumViewMode.standard.rawValue
     @State private var contentWidth: CGFloat = 0
+    static let maxWallWidth: CGFloat = 1180
     @State private var viewer: MuseumViewerStart?
     @Environment(\.displayScale) private var displayScale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -137,9 +138,12 @@ struct MuseumView: View {
             }
             .padding(.vertical, 8)
             .padding(.bottom, 24)
+            // iPad landscape: the wall stops at 1180 pt and sits centered, so prints keep a sensible size.
+            .frame(maxWidth: Self.maxWallWidth)
+            .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { contentWidth = $0 }
+        .onGeometryChange(for: CGFloat.self) { min($0.size.width, Self.maxWallWidth) } action: { contentWidth = $0 }
         // Pinch the wall: in → smaller prints, out → bigger (one step per pinch). A UIKit pinch recognizer that
         // recognizes alongside the scroll view's pan, instead of a SwiftUI MagnifyGesture on the ScrollView
         // (reported to break scrolling on iOS 18).
@@ -197,6 +201,17 @@ struct MuseumView: View {
                     onSave: batchSave,
                     onDelete: { confirmBatchDelete = true }
                 )
+                // iPad: the dialog's popover points at the selection bar, not the middle of the wall.
+                .confirmationDialog(Text("刪除這 \(selectedArtworks.count) 件作品？"), isPresented: $confirmBatchDelete,
+                                    titleVisibility: .visible) {
+                    Button(role: .destructive) {
+                        batchDelete()
+                    } label: {
+                        Text("刪除 \(selectedArtworks.count) 件")
+                    }
+                } message: {
+                    Text("只會刪除 App 裡的資料，已存到照片的不受影響。")
+                }
                 .transition(.move(edge: .bottom))
             }
         }
@@ -213,16 +228,6 @@ struct MuseumView: View {
                     if n > 0 { app.show(String(localized: "已改 \(n) 件作品的日期，學期和年齡也更新了")) }
                 }
             }
-        }
-        .confirmationDialog(Text("刪除這 \(selectedArtworks.count) 件作品？"), isPresented: $confirmBatchDelete,
-                            titleVisibility: .visible) {
-            Button(role: .destructive) {
-                batchDelete()
-            } label: {
-                Text("刪除 \(selectedArtworks.count) 件")
-            }
-        } message: {
-            Text("只會刪除 App 裡的資料，已存到照片的不受影響。")
         }
         .sheet(item: $editingChild) { child in
             ChildEditorView(child: child)
@@ -554,6 +559,7 @@ struct MuseumView: View {
                             .opacity(selecting && !isSelected ? 0.8 : 1)
                     }
                     .buttonStyle(.plain)
+                    .hoverEffect(.lift)  // iPad pointer
                     .overlay(alignment: .topTrailing) {
                         if mode == .large && !selecting {
                             // Wall order (grouping can reorder sections, e.g. 依年齡 with several children).

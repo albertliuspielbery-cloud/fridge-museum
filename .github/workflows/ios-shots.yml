@@ -19,6 +19,9 @@ on:
       device:
         description: '裝置（iphone 或 ipad；ipad 拍 13 吋）'
         default: 'iphone'
+      orientation:
+        description: '方向（portrait 或 landscape）'
+        default: 'portrait'
 
 permissions:
   contents: write
@@ -62,6 +65,7 @@ jobs:
           TEST_RUNNER_SHOTS_ONLY: ${{ inputs.only }}
           TEST_RUNNER_SHOTS_LANGS: ${{ inputs.langs }}
           TEST_RUNNER_SHOTS_LOOKS: ${{ inputs.looks }}
+          TEST_RUNNER_SHOTS_ORIENTATION: ${{ inputs.orientation }}
         run: |
           mkdir -p build shots
           set +e

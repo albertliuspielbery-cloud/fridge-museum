@@ -160,6 +160,8 @@ private struct OnboardingPageView: View {
             .padding(.horizontal, Metrics.gutter + 4)
             .padding(.top, 8)
             .padding(.bottom, 24)
+            .frame(maxWidth: 520)  // iPad: a readable column, centered
+            .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)

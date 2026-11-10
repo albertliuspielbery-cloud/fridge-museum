@@ -40,13 +40,27 @@ struct CameraScreen: View {
             if flash {
                 Color.white.ignoresSafeArea().allowsHitTesting(false)
             }
-            VStack(spacing: 0) {
-                topBar
-                Spacer()
-                hint
-                bottomBar
+            if isLandscapePad {
+                // iPad landscape: the shutter sits at the right edge, mid-height, where a thumb reaches it.
+                HStack(spacing: 0) {
+                    VStack(spacing: 0) {
+                        topBar
+                        Spacer()
+                        hint
+                            .padding(.bottom, 18)
+                    }
+                    sideBar
+                }
+            } else {
+                VStack(spacing: 0) {
+                    topBar
+                    Spacer()
+                    hint
+                    bottomBar
+                }
             }
         }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { screenSize = $0 }
         .environment(\.colorScheme, .dark)
         .statusBarHidden()
         .task {
@@ -233,14 +247,34 @@ struct CameraScreen: View {
         }
     }
 
+    @State private var screenSize: CGSize = .zero
+
+    private var isLandscapePad: Bool { screenSize.width > screenSize.height && screenSize.width >= 900 }
+
+    private var shutter: some View {
+        ShutterButton(action: shoot)
+            .disabled(camera.state != .running || camera.isCapturing || cooldown)
+            .environment(\.colorScheme, .light)
+            .keyboardShortcut(.space, modifiers: [])  // iPad keyboard
+    }
+
+    private var sideBar: some View {
+        VStack(spacing: 28) {
+            burstTray
+            shutter
+            CaptureChildMenu(style: .camera)
+        }
+        .frame(maxHeight: .infinity)
+        .padding(.trailing, 28)
+        .padding(.leading, 12)
+    }
+
     private var bottomBar: some View {
         HStack {
             // Who this shot is for (each new capture goes to this child; change it here between shots).
             CaptureChildMenu(style: .camera)
             Spacer()
-            ShutterButton(action: shoot)
-                .disabled(camera.state != .running || camera.isCapturing || cooldown)
-                .environment(\.colorScheme, .light)
+            shutter
             Spacer()
             burstTray
         }

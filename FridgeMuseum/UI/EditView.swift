@@ -99,30 +99,60 @@ struct EditView: View {
         model.recipe.kind == .flat ? EditTool.allCases : [.adjust, .brush, .label]
     }
 
+    /// The editor's size; wide and landscape (iPad) puts the controls beside the artwork.
+    @State private var pageSize: CGSize = .zero
+
+    private var isSideBySide: Bool { pageSize.width >= 1000 && pageSize.width > pageSize.height }
+
+    private var stageView: some View {
+        stage
+            .frame(maxWidth: .infinity, minHeight: 190, maxHeight: .infinity)
+            .padding(.horizontal, Metrics.gutter)
+            .padding(.trailing, 8)
+    }
+
+    @ViewBuilder private var controls: some View {
+        if let duplicate, showsDuplicateNotice {
+            DuplicateNotice(existing: duplicate, onPeek: { peekDuplicate = true }, onDiscard: { confirmDiscard = true })
+                .padding(.horizontal, Metrics.gutter)
+                .transition(.opacity)
+        } else {
+            BibiHint(text: hintText)
+                .padding(.horizontal, Metrics.gutter + 4)
+                .animation(.easeInOut(duration: 0.2), value: hintText)
+        }
+        if let tool, tool != .label {
+            panel(for: tool)
+                .padding(.horizontal, Metrics.gutter)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+        toolBar
+        actionBar
+    }
+
     var body: some View {
         let _ = fridgeColor  // read it, so the body depends on 冰箱顏色
-        VStack(spacing: 10) {
-            stage
-                .frame(maxWidth: .infinity, minHeight: 190, maxHeight: .infinity)
-                .padding(.horizontal, Metrics.gutter)
-                .padding(.trailing, 8)
-            if let duplicate, showsDuplicateNotice {
-                DuplicateNotice(existing: duplicate, onPeek: { peekDuplicate = true }, onDiscard: { confirmDiscard = true })
-                    .padding(.horizontal, Metrics.gutter)
-                    .transition(.opacity)
+        Group {
+            if isSideBySide {
+                // iPad landscape: the artwork on the left, hint / tools / actions in a 340 pt column.
+                HStack(alignment: .top, spacing: 12) {
+                    stageView
+                    VStack(spacing: 10) {
+                        Spacer(minLength: 0)
+                        controls
+                    }
+                    .frame(width: 340)
+                    .padding(.trailing, 8)
+                }
             } else {
-                BibiHint(text: hintText)
-                    .padding(.horizontal, Metrics.gutter + 4)
-                    .animation(.easeInOut(duration: 0.2), value: hintText)
+                VStack(spacing: 10) {
+                    stageView
+                    controls
+                        .frame(maxWidth: 560)  // iPad portrait: tools stay together instead of spreading edge to edge
+                }
             }
-            if let tool, tool != .label {
-                panel(for: tool)
-                    .padding(.horizontal, Metrics.gutter)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-            toolBar
-            actionBar
         }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { pageSize = $0 }
         .padding(.top, 4)
         .background(Wallpaper())
         .navigationTitle(Text(verbatim: artwork.placardTitle))

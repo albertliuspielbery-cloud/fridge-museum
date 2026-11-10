@@ -8,6 +8,16 @@ struct HomeView: View {
     /// Repaints the fridge door when 冰箱顏色 changes in Settings.
     @AppStorage(FridgeColor.storageKey) private var fridgeColor = FridgeColor.mint.rawValue
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// Top of the fridge inside the scroll content and top of the scroll view on screen: both stay put while
+    /// scrolling, so stretching the fridge down to the counter on iPad never feeds back into the layout.
+    @State private var fridgeTop: CGFloat = 0
+    @State private var scrollTop: CGFloat = 0
+
+    private var fridgeMinHeight: CGFloat? {
+        let top = scrollTop + fridgeTop
+        guard horizontalSizeClass == .regular, fridgeTop > 0, counterTop > top + 200 else { return nil }
+        return counterTop - top - 24
+    }
     let open: (Route) -> Void
     let showSettings: () -> Void
 
@@ -78,14 +88,20 @@ struct HomeView: View {
                     freezer
                 } main: {
                     mainDoor
+                        .frame(maxHeight: .infinity, alignment: .top)
                 }
+                // iPad: the fridge stands on the counter instead of ending halfway down the wall.
+                .frame(minHeight: fridgeMinHeight, alignment: .top)
+                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("homeContent")).minY } action: { fridgeTop = $0 }
                 .padding(.horizontal, Metrics.gutter)
             }
             .padding(.top, 8)
             .padding(.bottom, 24)
             .frame(maxWidth: Metrics.readableWidth)
             .frame(maxWidth: .infinity)
+            .coordinateSpace(.named("homeContent"))
         }
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { scrollTop = $0 }
         .scrollIndicators(.hidden)
         .background(Wallpaper())
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -277,13 +293,14 @@ struct HomeView: View {
     private func workWall(title: String, items: [Artwork], count: Int?) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             CrayonHeader(title: title, count: count)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 18), count: horizontalSizeClass == .regular ? 3 : 2),
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 18), count: horizontalSizeClass == .regular ? 4 : 2),
                       alignment: .leading, spacing: 26) {
                 ForEach(items) { a in
                     Button { open(.detail(a.id)) } label: {
                         FridgeWork(artwork: a, processing: app.processingIDs.contains(a.id))
                     }
                     .buttonStyle(.plain)
+                    .hoverEffect(.lift)  // iPad pointer
                 }
             }
         }
@@ -728,6 +745,7 @@ struct CounterDock: View {
                     }
                     Spacer()
                     ShutterButton(highlight: sessionCount > 0, action: onShutter)
+                        .keyboardShortcut(.space, modifiers: [])  // iPad keyboard: space takes a photo
                     Spacer()
                     SideButton(title: String(localized: "美術館"), action: onMuseum) {
                         if let museumThumb, let img = ThumbnailCache.shared.image(for: museumThumb) {
@@ -750,6 +768,9 @@ struct CounterDock: View {
                     }
                 }
             }
+            // iPad: the buttons stay within reach of each other instead of sitting in the far corners.
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 22)
             .padding(.top, 12)
             .padding(.bottom, 4)

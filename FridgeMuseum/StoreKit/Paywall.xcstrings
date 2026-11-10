@@ -223,6 +223,24 @@
         }
       }
     },
+    "paywall.perk.familyMuseum" : {
+      "comment" : "Perk: 家庭美術館 (1.3.0). The owner's Full Version covers everyone in the family museum.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Family Museum: collect together, and everyone in it gets the Full Version"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "家庭美術館：邀請家人一起收藏，加入的家人也是完整版"
+          }
+        }
+      }
+    },
     "paywall.perk.icloud" : {
       "comment" : "Perk: iCloud sync (1.2.0). Same Apple Account only — the person's private iCloud; not shared between family members. The app is iPhone-only but runs on iPad.",
       "extractionState" : "manual",

@@ -16,6 +16,10 @@ final class ScreenshotTests: XCTestCase {
         "home-color": ("home-full", ["-fridgeColor", "peach"]),
     ]
 
+    private static var suffix: String {
+        ProcessInfo.processInfo.environment["SHOTS_ORIENTATION"] == "landscape" ? "-landscape" : ""
+    }
+
     override func setUp() {
         continueAfterFailure = true
     }
@@ -37,7 +41,7 @@ final class ScreenshotTests: XCTestCase {
         guard list("SHOTS_LANGS", default: ["zh", "en"]).contains(lang),
               list("SHOTS_LOOKS", default: ["light", "dark"]).contains(look) else { return }
         let done = Set((try? FileManager.default.contentsOfDirectory(atPath: ProcessInfo.processInfo.environment["SHOTS_DIR"] ?? "")) ?? [])
-        for scenario in list("SHOTS_ONLY", default: Self.allScenarios) where !done.contains("\(lang)-\(look)-\(scenario).png") {
+        for scenario in list("SHOTS_ONLY", default: Self.allScenarios) where !done.contains("\(lang)-\(look)-\(scenario)\(Self.suffix).png") {
             shoot(scenario, lang: lang, look: look)
         }
     }
@@ -53,6 +57,9 @@ final class ScreenshotTests: XCTestCase {
             "-AppleLanguages", zh ? "(zh-Hant)" : "(en)",
             "-AppleLocale", zh ? "zh_TW" : "en_US",
         ] + (variant?.arguments ?? [])
+        // iPad landscape shots (1.4.0): SHOTS_ORIENTATION=landscape turns the simulator before launch.
+        let landscape = ProcessInfo.processInfo.environment["SHOTS_ORIENTATION"] == "landscape"
+        XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
         if let dir = Bundle(for: ScreenshotTests.self).resourcePath {
             app.launchEnvironment["FM_SEED_DIR"] = dir
         }
@@ -62,7 +69,7 @@ final class ScreenshotTests: XCTestCase {
         // Let animations, sheets and the last preview render settle.
         Thread.sleep(forTimeInterval: scenario == "paywall" || scenario == "label" || scenario == "settings" ? 2.5 : 1.5)
         let shot = XCUIScreen.main.screenshot()
-        let name = "\(lang)-\(look)-\(scenario)\(ok ? "" : "-notready")"
+        let name = "\(lang)-\(look)-\(scenario)\(landscape ? "-landscape" : "")\(ok ? "" : "-notready")"
         let attachment = XCTAttachment(screenshot: shot)
         attachment.name = name
         attachment.lifetime = .keepAlways
