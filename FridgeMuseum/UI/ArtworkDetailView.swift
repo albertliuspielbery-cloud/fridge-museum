@@ -49,7 +49,9 @@ struct ArtworkDetailView: View {
                 Menu {
                     ShareCardMenuItems(artwork: artwork, preview: shareImage)
                     Button { showLabel = true } label: { Label("編輯說明牌", systemImage: "text.below.photo") }
-                    Button(role: .destructive) { confirmDelete = true } label: { Label("刪除", systemImage: "trash") }
+                    if !artwork.isTrashed {
+                        Button(role: .destructive) { confirmDelete = true } label: { Label("刪除", systemImage: "trash") }
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle").foregroundStyle(Palette.ink)
                 }
@@ -130,6 +132,19 @@ struct ArtworkDetailView: View {
     }
 
     @ViewBuilder private var labelColumn: some View {
+        // Opened from a stale widget link, or trashed on another device while open.
+        if artwork.isTrashed {
+            HStack(spacing: 12) {
+                Image(systemName: "trash").foregroundStyle(Palette.muted)
+                Text("這件作品在「最近刪除」裡").font(.fm(15, bold: true)).foregroundStyle(Palette.ink)
+                Spacer(minLength: 0)
+                Button { app.restore([artwork], context: modelContext) } label: { Text("復原") }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Palette.teal)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.surface))
+        }
         Placard(title: artwork.placardTitle, lines: [artwork.placardArtist, artwork.placardMedium, artwork.placardTerm])
             .padding(.horizontal, 6)
             .overlay(alignment: .topTrailing) {

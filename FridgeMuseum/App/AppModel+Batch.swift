@@ -79,7 +79,7 @@ extension AppModel {
     /// 刪除: deletes them all (same bookkeeping as a single delete), saving once.
     @discardableResult
     func deleteAll(_ artworks: [Artwork], context: ModelContext) -> Int {
-        let alive = artworks.filter { Self.isAlive($0) }
+        let alive = artworks.filter { Self.isAlive($0) && !$0.isTrashed }
         for artwork in alive { delete(artwork, context: context, save: false) }
         if !alive.isEmpty { try? context.save() }
         return alive.count

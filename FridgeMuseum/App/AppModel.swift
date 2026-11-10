@@ -815,6 +815,9 @@ final class AppModel {
     /// 最近刪除 (1.4.0): a museum artwork goes to Recently Deleted for 30 days; a pending capture, a sample or an
     /// artwork already in Recently Deleted is deleted for good.
     func delete(_ artwork: Artwork, context: ModelContext, save: Bool = true) {
+        // Already in 最近刪除 (e.g. a stale widget link, or trashed on another device while open): deleting it for
+        // good only happens from 最近刪除 itself (deleteForever).
+        if artwork.isTrashed { return }
         if artwork.isInMuseum {
             moveToTrash(artwork, context: context, save: save)
         } else {

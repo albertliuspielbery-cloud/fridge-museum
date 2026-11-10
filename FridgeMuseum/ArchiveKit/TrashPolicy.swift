@@ -9,11 +9,14 @@ enum TrashPolicy {
         guard let deletedAt else { return nil }
         let end = deletedAt.addingTimeInterval(TimeInterval(days) * 86_400)
         let seconds = end.timeIntervalSince(now)
-        return max(0, Int(ceil(seconds / 86_400)))
+        return max(1, Int(ceil(seconds / 86_400)))
     }
+
+    /// One extra day before the purge, so a restore made on another device on the last day can arrive first.
+    static let graceDays = 1
 
     static func isExpired(deletedAt: Date?, now: Date) -> Bool {
         guard let deletedAt else { return false }
-        return now.timeIntervalSince(deletedAt) >= TimeInterval(days) * 86_400
+        return now.timeIntervalSince(deletedAt) >= TimeInterval(days + graceDays) * 86_400
     }
 }

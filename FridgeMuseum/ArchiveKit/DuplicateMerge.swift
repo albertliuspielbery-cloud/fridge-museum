@@ -9,7 +9,6 @@ enum DuplicateMerge {
         if keeper.note.trimmingCharacters(in: .whitespaces).isEmpty { keeper.note = other.note }
         if keeper.medium.isEmpty { keeper.medium = other.medium }
         for tag in other.tags where !keeper.tags.contains(tag) { keeper.tags.append(tag) }
-        for tag in other.autoTags where !keeper.autoTags.contains(tag) { keeper.autoTags.append(tag) }
         if keeper.voiceNoteData == nil, let voice = other.voiceNoteData {
             keeper.voiceNoteData = voice
             keeper.voiceTranscript = other.voiceTranscript

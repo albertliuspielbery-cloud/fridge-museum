@@ -91,8 +91,10 @@ struct BatchEditTests {
         #expect(list[0].isTrashed && list[1].isTrashed && !list[2].isTrashed)
         #expect(app.sessionArtworkIDs == [keepID])
         #expect(try context.fetch(FetchDescriptor<Artwork>()).count == 3)
-        // Deleting them again (from 最近刪除) deletes them for good.
-        #expect(app.deleteAll(Array(list.prefix(2)), context: context) == 2)
+        // Deleting them again from the museum does nothing: only 最近刪除 deletes for good.
+        #expect(app.deleteAll(Array(list.prefix(2)), context: context) == 0)
+        #expect(list[0].isTrashed && list[1].isTrashed)
+        for artwork in list.prefix(2) { app.deleteForever(artwork, context: context) }
         #expect(!AppModel.isAlive(list[0]) && !AppModel.isAlive(list[1]))
         let left = try context.fetch(FetchDescriptor<Artwork>())
         #expect(left.map { $0.id } == [keepID])

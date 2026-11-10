@@ -105,7 +105,10 @@ struct RootView: View {
         }
         .onChange(of: app.widgetArtworkID) { openWidgetArtwork() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { app.store.refresh() }
+            if phase == .active {
+                app.store.refresh()
+                if !DemoMode.isActive { app.purgeTrash(context: modelContext) }
+            }
             if phase == .background { WidgetSnapshot.shared.flush() }
         }
         .onChange(of: app.store.isPurchased) { offerSyncIntroIfNeeded() }

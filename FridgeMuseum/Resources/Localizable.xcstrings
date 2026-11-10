@@ -4086,6 +4086,28 @@
         }
       }
     },
+    "這件作品在「最近刪除」裡" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This artwork is in Recently Deleted"
+          }
+        }
+      }
+    },
+    "復原" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore"
+          }
+        }
+      }
+    },
     "邀請沒有送出" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -17,12 +17,13 @@ struct TrashPolicyTests {
         #expect(TrashPolicy.daysLeft(deletedAt: deleted, now: deleted.addingTimeInterval(1)) == 30)
         #expect(TrashPolicy.daysLeft(deletedAt: deleted, now: deleted.addingTimeInterval(day)) == 29)
         #expect(TrashPolicy.daysLeft(deletedAt: deleted, now: deleted.addingTimeInterval(29.5 * day)) == 1)
-        #expect(TrashPolicy.daysLeft(deletedAt: deleted, now: deleted.addingTimeInterval(31 * day)) == 0)
+        #expect(TrashPolicy.daysLeft(deletedAt: deleted, now: deleted.addingTimeInterval(31 * day)) == 1)
     }
 
-    @Test func expiresAfterThirtyDays() {
-        #expect(!TrashPolicy.isExpired(deletedAt: deleted, now: deleted.addingTimeInterval(30 * day - 1)))
-        #expect(TrashPolicy.isExpired(deletedAt: deleted, now: deleted.addingTimeInterval(30 * day)))
+    @Test func expiresAfterThirtyDaysPlusADayOfGrace() {
+        #expect(!TrashPolicy.isExpired(deletedAt: deleted, now: deleted.addingTimeInterval(30 * day)))
+        #expect(!TrashPolicy.isExpired(deletedAt: deleted, now: deleted.addingTimeInterval(31 * day - 1)))
+        #expect(TrashPolicy.isExpired(deletedAt: deleted, now: deleted.addingTimeInterval(31 * day)))
     }
 
     @Test @MainActor func trashedArtworkLeavesTheMuseum() {

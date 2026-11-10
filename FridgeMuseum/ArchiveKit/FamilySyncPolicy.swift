@@ -440,11 +440,11 @@ extension FamilyArtworkFields {
         artwork.isSample = false
         artwork.keptAt = keptAt
         artwork.deletedAt = deletedAt
-        artwork.autoTags = autoTags
         if artwork.originalImageData != originalImageData { artwork.originalImageData = originalImageData }
         if artwork.renderedImageData != renderedImageData { artwork.renderedImageData = renderedImageData }
         if artwork.thumbnailData != thumbnailData { artwork.thumbnailData = thumbnailData }
         artwork.fingerprintData = fingerprintData
+        artwork.refreshAutoTags()  // derived from the fingerprint (a 1.3 phone sends none)
         if artwork.voiceNoteData != voiceNoteData { artwork.voiceNoteData = voiceNoteData }
         artwork.voiceTranscript = voiceTranscript
         artwork.originDeviceID = originDeviceID

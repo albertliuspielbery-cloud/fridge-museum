@@ -529,6 +529,9 @@ struct MuseumView: View {
     }
 
     private func countDuplicates() async {
+        // Debounced: deleting or adding several works in a row recounts once (the task restarts on each change).
+        try? await Task.sleep(for: .seconds(1.5))
+        guard !Task.isCancelled else { return }
         let entries = artworks.compactMap { a -> DuplicateFinder.Entry? in
             guard let fp = ArtFingerprint(data: a.fingerprintData) else { return nil }
             return DuplicateFinder.Entry(id: a.id, kindRaw: a.kindRaw, fingerprint: fp)

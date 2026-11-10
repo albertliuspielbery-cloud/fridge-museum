@@ -482,7 +482,6 @@ enum SyncDedupe {
             keeper.isFavorite = loser.isFavorite
             keeper.tags = loser.tags
             keeper.deletedAt = loser.deletedAt
-            keeper.autoTags = loser.autoTags
             // A nil child on the newer copy never clears the keeper's (run() lets such pairs wait: the link may
             // still be on its way from iCloud); both nil or the same child → nothing to change.
             if let child = loser.child, !child.isDeleted { keeper.child = child }
@@ -521,6 +520,7 @@ enum SyncDedupe {
         keeper.renderedImageData = loser.renderedImageData
         keeper.thumbnailData = loser.thumbnailData
         keeper.fingerprintData = loser.fingerprintData
+        keeper.refreshAutoTags()  // 自動標籤 are derived from the fingerprint, never copied
         keeper.pixelWidth = loser.pixelWidth
         keeper.pixelHeight = loser.pixelHeight
         keeper.renderVersion = max(keeper.renderVersion, loser.renderVersion) + 1
