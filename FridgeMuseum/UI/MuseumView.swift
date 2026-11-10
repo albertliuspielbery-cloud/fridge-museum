@@ -482,7 +482,7 @@ struct MuseumView: View {
             } label: {
                 Text("顯示方式")
             }
-            Section {
+            SwiftUI.Section {
                 Button { showDuplicates = true } label: {
                     Label("找重複作品", systemImage: "square.on.square")
                 }
