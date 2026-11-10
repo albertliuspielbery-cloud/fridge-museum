@@ -481,6 +481,8 @@ enum SyncDedupe {
             keeper.recipeData = loser.recipeData
             keeper.isFavorite = loser.isFavorite
             keeper.tags = loser.tags
+            keeper.deletedAt = loser.deletedAt
+            keeper.autoTags = loser.autoTags
             // A nil child on the newer copy never clears the keeper's (run() lets such pairs wait: the link may
             // still be on its way from iCloud); both nil or the same child → nothing to change.
             if let child = loser.child, !child.isDeleted { keeper.child = child }

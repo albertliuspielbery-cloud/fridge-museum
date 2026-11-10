@@ -349,6 +349,9 @@ struct FamilyArtworkFields: Equatable, Sendable {
     var isFavorite = false
     var medium: String = ""
     var keptAt: Date?
+    /// 最近刪除 and 自動標籤 (1.4.0). A 1.3 phone ignores both (it keeps showing a trashed artwork until purged).
+    var deletedAt: Date?
+    var autoTags: [String] = []
     var originalImageData: Data?
     var renderedImageData: Data?
     var thumbnailData: Data?
@@ -403,6 +406,8 @@ extension FamilyArtworkFields {
         isFavorite = artwork.isFavorite
         medium = artwork.medium
         keptAt = artwork.keptAt
+        deletedAt = artwork.deletedAt
+        autoTags = artwork.autoTags
         originalImageData = artwork.originalImageData
         renderedImageData = artwork.renderedImageData
         thumbnailData = artwork.thumbnailData
@@ -434,6 +439,8 @@ extension FamilyArtworkFields {
         artwork.isKept = true
         artwork.isSample = false
         artwork.keptAt = keptAt
+        artwork.deletedAt = deletedAt
+        artwork.autoTags = autoTags
         if artwork.originalImageData != originalImageData { artwork.originalImageData = originalImageData }
         if artwork.renderedImageData != renderedImageData { artwork.renderedImageData = renderedImageData }
         if artwork.thumbnailData != thumbnailData { artwork.thumbnailData = thumbnailData }
@@ -475,6 +482,8 @@ enum FamilyRecordField {
     static let isFavorite = "isFavorite"          // INT64 (0 / 1)
     static let medium = "medium"                  // STRING
     static let keptAt = "keptAt"                  // TIMESTAMP
+    static let deletedAt = "deletedAt"            // TIMESTAMP (1.4.0)
+    static let autoTags = "autoTags"              // LIST<STRING> (1.4.0)
     static let originalImage = "originalImage"    // ASSET
     static let renderedImage = "renderedImage"    // ASSET
     static let thumbnail = "thumbnail"            // ASSET
@@ -528,6 +537,8 @@ enum FamilyRecordCodec {
         record[F.isFavorite] = Int64(fields.isFavorite ? 1 : 0)
         record[F.medium] = fields.medium
         record[F.keptAt] = fields.keptAt
+        record[F.deletedAt] = fields.deletedAt
+        record[F.autoTags] = fields.autoTags.isEmpty ? nil : fields.autoTags
         record[F.originalImage] = try asset(fields.originalImageData, name: name, field: F.originalImage, in: assetDirectory)
         record[F.renderedImage] = try asset(fields.renderedImageData, name: name, field: F.renderedImage, in: assetDirectory)
         record[F.thumbnail] = try asset(fields.thumbnailData, name: name, field: F.thumbnail, in: assetDirectory)
@@ -572,6 +583,8 @@ enum FamilyRecordCodec {
         f.isFavorite = int(record, F.isFavorite) != 0
         f.medium = string(record, F.medium)
         f.keptAt = record[F.keptAt] as? Date
+        f.deletedAt = record[F.deletedAt] as? Date
+        f.autoTags = (record[F.autoTags] as? [String]) ?? []
         f.originalImageData = data(ofAsset: record, F.originalImage)
         f.renderedImageData = data(ofAsset: record, F.renderedImage)
         f.thumbnailData = data(ofAsset: record, F.thumbnail)

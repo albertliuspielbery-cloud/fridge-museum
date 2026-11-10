@@ -69,6 +69,8 @@ final class Artwork {
 
     // Categorization
     var tags: [String] = []
+    /// 自動標籤 (1.4.0): subjects and colours found on the device; shown apart from `tags`, never typed by the parent.
+    var autoTags: [String] = []
     var isFavorite: Bool = false
     /// 用什麼做的 (placard "medium"), e.g. 蠟筆、紙. Empty = default for the kind.
     var medium: String = ""
@@ -78,6 +80,8 @@ final class Artwork {
     /// (收進這次) or saved to Photos. Defaults to true so artworks from older builds stay in the museum.
     var isKept: Bool = true
     var keptAt: Date?
+    /// 最近刪除 (1.4.0): when it was moved to Recently Deleted; nil = not deleted. Purged for good after 30 days.
+    var deletedAt: Date?
     /// One of the bundled sample photos (看範例). Never counts toward the free quota and never shows in the museum.
     var isSample: Bool = false
 
@@ -149,8 +153,10 @@ final class Artwork {
         return schoolTerm.gradeLabel(birthday: b)
     }
 
-    /// Shown in the museum (kept, not a sample).
-    var isInMuseum: Bool { isKept && !isSample }
+    /// Shown in the museum (kept, not a sample, not in 最近刪除).
+    var isInMuseum: Bool { isKept && !isSample && deletedAt == nil }
+    /// In 最近刪除.
+    var isTrashed: Bool { isKept && !isSample && deletedAt != nil }
 }
 
 enum TagSuggestions {

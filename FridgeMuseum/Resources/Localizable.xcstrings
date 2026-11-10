@@ -3646,6 +3646,182 @@
         }
       }
     },
+    "會移到「最近刪除」，30 天內可以復原。已存到照片的不受影響。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It moves to Recently Deleted, where you can restore it for 30 days. Copies saved to Photos aren’t affected."
+          }
+        }
+      }
+    },
+    "已把 %lld 件作品移到最近刪除" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moved to Recently Deleted: %lld"
+          }
+        }
+      }
+    },
+    "最近刪除" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recently Deleted"
+          }
+        }
+      }
+    },
+    "刪掉的作品會在這裡放 30 天，可以復原。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleted artworks stay here for 30 days, so you can restore them."
+          }
+        }
+      }
+    },
+    "最近刪除（%lld）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recently Deleted (%lld)"
+          }
+        }
+      }
+    },
+    "作品會在這裡保留 30 天，之後自動永久刪除。點選作品可以只復原或刪除其中幾件。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artworks stay here for 30 days, then they’re deleted for good. Tap artworks to restore or delete just those."
+          }
+        }
+      }
+    },
+    "還有 %lld 天" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld days left"
+          }
+        }
+      }
+    },
+    "已復原 %lld 件作品" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restored: %lld"
+          }
+        }
+      }
+    },
+    "全部復原" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore All"
+          }
+        }
+      }
+    },
+    "復原 %lld 件" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore %lld"
+          }
+        }
+      }
+    },
+    "全部刪除" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete All"
+          }
+        }
+      }
+    },
+    "永久刪除 %lld 件作品？" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete %lld for good?"
+          }
+        }
+      }
+    },
+    "永久刪除" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete for Good"
+          }
+        }
+      }
+    },
+    "刪除後就不能復原了。已存到照片的不受影響。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This can’t be undone. Copies saved to Photos aren’t affected."
+          }
+        }
+      }
+    },
+    "最近刪除是空的" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recently Deleted is empty"
+          }
+        }
+      }
+    },
+    "刪掉的作品會在這裡放 30 天，可以隨時復原。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleted artworks stay here for 30 days, and you can restore them anytime."
+          }
+        }
+      }
+    },
     "邀請沒有送出" : {
       "extractionState" : "manual",
       "localizations" : {

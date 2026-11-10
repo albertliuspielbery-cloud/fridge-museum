@@ -320,6 +320,7 @@ final class AppModel {
     /// At launch: artworks whose processing never finished (app closed mid-render, or while an editor was open).
     func processUnfinished(context: ModelContext) {
         guard !DemoMode.isActive else { return }
+        purgeTrash(context: context)
         queueUnfinished(context: context, syncedOnly: false)
         Task { [weak self] in await self?.backfillFingerprints(context: context) }
     }
@@ -751,7 +752,7 @@ final class AppModel {
 
     /// Museum artworks never saved to Photos, oldest first.
     func unsavedMuseumArtworks(context: ModelContext) -> [Artwork] {
-        let kept = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.isKept && !$0.isSample }))) ?? []
+        let kept = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.isKept && !$0.isSample && $0.deletedAt == nil }))) ?? []
         return kept.filter { Self.isAlive($0) && BackupReminder.needsBackup($0) }
             .sorted { ($0.keptAt ?? $0.createdAt) < ($1.keptAt ?? $1.createdAt) }
     }
@@ -808,7 +809,41 @@ final class AppModel {
     }
 
     /// `save: false` lets a batch delete (美術館「選取」) save once at the end.
+    /// 最近刪除 (1.4.0): a museum artwork goes to Recently Deleted for 30 days; a pending capture, a sample or an
+    /// artwork already in Recently Deleted is deleted for good.
     func delete(_ artwork: Artwork, context: ModelContext, save: Bool = true) {
+        if artwork.isInMuseum {
+            moveToTrash(artwork, context: context, save: save)
+        } else {
+            deleteForever(artwork, context: context, save: save)
+        }
+    }
+
+    func moveToTrash(_ artwork: Artwork, context: ModelContext, save: Bool = true) {
+        sessionArtworkIDs.removeAll { $0 == artwork.id }
+        artwork.deletedAt = Date()
+        artwork.touch()
+        if save { try? context.save() }
+    }
+
+    /// 復原: back on the wall, where it was.
+    func restore(_ artworks: [Artwork], context: ModelContext) {
+        for artwork in artworks where Self.isAlive(artwork) && artwork.deletedAt != nil {
+            artwork.deletedAt = nil
+            artwork.touch()
+        }
+        try? context.save()
+    }
+
+    /// At launch: empties what has been in 最近刪除 for 30 days.
+    func purgeTrash(context: ModelContext, now: Date = Date()) {
+        let all = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.deletedAt != nil }))) ?? []
+        let expired = all.filter { TrashPolicy.isExpired(deletedAt: $0.deletedAt, now: now) }
+        for artwork in expired { deleteForever(artwork, context: context, save: false) }
+        if !expired.isEmpty { try? context.save() }
+    }
+
+    func deleteForever(_ artwork: Artwork, context: ModelContext, save: Bool = true) {
         let id = artwork.id
         processTasks.removeValue(forKey: id)?.cancel()
         deferredIDs.remove(id)
@@ -832,7 +867,7 @@ final class AppModel {
     /// A match by the same child wins over another child's. Only reads the stored fingerprints (< 1 KB each).
     func likelyDuplicate(of fingerprint: ArtFingerprint, kind: ArtworkKind, childID: UUID?, excluding id: UUID,
                          context: ModelContext) -> Artwork? {
-        let kept = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.isKept && !$0.isSample }))) ?? []
+        let kept = (try? context.fetch(FetchDescriptor<Artwork>(predicate: #Predicate { $0.isKept && !$0.isSample && $0.deletedAt == nil }))) ?? []
         let sameKind = kept.filter { $0.id != id && $0.kind == kind && Self.isAlive($0) }
         let candidates = sameKind.compactMap { a -> DuplicateFinder.Candidate? in
             guard let fp = ArtFingerprint(data: a.fingerprintData) else { return nil }

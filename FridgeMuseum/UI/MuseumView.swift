@@ -52,6 +52,7 @@ struct MuseumView: View {
     /// 大圖 / 標準 / 小圖 (MuseumLayout.swift).
     @AppStorage(MuseumViewMode.storageKey) private var viewModeRaw = MuseumViewMode.standard.rawValue
     @State private var contentWidth: CGFloat = 0
+    @State private var showTrash = false
     static let maxWallWidth: CGFloat = 1180
     @State private var viewer: MuseumViewerStart?
     @Environment(\.displayScale) private var displayScale
@@ -135,6 +136,22 @@ struct MuseumView: View {
                         sectionView(section, mode: mode)
                     }
                 }
+                // 最近刪除 (1.4.0): only when something is in it.
+                let trashedCount = allArtworks.filter(\.isTrashed).count
+                if trashedCount > 0 {
+                    Button { showTrash = true } label: {
+                        Label("最近刪除（\(trashedCount)）", systemImage: "trash")
+                            .font(.fm(15, bold: true))
+                            .foregroundStyle(Palette.muted)
+                            .padding(.horizontal, 16)
+                            .frame(minHeight: 44)
+                            .background(Capsule().fill(Palette.surface))
+                    }
+                    .buttonStyle(.plain)
+                    .hoverEffect(.lift)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
+                }
             }
             .padding(.vertical, 8)
             .padding(.bottom, 24)
@@ -210,7 +227,7 @@ struct MuseumView: View {
                         Text("刪除 \(selectedArtworks.count) 件")
                     }
                 } message: {
-                    Text("只會刪除 App 裡的資料，已存到照片的不受影響。")
+                    Text("會移到「最近刪除」，30 天內可以復原。已存到照片的不受影響。")
                 }
                 .transition(.move(edge: .bottom))
             }
@@ -229,6 +246,7 @@ struct MuseumView: View {
                 }
             }
         }
+        .sheet(isPresented: $showTrash) { RecentlyDeletedView() }
         .sheet(item: $editingChild) { child in
             ChildEditorView(child: child)
         }
@@ -649,7 +667,7 @@ struct MuseumView: View {
         let list = selectedArtworks
         withAnimation { endSelection() }
         let n = app.deleteAll(list, context: modelContext)
-        if n > 0 { app.show(String(localized: "已刪除 \(n) 件作品")) }
+        if n > 0 { app.show(String(localized: "已把 \(n) 件作品移到最近刪除")) }
     }
 
     // MARK: Empty states

@@ -60,7 +60,7 @@ struct ArtworkDetailView: View {
                         Text("刪除")
                     }
                 } message: {
-                    Text("只會刪除 App 裡的資料，已存到照片的不受影響。")
+                    Text("會移到「最近刪除」，30 天內可以復原。已存到照片的不受影響。")
                 }
                 .accessibilityLabel(Text("更多"))
             }

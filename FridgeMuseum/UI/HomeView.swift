@@ -70,7 +70,7 @@ struct HomeView: View {
     }
 
     private var session: [Artwork] {
-        app.sessionArtworkIDs.reversed().compactMap { id in artworks.first { $0.id == id && $0.isKept } }
+        app.sessionArtworkIDs.reversed().compactMap { id in artworks.first { $0.id == id && $0.isInMuseum } }
     }
 
     var body: some View {

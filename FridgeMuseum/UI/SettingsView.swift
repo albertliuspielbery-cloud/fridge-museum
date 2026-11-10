@@ -11,10 +11,12 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @Query(sort: \Child.createdAt) private var children: [Child]
     /// Museum artworks (kept, not samples), for 已存到照片 X／Y 件.
-    @Query(filter: #Predicate<Artwork> { $0.isKept && !$0.isSample }) private var museum: [Artwork]
+    @Query(filter: #Predicate<Artwork> { $0.isKept && !$0.isSample && $0.deletedAt == nil }) private var museum: [Artwork]
     @AppStorage(AppModel.Keys.useAlbums) private var useAlbums = true
     @State private var editingChild: Child?
     @State private var showNewChild = false
+    @State private var showTrash = false
+    @Query(filter: #Predicate<Artwork> { $0.isKept && !$0.isSample && $0.deletedAt != nil }) private var trashed: [Artwork]
     @State private var restoring = false
     @State private var redeemingCode = false
 
@@ -151,6 +153,18 @@ struct SettingsView: View {
                 backupSection
 
                 Section {
+                    Button { showTrash = true } label: {
+                        LabeledContent {
+                            Text(verbatim: "\(trashed.count)")
+                        } label: {
+                            Label("最近刪除", systemImage: "trash")
+                        }
+                    }
+                } footer: {
+                    Text("刪掉的作品會在這裡放 30 天，可以復原。")
+                }
+
+                Section {
                     LabeledContent {
                         Text(verbatim: AppLanguage.isChinese ? "繁體中文" : "English")
                     } label: {
@@ -204,6 +218,7 @@ struct SettingsView: View {
             }
             .sheet(item: $editingChild) { ChildEditorView(child: $0) }
             .sheet(isPresented: $showNewChild) { ChildEditorView(child: nil) }
+            .sheet(isPresented: $showTrash) { RecentlyDeletedView() }
             .offerCodeRedemption(isPresented: $redeemingCode) { result in
                 Task {
                     await app.store.purchases.refreshEntitlements()

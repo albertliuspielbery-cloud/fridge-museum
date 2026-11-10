@@ -186,7 +186,7 @@ struct FamilyJoinSheet: View {
     @Environment(AppModel.self) private var app
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Query(filter: #Predicate<Artwork> { $0.isKept && !$0.isSample }) private var museum: [Artwork]
+    @Query(filter: #Predicate<Artwork> { $0.isKept && !$0.isSample && $0.deletedAt == nil }) private var museum: [Artwork]
     @State private var copyMine = false
     @State private var joined = false
     @State private var problem: String?
