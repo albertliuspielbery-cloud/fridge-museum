@@ -135,7 +135,15 @@ enum DemoMode {
             path.wrappedValue.append(Route.edit(seeded.pendingFlat))
             try? await Task.sleep(for: .seconds(2))
             app.paywall = PaywallRequest(kind: .flat, artworkID: seeded.pendingFlat, action: .keep)
-        case "museum", "museum-filter", "museum-small", "museum-large", "duplicates":
+        case "museum", "museum-filter", "museum-small", "museum-large":
+            path.wrappedValue.append(Route.museum)
+        case "duplicates":
+            // The demo museum reuses the sample photos: give them fingerprints so the look-alikes are found.
+            let kept = ((try? context.fetch(FetchDescriptor<Artwork>())) ?? []).filter(\.isInMuseum)
+            for a in kept where a.fingerprintData == nil {
+                if let thumb = a.thumbnailData { a.fingerprintData = ArtFingerprint.make(fromImageData: thumb)?.encoded }
+            }
+            try? context.save()
             path.wrappedValue.append(Route.museum)
         case "trash":
             // 最近刪除 (1.4.0): three works deleted a few days ago, then the museum opens the sheet.
