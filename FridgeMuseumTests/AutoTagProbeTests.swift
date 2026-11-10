@@ -42,7 +42,7 @@ struct AutoTagProbeTests {
         report("sample-flat (child's drawing photo)", bundled("sample-flat"))
         report("sample-craft (child's craft photo)", bundled("sample-craft"))
         for piece in CraftSketch.Piece.allCases {
-            report("sketch-\(piece)", CraftSketch.image(piece, on: .white, height: 320).cgImage)
+            report("sketch-\(piece)", Sketch.cgImage(CraftSketch.image(piece, on: .white, height: 320)))
         }
     }
 }
