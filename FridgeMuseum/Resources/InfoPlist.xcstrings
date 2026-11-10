@@ -41,13 +41,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Take photos of your kid’s drawings and crafts. Photos are processed on this phone and only go to iCloud with iCloud Sync or a Family Museum. We never see them."
+            "value" : "Take photos of your kid’s drawings and crafts. Photos are processed on this device and only go to iCloud with iCloud Sync or a Family Museum. We never see them."
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "用相機拍下孩子的畫作和勞作。照片在手機上處理；開啟 iCloud 同步或家庭美術館時，才存到 iCloud，我們看不到。"
+            "value" : "用相機拍下孩子的畫作和勞作。照片在這台裝置上處理；開啟 iCloud 同步或家庭美術館時，才存到 iCloud，我們看不到。"
           }
         }
       }
@@ -75,13 +75,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Record your kid talking about their artwork. Recordings stay on this phone and only go to iCloud with iCloud Sync or a Family Museum. We never see them."
+            "value" : "Record your kid talking about their artwork. Recordings stay on this device and only go to iCloud with iCloud Sync or a Family Museum. We never see them."
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "錄下孩子介紹自己作品的聲音。錄音存在這支手機；開啟 iCloud 同步或家庭美術館時，才存到 iCloud，我們看不到。"
+            "value" : "錄下孩子介紹自己作品的聲音。錄音存在這台裝置；開啟 iCloud 同步或家庭美術館時，才存到 iCloud，我們看不到。"
           }
         }
       }
@@ -126,13 +126,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Turn your kid’s recording into a text note on this phone. Nothing is uploaded."
+            "value" : "Turn your kid’s recording into a text note on this device. Nothing is uploaded."
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在手機上把孩子的錄音轉成文字備註，不會上傳到網路。"
+            "value" : "在這台裝置上把孩子的錄音轉成文字備註，不會上傳到網路。"
           }
         }
       }

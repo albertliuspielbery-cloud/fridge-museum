@@ -15,7 +15,7 @@ ZH = [
     ("iPhone「設定」", "iPad「設定」"),
     ("這支手機", "這台 iPad"),
     ("這台手機", "這台 iPad"),
-    ("家人手機上", "家人的裝置上"),
+    ("家人手機上", "家人裝置上"),
     ("換手機", "換裝置"),
     ("手機換了", "裝置換了"),
     ("手機", "iPad"),
@@ -31,6 +31,9 @@ EN = [
 def zh_ipad(text):
     for a, b in ZH:
         text = text.replace(a, b)
+    # Chinese typesetting: a space between Han characters and "iPad", none next to full-width punctuation.
+    text = re.sub(r"(?<=[一-鿿])iPad", " iPad", text)
+    text = re.sub(r"iPad(?=[一-鿿])", "iPad ", text)
     return text
 
 
@@ -92,7 +95,6 @@ def main(path):
             ipad = transform(en, en_ipad)
             if ipad != en:
                 locs["en"] = by_device(en, ipad)
-        entry.setdefault("extractionState", entry.get("extractionState", "manual"))
         changed += 1
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(data, f, ensure_ascii=False, indent=2, separators=(",", " : "))

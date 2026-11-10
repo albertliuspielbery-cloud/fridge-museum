@@ -413,9 +413,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Your iCloud storage is full, so new artworks stay on this phone for now. Free up space in Settings › Apple Account › iCloud and syncing picks up again."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Your iCloud storage is full, so new artworks stay on this iPad for now. Free up space in Settings › Apple Account › iCloud and syncing picks up again."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Your iCloud storage is full, so new artworks stay on this phone for now. Free up space in Settings › Apple Account › iCloud and syncing picks up again."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "iCloud 空間滿了，新作品先留在 iPad 上。到「設定 › Apple 帳號 › iCloud」整理空間後會自動繼續。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "iCloud 空間滿了，新作品先留在手機上。到「設定 › Apple 帳號 › iCloud」整理空間後會自動繼續。"
+                }
+              }
+            }
           }
         }
       }
@@ -714,6 +744,24 @@
               }
             }
           }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "也把我 iPad 上的 %lld 件作品放進家庭美術館"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "也把我手機上的 %lld 件作品放進家庭美術館"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -810,9 +858,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Artworks live only on this phone. Save them to Photos so they’re safe, even on a new phone."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Artworks live only on this iPad. Save them to Photos so they’re safe, even on a new device."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Artworks live only on this phone. Save them to Photos so they’re safe, even on a new phone."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "作品只存在這台 iPad 裡。存到照片，裝置換了也不怕。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "作品只存在這支手機裡。存到照片，手機換了也不怕。"
+                }
+              }
+            }
           }
         }
       }
@@ -847,6 +925,24 @@
             "state" : "translated",
             "value" : "Artworks go into the museum by child, semester, and age. When you save to Photos, each child can have their own album."
           }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "作品會依孩子、學期、年齡收進美術館。存到照片時，可以依孩子分相簿。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "作品會依孩子、學期、年齡收進美術館。存到手機時，可以依孩子分相簿。"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -854,9 +950,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Artworks sync to your own iCloud. See them on any iPhone or iPad signed in to the same Apple Account, even after you switch phones."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Artworks sync to your own iCloud. See them on any iPhone or iPad signed in to the same Apple Account, even after you switch devices."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Artworks sync to your own iCloud. See them on any iPhone or iPad signed in to the same Apple Account, even after you switch phones."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "作品會同步到你自己的 iCloud，用同一個 Apple 帳號的 iPhone、iPad 都看得到，換裝置也不怕。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "作品會同步到你自己的 iCloud，用同一個 Apple 帳號的 iPhone、iPad 都看得到，換手機也不怕。"
+                }
+              }
+            }
           }
         }
       }
@@ -976,17 +1102,59 @@
       "localizations" : {
         "en" : {
           "variations" : {
-            "plural" : {
-              "one" : {
+            "device" : {
+              "ipad" : {
+                "variations" : {
+                  "plural" : {
+                    "one" : {
+                      "stringUnit" : {
+                        "state" : "translated",
+                        "value" : "A copy of your 1 artwork goes into the Family Museum. Your own museum stays on this iPad, untouched. You can invite family right away; the Family Museum opens the next time you open the app."
+                      }
+                    },
+                    "other" : {
+                      "stringUnit" : {
+                        "state" : "translated",
+                        "value" : "Copies of your %lld artworks go into the Family Museum. Your own museum stays on this iPad, untouched. You can invite family right away; the Family Museum opens the next time you open the app."
+                      }
+                    }
+                  }
+                }
+              },
+              "other" : {
+                "variations" : {
+                  "plural" : {
+                    "one" : {
+                      "stringUnit" : {
+                        "state" : "translated",
+                        "value" : "A copy of your 1 artwork goes into the Family Museum. Your own museum stays on this phone, untouched. You can invite family right away; the Family Museum opens the next time you open the app."
+                      }
+                    },
+                    "other" : {
+                      "stringUnit" : {
+                        "state" : "translated",
+                        "value" : "Copies of your %lld artworks go into the Family Museum. Your own museum stays on this phone, untouched. You can invite family right away; the Family Museum opens the next time you open the app."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "A copy of your 1 artwork goes into the Family Museum. Your own museum stays on this phone, untouched. You can invite family right away; the Family Museum opens the next time you open the app."
+                  "value" : "你 iPad 上的 %lld 件作品會複製一份到家庭美術館，原本的美術館會留在 iPad 上，不會動到。建好之後可以馬上邀請家人；重新打開 App 就會進入家庭美術館。"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Copies of your %lld artworks go into the Family Museum. Your own museum stays on this phone, untouched. You can invite family right away; the Family Museum opens the next time you open the app."
+                  "value" : "你手機上的 %lld 件作品會複製一份到家庭美術館，原本的美術館會留在手機上，不會動到。建好之後可以馬上邀請家人；重新打開 App 就會進入家庭美術館。"
                 }
               }
             }
@@ -998,9 +1166,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Your own museum stays on this phone and won’t be deleted. It comes back when you leave the Family Museum."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Your own museum stays on this iPad and won’t be deleted. It comes back when you leave the Family Museum."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Your own museum stays on this phone and won’t be deleted. It comes back when you leave the Family Museum."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "你自己的美術館會留在 iPad 上，不會刪掉；離開家庭美術館後就會回來。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "你自己的美術館會留在手機上，不會刪掉；離開家庭美術館後就會回來。"
+                }
+              }
+            }
           }
         }
       }
@@ -1639,9 +1837,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sign in to your Apple Account and turn on iCloud in the iPhone’s Settings, then reopen the app. Your artworks are still on this phone."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Sign in to your Apple Account and turn on iCloud in the iPad’s Settings, then reopen the app. Your artworks are still on this iPad."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Sign in to your Apple Account and turn on iCloud in the iPhone’s Settings, then reopen the app. Your artworks are still on this phone."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "到 iPad「設定」登入 Apple 帳號並開啟 iCloud，再重新打開 App。作品都還在 iPad 上。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "到 iPhone「設定」登入 Apple 帳號並開啟 iCloud，再重新打開 App。作品都還在手機上。"
+                }
+              }
+            }
           }
         }
       }
@@ -2162,6 +2390,24 @@
             "state" : "translated",
             "value" : "Save to Photos"
           }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "存到照片"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "存到手機"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -2172,6 +2418,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Save it to Photos or hang it up so you don’t lose it."
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "存到照片或收進這次，才不會不見"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "存到手機或收進這次，才不會不見"
+                }
+              }
+            }
           }
         }
       }
@@ -2191,9 +2455,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Save them to Photos so they’re safe, even on a new phone."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Save them to Photos so they’re safe, even on a new device."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Save them to Photos so they’re safe, even on a new phone."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "存到照片，裝置換了也不怕"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "存到照片，手機換了也不怕"
+                }
+              }
+            }
           }
         }
       }
@@ -2317,6 +2611,24 @@
             "state" : "translated",
             "value" : "With the Full Version, artworks sync to your own iCloud, so you can see them on a new iPhone or your iPad."
           }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "完整版可以把作品同步到你自己的 iCloud，換裝置、用 iPad 都看得到。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "完整版可以把作品同步到你自己的 iCloud，換手機、用 iPad 都看得到。"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -2335,9 +2647,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Your family won’t see this Family Museum anymore. A copy of its artworks goes into your own museum, and each family member keeps a copy on their phone too."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Your family won’t see this Family Museum anymore. A copy of its artworks goes into your own museum, and each family member keeps a copy on their iPad too."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Your family won’t see this Family Museum anymore. A copy of its artworks goes into your own museum, and each family member keeps a copy on their phone too."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "家人就看不到這個家庭美術館了。家庭美術館的作品會複製一份到你自己的美術館；家人裝置上的也會各自留一份。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "家人就看不到這個家庭美術館了。家庭美術館的作品會複製一份到你自己的美術館；家人手機上的也會各自留一份。"
+                }
+              }
+            }
           }
         }
       }
@@ -2346,9 +2688,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Everyone can add, edit, and delete artworks and kids. Only artworks hung in the museum are shared, and everyone gets the Full Version here. Your own museum stays on this phone and comes back when you leave."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Everyone can add, edit, and delete artworks and kids. Only artworks hung in the museum are shared, and everyone gets the Full Version here. Your own museum stays on this iPad and comes back when you leave."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Everyone can add, edit, and delete artworks and kids. Only artworks hung in the museum are shared, and everyone gets the Full Version here. Your own museum stays on this phone and comes back when you leave."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "家人都可以新增、編輯、刪除作品和小朋友。只有收進美術館的作品會分享；在家庭美術館裡，大家都是完整版。你自己的美術館留在 iPad 上，離開後就會回來。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "家人都可以新增、編輯、刪除作品和小朋友。只有收進美術館的作品會分享；在家庭美術館裡，大家都是完整版。你自己的美術館留在手機上，離開後就會回來。"
+                }
+              }
+            }
           }
         }
       }
@@ -2390,9 +2762,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Family Museum artworks are stored in the curator’s iCloud. Syncing continues once the curator frees up space; new artworks stay on this phone until then."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Family Museum artworks are stored in the curator’s iCloud. Syncing continues once the curator frees up space; new artworks stay on this iPad until then."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Family Museum artworks are stored in the curator’s iCloud. Syncing continues once the curator frees up space; new artworks stay on this phone until then."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "家庭美術館的作品存在館長的 iCloud。館長整理 iCloud 空間後會自動繼續，新作品先留在 iPad 上。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "家庭美術館的作品存在館長的 iCloud。館長整理 iCloud 空間後會自動繼續，新作品先留在手機上。"
+                }
+              }
+            }
           }
         }
       }
@@ -2582,6 +2984,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Saved to Photos!"
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "已存到照片！"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "已存到手機！"
+                }
+              }
+            }
           }
         }
       }
@@ -3040,9 +3460,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Swipe the app away and open it again to apply. Everything on this phone stays."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Swipe the app away and open it again to apply. Everything on this iPad stays."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Swipe the app away and open it again to apply. Everything on this phone stays."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "從背景把 App 滑掉再打開就會生效。iPad 上的作品都會留著。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "從背景把 App 滑掉再打開就會生效。手機上的作品都會留著。"
+                }
+              }
+            }
           }
         }
       }
@@ -3216,9 +3666,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All photos are processed on this phone and never uploaded. The app collects no personal data."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "All photos are processed on this iPad and never uploaded. The app collects no personal data."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "All photos are processed on this phone and never uploaded. The app collects no personal data."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "所有照片都只在這台 iPad 上處理，不會上傳；App 不蒐集任何個人資料。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "所有照片都只在這支手機上處理，不會上傳；App 不蒐集任何個人資料。"
+                }
+              }
+            }
           }
         }
       }
@@ -3227,9 +3707,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Everything is processed on this phone. Nothing is uploaded."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Everything is processed on this iPad. Nothing is uploaded."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Everything is processed on this phone. Nothing is uploaded."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "所有處理都在這台 iPad 上完成，不會上傳。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "所有處理都在這支手機上完成，不會上傳。"
+                }
+              }
+            }
           }
         }
       }
@@ -3238,9 +3748,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Everything is processed on this phone. Artworks sync to your own iCloud, where the developer can’t see them."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Everything is processed on this iPad. Artworks sync to your own iCloud, where the developer can’t see them."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Everything is processed on this phone. Artworks sync to your own iCloud, where the developer can’t see them."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "所有處理都在這台 iPad 上完成；作品同步到你自己的 iCloud，開發者看不到。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "所有處理都在這支手機上完成；作品同步到你自己的 iCloud，開發者看不到。"
+                }
+              }
+            }
           }
         }
       }
@@ -3573,6 +4113,24 @@
             "state" : "translated",
             "value" : "When it looks right, save or share it. Changes are saved automatically."
           }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "改好了就存到照片或分享。修改會自動保存。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "改好了就存到手機或分享。修改會自動保存。"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -3768,9 +4326,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "It uses your iCloud storage. Syncing starts the next time you open the app. You can turn it off in Settings anytime, and turning it off never deletes anything on this phone."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "It uses your iCloud storage. Syncing starts the next time you open the app. You can turn it off in Settings anytime, and turning it off never deletes anything on this iPad."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "It uses your iCloud storage. Syncing starts the next time you open the app. You can turn it off in Settings anytime, and turning it off never deletes anything on this phone."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "會用到你的 iCloud 空間。下次打開 App 時開始同步，隨時可以在「設定」關掉；關掉不會刪掉 iPad 上的作品。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "會用到你的 iCloud 空間。下次打開 App 時開始同步，隨時可以在「設定」關掉；關掉不會刪掉手機上的作品。"
+                }
+              }
+            }
           }
         }
       }
@@ -4120,9 +4708,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Photos are processed on your phone"
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Photos are processed on your iPad"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Photos are processed on your phone"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "照片只在 iPad 上處理"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "照片只在手機上處理"
+                }
+              }
+            }
           }
         }
       }
@@ -4131,9 +4749,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Photos are processed on this phone and kept in your own iCloud"
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Photos are processed on this iPad and kept in your own iCloud"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Photos are processed on this phone and kept in your own iCloud"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "照片只在 iPad 上處理，作品存在你自己的 iCloud"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "照片只在手機上處理，作品存在你自己的 iCloud"
+                }
+              }
+            }
           }
         }
       }
@@ -4142,9 +4790,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Photos are processed on this phone and never uploaded"
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Photos are processed on this iPad and never uploaded"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Photos are processed on this phone and never uploaded"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "照片只在這台 iPad 上處理，不會上傳"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "照片只在這支手機上處理，不會上傳"
+                }
+              }
+            }
           }
         }
       }
@@ -4153,9 +4831,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Photos are processed only on this phone. With iCloud Sync on, artworks are kept in your own iCloud, where the developer can’t see them. The app collects no personal data."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Photos are processed only on this iPad. With iCloud Sync on, artworks are kept in your own iCloud, where the developer can’t see them. The app collects no personal data."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Photos are processed only on this phone. With iCloud Sync on, artworks are kept in your own iCloud, where the developer can’t see them. The app collects no personal data."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "照片只在這台 iPad 上處理；開啟 iCloud 同步時，作品存在你自己的 iCloud，開發者看不到。App 不蒐集任何個人資料。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "照片只在這支手機上處理；開啟 iCloud 同步時，作品存在你自己的 iCloud，開發者看不到。App 不蒐集任何個人資料。"
+                }
+              }
+            }
           }
         }
       }
@@ -4164,9 +4872,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Photos are still processed only on this phone. Artworks are kept in your own iCloud, where the developer can’t see them."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Photos are still processed only on this iPad. Artworks are kept in your own iCloud, where the developer can’t see them."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Photos are still processed only on this phone. Artworks are kept in your own iCloud, where the developer can’t see them."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "照片還是只在 iPad 上處理；作品存在你自己的 iCloud，開發者看不到。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "照片還是只在手機上處理；作品存在你自己的 iCloud，開發者看不到。"
+                }
+              }
+            }
           }
         }
       }
@@ -4252,9 +4990,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "See your artworks on any iPhone or iPad signed in to the same Apple Account. Photos are processed on this phone; artworks are kept in your own iCloud, where the developer can’t see them. Changes apply the next time you open the app, and turning sync off never deletes anything on this phone."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "See your artworks on any iPhone or iPad signed in to the same Apple Account. Photos are processed on this iPad; artworks are kept in your own iCloud, where the developer can’t see them. Changes apply the next time you open the app, and turning sync off never deletes anything on this iPad."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "See your artworks on any iPhone or iPad signed in to the same Apple Account. Photos are processed on this phone; artworks are kept in your own iCloud, where the developer can’t see them. Changes apply the next time you open the app, and turning sync off never deletes anything on this phone."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "用同一個 Apple 帳號的 iPhone、iPad 都看得到作品。照片只在這台 iPad 上處理；作品存在你自己的 iCloud，開發者看不到。開關在下次打開 App 時生效，關掉同步不會刪掉 iPad 上的作品。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "用同一個 Apple 帳號的 iPhone、iPad 都看得到作品。照片只在這支手機上處理；作品存在你自己的 iCloud，開發者看不到。開關在下次打開 App 時生效，關掉同步不會刪掉手機上的作品。"
+                }
+              }
+            }
           }
         }
       }
@@ -4387,6 +5155,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Looks good? Save it to Photos or hang it up."
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "看起來可以了，就存到照片或收進這次。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "看起來可以了，就存到手機或收進這次。"
+                }
+              }
+            }
           }
         }
       }
@@ -4895,6 +5681,24 @@
               }
             }
           }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這 %lld 張會從 App 裡刪掉，不會存到照片。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這 %lld 張會從 App 裡刪掉，不會存到手機。"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -4924,9 +5728,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This phone can’t transcribe speech offline. The recording is kept."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "This iPad can’t transcribe speech offline. The recording is kept."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "This phone can’t transcribe speech offline. The recording is kept."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這台 iPad 無法離線辨識語音，已保留錄音"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這台手機無法離線辨識語音，已保留錄音"
+                }
+              }
+            }
           }
         }
       }
@@ -4960,6 +5794,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "It will be deleted from the app and won’t be saved to Photos."
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這張會從 App 裡刪掉，不會存到照片。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這張會從 App 裡刪掉，不會存到手機。"
+                }
+              }
+            }
           }
         }
       }
@@ -5013,9 +5865,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This phone has synced before, so it first checks that you’re still signed in to the same Apple Account (this protects artworks not uploaded yet). Connect to the internet and reopen the app to continue."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "This iPad has synced before, so it first checks that you’re still signed in to the same Apple Account (this protects artworks not uploaded yet). Connect to the internet and reopen the app to continue."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "This phone has synced before, so it first checks that you’re still signed in to the same Apple Account (this protects artworks not uploaded yet). Connect to the internet and reopen the app to continue."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這台 iPad 同步過，要先確認登入的還是同一個 Apple 帳號才會同步（保護 iPad 上還沒上傳的作品）。連上網路後重新打開 App 就會繼續。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這支手機同步過，要先確認登入的還是同一個 Apple 帳號才會同步（保護手機上還沒上傳的作品）。連上網路後重新打開 App 就會繼續。"
+                }
+              }
+            }
           }
         }
       }
@@ -5024,9 +5906,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This phone is signed in to a different Apple Account than the last time it synced. To keep the artworks on this phone safe, syncing is paused. Switch back to the original account to continue. To use the new account instead, turn off iCloud Sync first and contact us from Support & Feedback."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "This iPad is signed in to a different Apple Account than the last time it synced. To keep the artworks on this iPad safe, syncing is paused. Switch back to the original account to continue. To use the new account instead, turn off iCloud Sync first and contact us from Support & Feedback."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "This phone is signed in to a different Apple Account than the last time it synced. To keep the artworks on this phone safe, syncing is paused. Switch back to the original account to continue. To use the new account instead, turn off iCloud Sync first and contact us from Support & Feedback."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這台 iPad 現在登入的 Apple 帳號，和上次同步時不同。為了不刪掉 iPad 上的作品，先暫停同步；換回原本的帳號就會繼續。要改用新帳號，請先關閉 iCloud 同步，再到「支援與意見回饋」聯絡我們。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這支手機現在登入的 Apple 帳號，和上次同步時不同。為了不刪掉手機上的作品，先暫停同步；換回原本的帳號就會繼續。要改用新帳號，請先關閉 iCloud 同步，再到「支援與意見回饋」聯絡我們。"
+                }
+              }
+            }
           }
         }
       }
@@ -5035,9 +5947,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This is the museum label that hangs with the artwork. The name and birthday are saved only on this phone, so you won’t have to enter them again."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "This is the museum label that hangs with the artwork. The name and birthday are saved only on this iPad, so you won’t have to enter them again."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "This is the museum label that hangs with the artwork. The name and birthday are saved only on this phone, so you won’t have to enter them again."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這是掛在冰箱上的作品說明牌。名字和生日只會記在這台 iPad 上，下次不用再填。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "這是掛在冰箱上的作品說明牌。名字和生日只會記在這支手機上，下次不用再填。"
+                }
+              }
+            }
           }
         }
       }
@@ -5489,9 +6431,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The avatar stays on this phone."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The avatar stays on this iPad."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The avatar stays on this phone."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "頭像只存在這台 iPad 裡。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "頭像只存在這支手機裡。"
+                }
+              }
+            }
           }
         }
       }
