@@ -21,6 +21,8 @@ struct HomeView: View {
     private enum PadHome { case portrait, landscape }
 
     private var pad: PadHome? {
+        // Before the first measurement on an iPad, start with the portrait layout instead of flashing the phone one.
+        if homeSize == .zero { return horizontalSizeClass == .regular ? .portrait : nil }
         guard horizontalSizeClass == .regular, homeSize.width >= 700 else { return nil }
         return homeSize.width >= 1100 && homeSize.width > homeSize.height ? .landscape : .portrait
     }
@@ -125,6 +127,7 @@ struct HomeView: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { scrollTop = $0 }
         .onGeometryChange(for: CGSize.self) { $0.size } action: { homeSize = $0 }
+        .ignoresSafeArea(.keyboard)  // a sheet's keyboard must not reshuffle the fridge underneath
         .scrollIndicators(.hidden)
         .background(Wallpaper())
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -390,7 +393,10 @@ struct HomeView: View {
     /// 拍給 as fridge magnets: the first two characters of the current child's name (nothing when unassigned).
     @ViewBuilder private var nameMagnets: some View {
         if let child = currentChild {
-            let letters = Array(child.displayName.prefix(2))
+            // Chinese names: the first two characters (小明); other names: the initial (E).
+            let name = child.displayName
+            let isHan = name.unicodeScalars.first.map { (0x4E00...0x9FFF).contains($0.value) } ?? false
+            let letters = isHan ? Array(name.prefix(2)) : Array(name.prefix(1).uppercased())
             let colors = [Palette.red, Palette.blue]
             HStack(spacing: 6) {
                 ForEach(Array(letters.enumerated()), id: \.offset) { i, ch in
@@ -500,7 +506,7 @@ struct HomeView: View {
             VStack(spacing: 10) {
                 Image(systemName: "plus").font(.system(size: 34, weight: .semibold))
                 Text("下一張貼這裡").font(.fmDisplay(22, relativeTo: .title3))
-                Text("按下方快門").font(.fm(15))
+                Text("點這裡拍下一張").font(.fm(15))
             }
             .foregroundStyle(Palette.doorMuted)
             .frame(maxWidth: .infinity, minHeight: pad == .landscape ? 300 : 420)
@@ -682,7 +688,7 @@ struct FridgeWork: View {
     var magnet: String? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: compactPlacard ? 14 : 18) {
+        let card = VStack(alignment: .leading, spacing: compactPlacard ? 14 : 18) {
             HungPrint(id: artwork.id, tilt: 2.5, magnet: magnet) {
                 ArtworkImage(artwork: artwork)
                     .aspectRatio(artwork.aspectRatio, contentMode: .fit)
@@ -695,7 +701,12 @@ struct FridgeWork: View {
                 Placard(artwork: artwork, compact: compactPlacard)
             }
         }
-        .accessibilityElement(children: .combine)
+        // Without a placard (small prints on the iPad home) VoiceOver still needs the artwork's name.
+        if showsPlacard {
+            card.accessibilityElement(children: .combine)
+        } else {
+            card.accessibilityElement(children: .ignore).accessibilityLabel(Text(verbatim: artwork.placardTitle))
+        }
     }
 }
 
@@ -1031,7 +1042,6 @@ struct CounterDock: View {
                     }
                     Spacer()
                     ShutterButton(highlight: sessionCount > 0, action: onShutter)
-                        .keyboardShortcut(.space, modifiers: [])  // iPad keyboard: space takes a photo
                     Spacer()
                     SideButton(title: String(localized: "美術館"), action: onMuseum) {
                         if let museumThumb, let img = ThumbnailCache.shared.image(for: museumThumb) {

@@ -159,6 +159,10 @@ final class CameraController: NSObject, @unchecked Sendable {
         session.beginConfiguration()
         defer { session.commitConfiguration() }
         session.sessionPreset = .photo
+        // iPad Split View / Stage Manager (1.4.0): keep the camera running beside another app where supported.
+        if session.isMultitaskingCameraAccessSupported {
+            session.isMultitaskingCameraAccessEnabled = true
+        }
 
         // Virtual multi-camera devices switch to the ultra-wide (macro) automatically when close to the paper.
         let device = AVCaptureDevice.default(.builtInTripleCamera, for: .video, position: .back)

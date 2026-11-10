@@ -242,7 +242,7 @@
       }
     },
     "paywall.perk.icloud" : {
-      "comment" : "Perk: iCloud sync (1.2.0). Same Apple Account only — the person's private iCloud; not shared between family members. The app is iPhone-only but runs on iPad.",
+      "comment" : "Perk: iCloud sync (1.2.0). Same Apple Account only — the person's private iCloud; not shared between family members. The app runs on iPhone and iPad (1.4.0).",
       "extractionState" : "manual",
       "localizations" : {
         "zh-Hant" : {

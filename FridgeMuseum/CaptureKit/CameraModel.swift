@@ -22,10 +22,16 @@ final class CameraModel {
     var torchOn = false
     /// This camera has a flashlight (false in the Simulator, so DemoMode / screenshots never show the button).
     var hasTorch = false
+    /// iPad (1.4.0): the system paused the camera (Split View / Stage Manager without multitasking camera access,
+    /// a call, another app). The preview freezes, so the shutter is disabled and a hint shows.
+    var isInterrupted = false
 
     let controller = CameraController()
 
     @ObservationIgnored private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
+    /// Keeps the preview level while an iPad turns (the app is portrait-only on iPhone, so it never changed before).
+    @ObservationIgnored private var rotationObservation: NSKeyValueObservation?
+    @ObservationIgnored private var interruptionObservers: [NSObjectProtocol] = []
     /// Gravity-based capture angle; also right when the phone is held (almost) flat over a table.
     @ObservationIgnored private let gravity = GravityOrientationTracker()
     @ObservationIgnored private weak var previewLayer: AVCaptureVideoPreviewLayer?
@@ -57,12 +63,16 @@ final class CameraModel {
             state = .running
             hasTorch = controller.hasTorch
             setUpRotation()
+            observeInterruptions()
         } catch {
             state = .unavailable
         }
     }
 
     func stop() {
+        for observer in interruptionObservers { NotificationCenter.default.removeObserver(observer) }
+        interruptionObservers = []
+        isInterrupted = false
         _ = torch.leave(now: Self.now)
         torchOn = false
         isDim = false
@@ -133,9 +143,33 @@ final class CameraModel {
         guard rotationCoordinator == nil, let device = controller.device, let layer = previewLayer else { return }
         let coordinator = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: layer)
         rotationCoordinator = coordinator
-        if let connection = layer.connection {
-            let angle = coordinator.videoRotationAngleForHorizonLevelPreview
-            if connection.isVideoRotationAngleSupported(angle) { connection.videoRotationAngle = angle }
+        let target = WeakPreviewLayer(layer: layer)
+        // Like Apple's AVCam: follow the coordinator, so the preview stays level when an iPad turns.
+        rotationObservation = coordinator.observe(\.videoRotationAngleForHorizonLevelPreview, options: [.initial, .new]) { c, _ in
+            let angle = c.videoRotationAngleForHorizonLevelPreview
+            Task { @MainActor in
+                guard let connection = target.layer?.connection, connection.isVideoRotationAngleSupported(angle) else { return }
+                connection.videoRotationAngle = angle
+            }
         }
     }
+
+    private func observeInterruptions() {
+        guard interruptionObservers.isEmpty else { return }
+        let center = NotificationCenter.default
+        let session = controller.session
+        interruptionObservers = [
+            center.addObserver(forName: AVCaptureSession.wasInterruptedNotification, object: session, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.isInterrupted = true }
+            },
+            center.addObserver(forName: AVCaptureSession.interruptionEndedNotification, object: session, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.isInterrupted = false }
+            },
+        ]
+    }
+}
+
+/// The preview layer for the rotation observer (KVO calls back on any thread; the layer is only touched on main).
+private struct WeakPreviewLayer: @unchecked Sendable {
+    weak var layer: AVCaptureVideoPreviewLayer?
 }

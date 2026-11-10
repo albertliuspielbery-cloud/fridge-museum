@@ -153,6 +153,7 @@ struct EditView: View {
             }
         }
         .onGeometryChange(for: CGSize.self) { $0.size } action: { pageSize = $0 }
+        .ignoresSafeArea(.keyboard)  // the 說明牌 sheet's keyboard must not flip the layout underneath
         .padding(.top, 4)
         .background(Wallpaper())
         .navigationTitle(Text(verbatim: artwork.placardTitle))

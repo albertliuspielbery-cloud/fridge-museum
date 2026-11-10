@@ -28,6 +28,7 @@ struct ArtworkDetailView: View {
             if isWide { wideLayout } else { narrowLayout }
         }
         .onGeometryChange(for: CGSize.self) { $0.size } action: { pageSize = $0 }
+        .ignoresSafeArea(.keyboard)
         .background(Wallpaper())
         .navigationTitle(Text(verbatim: artwork.placardTitle))
         .navigationBarTitleDisplayMode(.inline)

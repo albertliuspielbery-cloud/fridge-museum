@@ -3822,6 +3822,28 @@
         }
       }
     },
+    "點這裡拍下一張" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap here for the next one"
+          }
+        }
+      }
+    },
+    "相機暫時停住了\n分割畫面時，請把冰箱美術館放大成全螢幕再拍" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The camera is paused.\nIn Split View, make My Fridge Museum full screen to take photos."
+          }
+        }
+      }
+    },
     "邀請沒有送出" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -243,7 +243,18 @@ struct CameraScreen: View {
             .foregroundStyle(.white)
             .padding()
         default:
-            EmptyView()
+            if camera.isInterrupted {
+                VStack(spacing: 14) {
+                    Image("bibi-think").resizable().scaledToFit().frame(height: 120)
+                    Text("相機暫時停住了
+分割畫面時，請把冰箱美術館放大成全螢幕再拍")
+                        .font(.fm(16))
+                        .multilineTextAlignment(.center)
+                }
+                .foregroundStyle(.white)
+                .padding()
+                .background(RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(0.55)))
+            }
         }
     }
 
@@ -253,7 +264,7 @@ struct CameraScreen: View {
 
     private var shutter: some View {
         ShutterButton(action: shoot)
-            .disabled(camera.state != .running || camera.isCapturing || cooldown)
+            .disabled(camera.state != .running || camera.isCapturing || cooldown || camera.isInterrupted)
             .environment(\.colorScheme, .light)
             .keyboardShortcut(.space, modifiers: [])  // iPad keyboard
     }
