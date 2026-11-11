@@ -236,9 +236,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The app is in Traditional Chinese and English, and follows your iPhone’s language by default."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The app is in Traditional Chinese and English, and follows your iPad’s language by default."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The app is in Traditional Chinese and English, and follows your iPhone’s language by default."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "App 支援繁體中文和英文，預設跟隨 iPad 的語言。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "App 支援繁體中文和英文，預設跟隨 iPhone 的語言。"
+                }
+              }
+            }
           }
         }
       }
@@ -6056,9 +6086,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sign in to iCloud to create a Family Museum. Sign in to your Apple Account in the iPhone Settings app and try again."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Sign in to iCloud to create a Family Museum. Sign in to your Apple Account in the iPad Settings app and try again."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Sign in to iCloud to create a Family Museum. Sign in to your Apple Account in the iPhone Settings app and try again."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "要先登入 iCloud 才能建立家庭美術館。到 iPad「設定」登入 Apple 帳號後再試一次。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "要先登入 iCloud 才能建立家庭美術館。到 iPhone「設定」登入 Apple 帳號後再試一次。"
+                }
+              }
+            }
           }
         }
       }
@@ -6067,9 +6127,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sign in to iCloud first. Sign in to your Apple Account in the iPhone Settings app and try again."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Sign in to iCloud first. Sign in to your Apple Account in the iPad Settings app and try again."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Sign in to iCloud first. Sign in to your Apple Account in the iPhone Settings app and try again."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "要先登入 iCloud。到 iPad「設定」登入 Apple 帳號後再試一次。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "要先登入 iCloud。到 iPhone「設定」登入 Apple 帳號後再試一次。"
+                }
+              }
+            }
           }
         }
       }
@@ -6078,9 +6168,39 @@
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "To make albums like “My Fridge Museum – Mia,” iPhone will ask for full Photos access. The app only adds artworks — it never reads or uploads your photos."
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "To make albums like “My Fridge Museum – Mia,” iPad will ask for full Photos access. The app only adds artworks — it never reads or uploads your photos."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "To make albums like “My Fridge Museum – Mia,” iPhone will ask for full Photos access. The app only adds artworks — it never reads or uploads your photos."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "device" : {
+              "ipad" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "要建立「冰箱美術館 – 小明」這樣的相簿，iPad 會詢問是否允許取用所有照片。App 只會新增作品，不會讀取或上傳你的照片。"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "要建立「冰箱美術館 – 小明」這樣的相簿，iPhone 會詢問是否允許取用所有照片。App 只會新增作品，不會讀取或上傳你的照片。"
+                }
+              }
+            }
           }
         }
       }

@@ -255,7 +255,10 @@ struct MuseumView: View {
             }
         }
         .sheet(isPresented: $showTrash) { RecentlyDeletedView() }
-        .sheet(isPresented: $showDuplicates, onDismiss: { Task { await countDuplicates() } }) { DuplicatesView() }
+        .sheet(isPresented: $showDuplicates, onDismiss: { Task { await countDuplicates() } }) {
+            // iPad: a page-sized sheet, so two prints, their labels and both buttons fit (a form sheet cut them off in English).
+            DuplicatesView().presentationSizing(.page)
+        }
         .task(id: artworks.count) { await countDuplicates() }
         .task {
             // Screenshots (1.4.0): open 最近刪除 / 找重複作品 over the museum.

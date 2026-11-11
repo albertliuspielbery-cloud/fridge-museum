@@ -4,7 +4,9 @@
 #   版本資料（每個語言）：描述、關鍵字、宣傳文字、支援網址、行銷網址、此版本新增內容（第一個上架版本不送）
 #   App 資料（每個語言）：名稱、副標題、隱私權政策網址；主要／次要類別；年齡分級問卷
 #   版權、App 審查備註（不填聯絡人姓名電話：缺的話提醒擁有者到 ASC 填）
-#   截圖：iPhone 6.9 吋（1320×2868）每個語言 6 張，照順序，新的全部上傳成功才刪舊的
+#   截圖：iPhone 6.9 吋（1320×2868）、iPad 13 吋（2064×2752）各一組，每個語言照順序，新的全部上傳成功才刪舊的
+#     listing.json 的 screenshots 是一串截圖組：{dir, displayTypes, size, count}；檔案在 appstore/screenshots/<語言>/<dir>/NN.png
+#     （dir 空字串 = 直接放在語言資料夾，iPhone 用這個）。舊格式（單一個 {displayTypes}）當成一組 iPhone。
 # **永遠不會送審**：不碰 reviewSubmissions／appStoreVersionSubmissions（call() 也會擋）。也不選建置版本、
 # 不改價格與銷售地區、不填 App 隱私權問卷（API 不支援）。
 # 用法：
@@ -121,9 +123,30 @@ def png_info(path):
     return w, h, b[25]  # color type：2 = RGB，6 = RGBA
 
 
-def shot_files(locale):
-    d = os.path.join(SHOTS_DIR, locale)
-    return [os.path.join(d, f'{i:02d}.png') for i in range(1, SHOT_COUNT + 1)]
+def shot_groups(listing):
+    """listing['screenshots'] → 截圖組清單。舊格式（單一個 dict）當成一組 iPhone，張數 SHOT_COUNT。"""
+    raw = listing.get('screenshots') or []
+    if isinstance(raw, dict):
+        raw = [dict(raw, dir='', size=list(SHOT_SIZE), count=SHOT_COUNT)]
+    out = []
+    for g in raw:
+        types = list(g.get('displayTypes') or [])
+        out.append({'dir': g.get('dir') or '', 'types': types, 'size': tuple(g.get('size') or SHOT_SIZE),
+                    'count': int(g.get('count') or SHOT_COUNT),
+                    'device': 'iPad 13 吋' if any('IPAD' in t for t in types) else 'iPhone 6.9 吋'})
+    return out
+
+
+def shot_files(locale, group=None):
+    d = os.path.join(SHOTS_DIR, locale, (group or {}).get('dir') or '')
+    n = (group or {}).get('count') or SHOT_COUNT
+    return [os.path.join(d, f'{i:02d}.png') for i in range(1, n + 1)]
+
+
+def shot_name(locale, group, i, md5):
+    # iPhone（dir 空）維持原本的檔名，已經傳過的才認得出來；其他組加上 dir，各組檔名不會撞在一起
+    prefix = f'{locale}-{group["dir"]}' if group['dir'] else locale
+    return f'{prefix}-{i:02d}-{md5[:10]}.png'
 
 
 def check(listing):
@@ -160,18 +183,31 @@ def check(listing):
         errs.append('版權和 metadata.md 第 12 節不一致')
     if listing.get('whatsNewVersion') != md['whatsNewVersion']:
         errs.append('whatsNewVersion 和 metadata.md 第 6 節標題的版本號不一致')
-    for loc in LOCALES:
-        for p in shot_files(loc):
-            if not os.path.isfile(p):
-                errs.append(f'缺截圖 {os.path.relpath(p, ROOT)}')
-                continue
-            info = png_info(p)
-            if not info:
-                errs.append(f'{os.path.relpath(p, ROOT)} 不是 PNG')
-            elif info[:2] != SHOT_SIZE:
-                errs.append(f'{os.path.relpath(p, ROOT)} 是 {info[0]}×{info[1]}，要 {SHOT_SIZE[0]}×{SHOT_SIZE[1]}')
-            elif info[2] in (4, 6):
-                errs.append(f'{os.path.relpath(p, ROOT)} 有透明通道（App Store 不收），請存成不透明的 PNG')
+    groups = shot_groups(listing)
+    if not groups:
+        errs.append('listing.json 沒有設定截圖組（screenshots）')
+    for g in groups:
+        dev, size = g['device'], g['size']
+        if not g['types']:
+            errs.append(f'{dev} 截圖組沒有 displayTypes')
+        if not 1 <= g['count'] <= MAX_SHOTS_PER_SET:
+            errs.append(f'{dev} 截圖張數 {g["count"]} 不對（1～{MAX_SHOTS_PER_SET}）')
+        for loc in LOCALES:
+            for p in shot_files(loc, g):
+                try:
+                    rel = os.path.relpath(p, ROOT)
+                except ValueError:  # Windows 上不同磁碟（測試用的暫存資料夾）
+                    rel = p
+                if not os.path.isfile(p):
+                    errs.append(f'缺 {dev} 截圖 {rel}')
+                    continue
+                info = png_info(p)
+                if not info:
+                    errs.append(f'{rel} 不是 PNG')
+                elif info[:2] != size:
+                    errs.append(f'{dev} 截圖 {rel} 是 {info[0]}×{info[1]}，要 {size[0]}×{size[1]}')
+                elif info[2] in (4, 6):
+                    errs.append(f'{rel} 有透明通道（App Store 不收），請存成不透明的 PNG')
     return errs
 
 
@@ -517,95 +553,101 @@ def shot_state(s):
 
 
 def screenshots(loc_ids, listing):
-    types = listing['screenshots']['displayTypes']
-    for loc in LOCALES:
-        lid = loc_ids.get(loc)
-        files = shot_files(loc)
-        # 檔名帶 MD5 前 10 碼：重跑時靠檔名認出「這張已經傳過了」
-        want = []
-        for i, p in enumerate(files, 1):
-            md5 = hashlib.md5(open(p, 'rb').read()).hexdigest()
-            want.append((p, f'{loc}-{i:02d}-{md5[:10]}.png'))
-        if not lid:
-            print(f'[dry-run] {loc}：語言還沒建立，會上傳 {len(want)} 張截圖')
-            continue
-        sets = all_pages(f'/v1/appStoreVersionLocalizations/{lid}/appScreenshotSets?limit=50')
-        sset = next((s for t in types for s in sets if s['attributes'].get('screenshotDisplayType') == t), None)
-        if not sset:
-            if DRY:
-                print(f'[dry-run] {loc}：會建立 {types[0]} 截圖組，上傳 {len(want)} 張')
-                continue
-            for t in types:
-                r = call('POST', '/v1/appScreenshotSets', {'data': {'type': 'appScreenshotSets',
-                         'attributes': {'screenshotDisplayType': t},
-                         'relationships': {'appStoreVersionLocalization': {'data': {
-                             'type': 'appStoreVersionLocalizations', 'id': lid}}}}}, want_error=True)
-                if r and '__error__' not in r:
-                    sset = r['data']
-                    break
-                print('screenshot set', t, 'failed:', err_text(r or {}))
-            if not sset:
-                error(f'{loc} 建立 iPhone 6.9 吋截圖組失敗（試過 {", ".join(types)}）。')
-        sid = sset['id']
-        old = all_pages(f'/v1/appScreenshotSets/{sid}/appScreenshots?limit=50')
-        by_name = {}
-        for s in old:
-            if shot_state(s) in ('COMPLETE', 'UPLOAD_COMPLETE'):
-                by_name.setdefault(s['attributes'].get('fileName'), s)
-        keep_ids = {by_name[n]['id'] for _, n in want if n in by_name}
-        broken = [s for s in old if s['id'] not in keep_ids and shot_state(s) not in ('COMPLETE', 'UPLOAD_COMPLETE')]
-        stale = [s for s in old if s['id'] not in keep_ids and s not in broken]
-        todo = [(p, n) for p, n in want if n not in by_name]
-        final_order = [by_name[n]['id'] if n in by_name else None for _, n in want]
-        current_order = [s['id'] for s in old]
-        # 只有 COMPLETE 算完成；之前傳過但還是 UPLOAD_COMPLETE 的保留（不重傳），但一樣要等它變 COMPLETE 才刪舊的
-        kept_unfinished = {i for i in keep_ids if shot_state(next(s for s in old if s['id'] == i)) != 'COMPLETE'}
-        if not todo and not stale and not broken and not kept_unfinished and current_order == final_order:
-            report.append(f'截圖 {loc}：{len(want)} 張已經是最新的')
-            continue
-        room = MAX_SHOTS_PER_SET - len(keep_ids) - len(stale)
-        early = max(0, len(todo) - room)
+    for g in shot_groups(listing):
+        for loc in LOCALES:
+            screenshot_set(loc_ids.get(loc), loc, g)
+
+
+def screenshot_set(lid, loc, g):
+    """把一個語言的一組截圖（iPhone 或 iPad）同步到 ASC 上對應的截圖組"""
+    types, dev = g['types'], g['device']
+    where = f'{loc} {dev}'
+    files = shot_files(loc, g)
+    # 檔名帶 MD5 前 10 碼：重跑時靠檔名認出「這張已經傳過了」
+    want = []
+    for i, p in enumerate(files, 1):
+        md5 = hashlib.md5(open(p, 'rb').read()).hexdigest()
+        want.append((p, shot_name(loc, g, i, md5)))
+    if not lid:
+        print(f'[dry-run] {where}：語言還沒建立，會上傳 {len(want)} 張截圖')
+        return
+    sets = all_pages(f'/v1/appStoreVersionLocalizations/{lid}/appScreenshotSets?limit=50')
+    sset = next((s for t in types for s in sets if s['attributes'].get('screenshotDisplayType') == t), None)
+    if not sset:
         if DRY:
-            print(f'[dry-run] {loc}：截圖組 {sid}，會上傳 {len(todo)} 張、刪除舊的 {len(stale) + len(broken)} 張'
-                  f'（其中 {early} 張要在上傳前先刪，因為一組最多 {MAX_SHOTS_PER_SET} 張）、保留 {len(keep_ids)} 張，然後排好順序')
-            continue
-        # 壞掉（沒傳完、FAILED）的先刪，它們本來就不會顯示
-        for s in broken:
-            call('DELETE', f'/v1/appScreenshots/{s["id"]}')
-        # 一組最多 10 張。舊的 + 新的放不下時，只好在上傳前先刪舊截圖，而且只刪「剛好放得下」的張數，
-        # 從排在最後面的開始刪（最不顯眼；商店頁前幾張維持原樣）。之後上傳失敗的話，這幾張就沒了，
-        # 但其餘舊截圖還在，重跑會補齊。
-        if early:
-            warning(f'{loc} 截圖組已經有 {len(keep_ids) + len(stale)} 張（上限 {MAX_SHOTS_PER_SET}），'
-                    f'要先刪掉排在最後的 {min(early, len(stale))} 張舊截圖才能上傳新的。上傳失敗的話請重跑。')
-        while room < len(todo) and stale:
-            s = stale.pop()  # 排在最後面的先刪
-            call('DELETE', f'/v1/appScreenshots/{s["id"]}')
-            room += 1
-            print('deleted old screenshot before upload (set is full)', s['id'])
-        new_ids = {}
-        for p, n in todo:
-            new_ids[n] = upload_screenshot(sid, p, n)
-        # 等 Apple 處理完（全部 COMPLETE，包含保留下來的）才刪舊的
-        deadline, pending = time.time() + 600, set(new_ids.values()) | kept_unfinished
-        while pending and time.time() < deadline:
-            time.sleep(5)
-            for i in list(pending):
-                st = shot_state(call('GET', f'/v1/appScreenshots/{i}')['data'])
-                if st == 'COMPLETE':
-                    pending.discard(i)
-                elif st == 'FAILED':
-                    error(f'{loc} 截圖處理失敗（{i}）。舊截圖沒有刪，請重跑。')
-        if pending:
-            warning(f'{loc} 有 {len(pending)} 張截圖 Apple 還在處理，這次先不刪舊截圖。過幾分鐘再跑一次就會整理好。')
-            report.append(f'截圖 {loc}：已上傳，Apple 還在處理（請再跑一次）')
-            continue
-        for s in stale:
-            call('DELETE', f'/v1/appScreenshots/{s["id"]}')
-        order = [by_name[n]['id'] if n in by_name else new_ids[n] for _, n in want]
-        call('PATCH', f'/v1/appScreenshotSets/{sid}/relationships/appScreenshots',
-             {'data': [{'type': 'appScreenshots', 'id': i} for i in order]})
-        report.append(f'截圖 {loc}：{len(want)} 張（新上傳 {len(todo)}，刪除舊的 {len(stale) + len(broken)}）')
+            print(f'[dry-run] {where}：會建立 {types[0]} 截圖組，上傳 {len(want)} 張')
+            return
+        for t in types:
+            r = call('POST', '/v1/appScreenshotSets', {'data': {'type': 'appScreenshotSets',
+                     'attributes': {'screenshotDisplayType': t},
+                     'relationships': {'appStoreVersionLocalization': {'data': {
+                         'type': 'appStoreVersionLocalizations', 'id': lid}}}}}, want_error=True)
+            if r and '__error__' not in r:
+                sset = r['data']
+                break
+            print('screenshot set', t, 'failed:', err_text(r or {}))
+        if not sset:
+            error(f'{loc} 建立 {dev} 截圖組失敗（試過 {", ".join(types)}）。')
+    sid = sset['id']
+    old = all_pages(f'/v1/appScreenshotSets/{sid}/appScreenshots?limit=50')
+    by_name = {}
+    for s in old:
+        if shot_state(s) in ('COMPLETE', 'UPLOAD_COMPLETE'):
+            by_name.setdefault(s['attributes'].get('fileName'), s)
+    keep_ids = {by_name[n]['id'] for _, n in want if n in by_name}
+    broken = [s for s in old if s['id'] not in keep_ids and shot_state(s) not in ('COMPLETE', 'UPLOAD_COMPLETE')]
+    stale = [s for s in old if s['id'] not in keep_ids and s not in broken]
+    todo = [(p, n) for p, n in want if n not in by_name]
+    final_order = [by_name[n]['id'] if n in by_name else None for _, n in want]
+    current_order = [s['id'] for s in old]
+    # 只有 COMPLETE 算完成；之前傳過但還是 UPLOAD_COMPLETE 的保留（不重傳），但一樣要等它變 COMPLETE 才刪舊的
+    kept_unfinished = {i for i in keep_ids if shot_state(next(s for s in old if s['id'] == i)) != 'COMPLETE'}
+    if not todo and not stale and not broken and not kept_unfinished and current_order == final_order:
+        report.append(f'截圖 {where}：{len(want)} 張已經是最新的')
+        return
+    room = MAX_SHOTS_PER_SET - len(keep_ids) - len(stale)
+    early = max(0, len(todo) - room)
+    if DRY:
+        print(f'[dry-run] {where}：截圖組 {sid}，會上傳 {len(todo)} 張、刪除舊的 {len(stale) + len(broken)} 張'
+              f'（其中 {early} 張要在上傳前先刪，因為一組最多 {MAX_SHOTS_PER_SET} 張）、保留 {len(keep_ids)} 張，然後排好順序')
+        return
+    # 壞掉（沒傳完、FAILED）的先刪，它們本來就不會顯示
+    for s in broken:
+        call('DELETE', f'/v1/appScreenshots/{s["id"]}')
+    # 一組最多 10 張。舊的 + 新的放不下時，只好在上傳前先刪舊截圖，而且只刪「剛好放得下」的張數，
+    # 從排在最後面的開始刪（最不顯眼；商店頁前幾張維持原樣）。之後上傳失敗的話，這幾張就沒了，
+    # 但其餘舊截圖還在，重跑會補齊。
+    if early:
+        warning(f'{where} 截圖組已經有 {len(keep_ids) + len(stale)} 張（上限 {MAX_SHOTS_PER_SET}），'
+                f'要先刪掉排在最後的 {min(early, len(stale))} 張舊截圖才能上傳新的。上傳失敗的話請重跑。')
+    while room < len(todo) and stale:
+        s = stale.pop()  # 排在最後面的先刪
+        call('DELETE', f'/v1/appScreenshots/{s["id"]}')
+        room += 1
+        print('deleted old screenshot before upload (set is full)', s['id'])
+    new_ids = {}
+    for p, n in todo:
+        new_ids[n] = upload_screenshot(sid, p, n)
+    # 等 Apple 處理完（全部 COMPLETE，包含保留下來的）才刪舊的
+    deadline, pending = time.time() + 600, set(new_ids.values()) | kept_unfinished
+    while pending and time.time() < deadline:
+        time.sleep(5)
+        for i in list(pending):
+            st = shot_state(call('GET', f'/v1/appScreenshots/{i}')['data'])
+            if st == 'COMPLETE':
+                pending.discard(i)
+            elif st == 'FAILED':
+                error(f'{where} 截圖處理失敗（{i}）。舊截圖沒有刪，請重跑。')
+    if pending:
+        warning(f'{where} 有 {len(pending)} 張截圖 Apple 還在處理，這次先不刪舊截圖。過幾分鐘再跑一次就會整理好。')
+        report.append(f'截圖 {where}：已上傳，Apple 還在處理（請再跑一次）')
+        return
+    for s in stale:
+        call('DELETE', f'/v1/appScreenshots/{s["id"]}')
+    order = [by_name[n]['id'] if n in by_name else new_ids[n] for _, n in want]
+    call('PATCH', f'/v1/appScreenshotSets/{sid}/relationships/appScreenshots',
+         {'data': [{'type': 'appScreenshots', 'id': i} for i in order]})
+    report.append(f'截圖 {where}：{len(want)} 張（新上傳 {len(todo)}，刪除舊的 {len(stale) + len(broken)}）')
 
 
 def main():

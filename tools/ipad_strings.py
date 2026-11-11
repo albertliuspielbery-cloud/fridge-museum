@@ -13,6 +13,8 @@ ZH = [
     ("已存到手機", "已存到照片"),
     ("存到手機", "存到照片"),
     ("iPhone「設定」", "iPad「設定」"),
+    ("iPhone 的語言", "iPad 的語言"),
+    ("iPhone 會詢問", "iPad 會詢問"),
     ("這支手機", "這台 iPad"),
     ("這台手機", "這台 iPad"),
     ("家人手機上", "家人裝置上"),
@@ -22,7 +24,9 @@ ZH = [
 ]
 EN = [
     (r"the iPhone’s Settings", "the iPad’s Settings"),
+    (r"iPhone", "iPad"),
     (r"\bon a new phone\b", "on a new device"),
+    (r"\biPhone\b", "iPad"),
     (r"\bphones\b", "devices"),
     (r"\bphone\b", "iPad"),
 ]
@@ -44,7 +48,7 @@ def en_ipad(text):
 
 
 def mentions_phone(key, en_values):
-    return "手機" in key or any(re.search(r"\bphones?\b|iPhone’s Settings", v) for v in en_values)
+    return "手機" in key or "iPhone" in key or any(re.search(r"\bphones?\b|iPhone’s Settings", v) for v in en_values)
 
 
 def string_values(loc):

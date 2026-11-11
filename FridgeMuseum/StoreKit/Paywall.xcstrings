@@ -176,13 +176,13 @@
       }
     },
     "paywall.perk.family" : {
-      "comment" : "Perk: Family Sharing (the IAP has Family Sharing on; the app is iPhone-only).",
+      "comment" : "Perk: Family Sharing (the IAP has Family Sharing on; iPhone and iPad since 1.4.0).",
       "extractionState" : "manual",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "全家共享：一次買，家人的 iPhone 也能用"
+            "value" : "全家共享：一次買，家人的 iPhone、iPad 也能用"
           }
         },
         "en" : {
