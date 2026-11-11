@@ -97,6 +97,20 @@
 - 連拍：相機快門上方「連拍」開關。每張直接成為待收作品（給目前「拍給」的孩子），不開編輯器；照樣找紙角，匯出等連拍結束才一張一張跑（AppModel `beginBurst/endBurst`，沿用 deferral；`runDeferred` 現在一次只跑一張、編輯器一開就暫停）。「完成」回廚房，便利貼「繼續」從最舊的一張開始，收進／存到手機／不要這張後自動開下一張（逐張時上一張的完整算圖排到佇列，等沒有編輯器開著才跑；改過的作品標成 processingState = pending，App 被關掉時下次開啟會重算）。開 App 時沒處理完的作品也走同一個佇列。「全部存到照片」在編輯器開著時暫停，單張存到手機排在批次目前那張後面（`ExportGate`，先來先做，一次只做一張 4096 匯出）。
 - 備份提醒：首頁沒有便利貼時，若有 ≥10 件沒存到照片、或最舊的一件超過 14 天，顯示「還有 N 張只在 App 裡」；「之後再說」隱藏 14 天（UserDefaults `backupSnoozedUntil`）；這次開 App 才收的作品不算（第一次使用不會跳）。設定頁「備份到照片」顯示已存 X／Y 件。用既有的 `Artwork.lastSavedToPhotosAt`，沒改資料模型。
 
+### 1.4.0 iPad、最近刪除、找重複作品、自動標籤（2026-11-11 送審）
+- 四項都免費。設計、擁有者的決定和兩次 UI/UX 複核記錄在 `PLAN-1.4.md`。
+- CloudKit：`schema.ckdb` 新增了 `deletedAt`、`autoTags` 兩個欄位，2026-11-10 已匯入開發環境並部署到正式環境。
+- 上架資料：iPhone 9 張截圖，另有一組新的 iPad 13 吋截圖 7 張，放在 `appstore/screenshots/<語言>/ipad/`。
+  - `listing.json` 的 `screenshots` 改成多組格式，`ci/ci_metadata.py` 會逐組同步。
+  - 截圖用 `tools/compose_store_shots.py [--ipad]` 合成，已經有的檔案不會覆蓋（加 `--force` 才會）。
+  - 原始截圖的拍法：把要拍的 commit 推到 `store/<版本>` 分支，dispatch「iOS Screenshots」，`device` 填 iphone 或 ipad。
+- iPad 上提到手機的字串會依裝置顯示不同文字，用 `tools/ipad_strings.py` 產生。
+- **只能實機驗證**：
+  - iPad 相機：轉向、分割畫面時相機暫停的提示。
+  - 家人之間的刪除和復原、30 天後自動清掉。
+  - 自動標籤：在實機上分類準不準。
+  - 主體標籤（人物、動物…）還沒做，等實機測過再決定。
+
 ### 1.3.0 主畫面小工具（已合併 main）
 - 小／中／大三種尺寸。薄荷冰箱門底色、白相紙上的作品、水果磁鐵（依作品 id 固定 lemon/tomato/berry），下面是小朋友名字和日期（系統依語言顯示 zh-Hant／en 日期）。每 3 小時（00、03、06…點，當地時間）換一件；同一個時段一定是同一件（`WidgetSchedule`：第 n 個時段顯示第 n mod 件數件，一整天依序輪過去）。點作品打開 App 到那件作品頁（`fridgemuseum://artwork/<uuid>`）。美術館沒有作品（或 App 還沒寫過資料）：冰冰＋「拍第一張作品吧」。
 - 選哪些：收進美術館的（`isKept && !isSample`）、有成品圖或小圖的，最多 24 件：最愛優先，其次最新（作品日期）；輪播順序是新到舊。
