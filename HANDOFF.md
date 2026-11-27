@@ -42,7 +42,7 @@
 **發布**
 - 每次交付升版本號（網頁：`APP_VERSION` + `CHANGELOG`；App：`project.yml` 的 `MARKETING_VERSION`）。
 - 上線前跑全部測試 → 沒參與製作的代理獨立審查 → 拿到 GO → 給 Albert 看，他回「可以」才部署。有問題修好再審一輪。
-- iOS「上傳」由 Albert 自己按。**一次只上傳一個 App**：冰箱美術館、星光小冒險（repo `albertliuspielbery-cloud/starlight`）、日本自駕道場共用同一個 Apple 開發者帳號、API 金鑰和上架憑證額度。
+- iOS「上傳」由 Albert 自己按。**一次只上傳一個 App**：冰箱美術館、星光小冒險、日本自駕道場共用同一個 Apple 開發者帳號、API 金鑰和上架憑證額度。
   - `ci/ci_sign.py` 每次上傳都會新建一張上架憑證。Apple 回「已滿」（409）時，才刪最舊、而且至少 14 天前建立的一張；全部都不到 14 天，就改用 Apple 雲端簽名。
   - 刪掉憑證，可能讓同帳號其他 App 審查中的建置變成無效簽章（ITMS-90035，2026-10-22 發生過）。所以按上傳前，先確認沒有別的 App 的舊建置正在審查。
 - 送審（提交以供審查）前一定先問 Albert。
