@@ -6,11 +6,20 @@
 
 ---
 
-## 1. 目前狀態（2026-10-28）
+## 1. 目前狀態（2026-11-27 更新）
 
 | 項目 | 狀態 |
 |---|---|
-| iOS App | **1.1.0** 已送審（2026-10-29，App＋「完整版」內購，等待審查；手動發布；`v1.1.0` 標籤＝送審版本）。**1.2.2** 已上傳 TestFlight（2026-11-03；1.2.1 在 10-30）：iCloud 同步（完整版）、分享卡片、拍照自動轉正（1.2.1 修平放／連拍方向）、筆刷放大、美術館大圖／小圖／一次轉向、新手教學。1.2.2 加強昏暗／白桌紙張偵測（先跑 1.2.1 原判斷，找不到才救援）＋相機手電筒。1.2.x 還要實機測（平放拍照、手電筒；iCloud 後台看得到 10/30 上傳約 220 MB）。**1.3.0** 已上傳 TestFlight（2026-11-04，已合併 main）：家庭美術館＋主畫面小工具；要用兩個 Apple 帳號實機測。上架憑證已滿且都 <14 天時，上傳自動改用 Apple 雲端簽名（先匯出檢查 iCloud／推播／App Group entitlements 才上傳）；小工具 App ID 一定要在 App Groups 裡指派 group.tw.starlight.fridgemuseum，否則雲端簽名回 Authentication failed。**1.2.2**（`fix/1.2.2`，未合併）：暗光／白桌子找紙、相機手電筒 |
+| iOS App | **1.3.0** 已上架（家庭美術館、iCloud 同步、主畫面小工具、分享卡片、冰箱 5 色、兌換代碼）。**1.4.0** 2026-11-11 送審（手動發布）：iPad 版、最近刪除、找重複作品、顏色自動標籤，全部免費；建置版本是 main `07bbe46` 那次上傳，App 程式碼和 `a77a74e` 一樣。審查結果要問 Albert，通過後由他按「發布此版本」。 |
+| repo | main = `3233c28`（1.4.0 送審版本＋交接文件）。開發分支用 `fix/**`。 |
+| CloudKit | 正式環境已部署到 1.4.0 的資料結構（`deletedAt`、`autoTags`）。 |
+| 上架資料 | `appstore/listing.json`、`appstore/metadata.md` 是 1.4.0 的內容；截圖有 iPhone 6.9 吋 9 張和 iPad 13 吋 7 張。 |
+
+下面這列是 10/28 的舊紀錄，留著當歷史：
+
+| 項目 | 狀態 |
+|---|---|
+| iOS App（10/28） | **1.1.0** 已送審（2026-10-29，App＋「完整版」內購，等待審查；手動發布；`v1.1.0` 標籤＝送審版本）。**1.2.2** 已上傳 TestFlight（2026-11-03；1.2.1 在 10-30）：iCloud 同步（完整版）、分享卡片、拍照自動轉正（1.2.1 修平放／連拍方向）、筆刷放大、美術館大圖／小圖／一次轉向、新手教學。1.2.2 加強昏暗／白桌紙張偵測（先跑 1.2.1 原判斷，找不到才救援）＋相機手電筒。1.2.x 還要實機測（平放拍照、手電筒；iCloud 後台看得到 10/30 上傳約 220 MB）。**1.3.0** 已上傳 TestFlight（2026-11-04，已合併 main）：家庭美術館＋主畫面小工具；要用兩個 Apple 帳號實機測。上架憑證已滿且都 <14 天時，上傳自動改用 Apple 雲端簽名（先匯出檢查 iCloud／推播／App Group entitlements 才上傳）；小工具 App ID 一定要在 App Groups 裡指派 group.tw.starlight.fridgemuseum，否則雲端簽名回 Authentication failed。**1.2.2**（`fix/1.2.2`，未合併）：暗光／白桌子找紙、相機手電筒 |
 | App 內購買 | `tw.starlight.fridgemuseum.full`「完整版 / Full Version」已建立：NT$190、家人共享開、地區 TW/HK/US/CA/GB/AU/SG。審查截圖已上傳（10/28 第 2 次執行成功），但流程結束時讀到的狀態仍是 MISSING_METADATA，要到 ASC 確認是否已變 Ready to Submit |
 | 網頁測試版 | **0.9.0** 上線中：https://claude.ai/artifact/MQTbRzJLuHZUzNpgRvADPf （只有擁有者看得到）。原始碼在 `web/` |
 | repo | `albertliuspielbery-cloud/fridge-museum`（**公開**）。main = App 1.2.2（1.1.0 在審查中，修正請從 `v1.1.0` 標籤開分支）。開發分支用 `fix/**`（push 也會跑模擬器測試） |
@@ -73,6 +82,8 @@
 | iOS Screenshots（模擬器拍 18 畫面 × 中英 × 淺深，推到 `ci-shots` 分支） | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/ios-shots.yml | Claude 可跑 |
 
 - Secrets：`ASC_KEY_ID`、`ASC_ISSUER_ID`、`ASC_KEY_P8`、`APPLE_TEAM_ID`（Albert 設的，Admin 權限金鑰）。
+- `tools/gh_ci.py`：看執行結果（runs）、等跑完（wait）、讀錯誤（notes）、重跑（rerun）、觸發截圖（dispatch ios-shots.yml）、取截圖（shots）。token 用 GH_TOKEN 或 `git credential fill`。
+- 其他流程：「CloudKit 資料結構（開發環境）」`cloudkit-schema.yml`（Albert 按，之後到 CloudKit Console 部署到正式環境）。
 - 沒有 Mac：CI 是唯一的編譯器。雲端環境的 proxy 擋掉 Actions log 和 artifact 下載，看錯誤用 annotations（`ci/annotate_log.py`），看畫面用 `git fetch origin ci-shots`。
 - push 到 main 會自動跑模擬器編譯＋單元測試（153 個測試）。
 
