@@ -11,7 +11,9 @@
 | 項目 | 狀態 |
 |---|---|
 | iOS App | **1.3.0** 已上架（家庭美術館、iCloud 同步、主畫面小工具、分享卡片、冰箱 5 色、兌換代碼）。**1.4.0** 2026-11-11 送審（手動發布）：iPad 版、最近刪除、找重複作品、顏色自動標籤，全部免費；建置版本是 main `07bbe46` 那次上傳，App 程式碼和 `a77a74e` 一樣。審查結果要問 Albert，通過後由他按「發布此版本」。 |
-| repo | main = `3233c28`（1.4.0 送審版本＋交接文件）。開發分支用 `fix/**`。 |
+| repo | main 以 `git log origin/main` 為準。新工作一律 `git fetch` 後從 `origin/main` 開 `fix/<名稱>` 分支；本機的舊分支（例如 `fix/1.4-ipad`）都已合併，不要在上面改。11/3 有其他對話直接推過 main，合併前先看 origin/main 有沒有新的 commit。 |
+| 審查紀錄 | 1.1.0：10/29 連同內購送審，11/4 通過。1.2.x 只上 TestFlight。1.3.0：11/5 送審，11/6 前上架。1.4.0：11/11 送審，有兩個建置，送的是較新的那個（main `07bbe46` 上傳）。到目前沒有被退件過。 |
+| 商店識別碼 | App Store App ID `6827847598`（版本頁 https://appstoreconnect.apple.com/apps/6827847598/distribution/ios/version/inflight ）；內購「完整版」Apple ID `6827913603`。 |
 | CloudKit | 正式環境已部署到 1.4.0 的資料結構（`deletedAt`、`autoTags`）。 |
 | 上架資料 | `appstore/listing.json`、`appstore/metadata.md` 是 1.4.0 的內容；截圖有 iPhone 6.9 吋 9 張和 iPad 13 吋 7 張。 |
 
@@ -34,14 +36,21 @@
 - Albert 多用手機。要他做事時給簡短步驟，每一步附可以直接點的連結。
 - 背景工作不要一直回報，完成或需要他決定時才說。
 - 大工作拆給多個代理平行做，再找沒參與的代理獨立審查。
+- 樣圖和截圖要傳圖片檔（手機上看不到對話裡內嵌的圖；單檔上限 30 MB）。
+- 每一步都寫清楚要選哪個、成功時會看到什麼（他常問「我怎知道好沒」「勾啥」）；要他決定時一次只問一件事。
 
 **發布**
 - 每次交付升版本號（網頁：`APP_VERSION` + `CHANGELOG`；App：`project.yml` 的 `MARKETING_VERSION`）。
 - 上線前跑全部測試 → 沒參與製作的代理獨立審查 → 拿到 GO → 給 Albert 看，他回「可以」才部署。有問題修好再審一輪。
-- iOS「上傳」由 Albert 自己按。**冰箱美術館和星光小冒險不要同時按上傳**（`ci/ci_sign.py` 會清掉同帳號舊的發佈憑證）。
+- iOS「上傳」由 Albert 自己按。**一次只上傳一個 App**：冰箱美術館、星光小冒險（repo `albertliuspielbery-cloud/starlight`）、日本自駕道場共用同一個 Apple 開發者帳號、API 金鑰和上架憑證額度。
+  - `ci/ci_sign.py` 每次上傳都會新建一張上架憑證。Apple 回「已滿」（409）時，才刪最舊、而且至少 14 天前建立的一張；全部都不到 14 天，就改用 Apple 雲端簽名。
+  - 刪掉憑證，可能讓同帳號其他 App 審查中的建置變成無效簽章（ITMS-90035，2026-10-22 發生過）。所以按上傳前，先確認沒有別的 App 的舊建置正在審查。
 - 送審（提交以供審查）前一定先問 Albert。
 - 新美術（角色、插圖、圖示）先給 Albert 看，同意了才用。
 - 自動模式下，Claude 不能替 Albert 執行會改 Apple 帳號設定的 workflow（例如 ios-iap.yml），也不能建 GitHub repo；這些給連結請他按。
+- 他明說「你幫我操作」、而且已經自己登入時，Claude 可以在內建瀏覽器代按 App Store Connect 或 CloudKit Console 的設定。以前做過：價格與供應狀況、隱私問卷、App Group、建兌換代碼、CloudKit 部署。
+  - 密碼、法律聲明、個人資料一律由他自己填。
+  - 內建瀏覽器不能上傳檔案。
 
 **內容**
 - 不可以有任何有版權的角色或品牌。吉祥物冰冰（英文 Bibi）、小橘貓橘子、所有插圖都是原創。
@@ -57,7 +66,7 @@
 - 名稱：冰箱美術館 / **My Fridge Museum**。
 - 風格：B「暖暖廚房 × 冰冰」，借 A 的蠟筆手寫字、C 的紙膠帶與門票。角色設定：`web/styles/bingbing.html`、`bingbing-sprite.svg`；App 圖示用方案 ①（冰冰大臉）`web/styles/appicon-1024.png`。
 - 免費額度：平面畫作每天 3 張（當地午夜重置），立體勞作終身試用 3 件；作品真的收進或存到手機才算，每件只算一次，範例不算。
-- 完整版：一次買斷 NT$190，全家共享。上架第一個月早鳥 NT$150（到時在 ASC 排價格，`ios-iap.yml` 預設不會覆蓋，要強制改回才勾 force_price）。
+- 完整版：一次買斷 NT$190，全家共享。上架第一個月早鳥 NT$150（到時在 ASC 排價格，`ios-iap.yml` 預設不會覆蓋，要強制改回才勾 force_price）。**2026-11-27 查對話紀錄：早鳥價從沒排過**，要不要做先問 Albert。
 - 付費頁文案「之後的更新都免費」（Albert 接受）；「勞作不限件數」。
 - 分類：多個孩子、每個孩子的美術館、畫作／勞作、學期（上學期 8–1 月、下學期 2–7 月）、年齡、標籤、最愛；存照片時依孩子分相簿（要完整照片權限，拒絕就只加入照片）。
 - 匯出：畫作最長 4096px、勞作 3072px；處理用 2400px。
@@ -81,13 +90,23 @@
 | 準備 App 識別碼 | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/bundle-id.yml | 已完成 |
 | iOS Screenshots（模擬器拍 18 畫面 × 中英 × 淺深，推到 `ci-shots` 分支） | https://github.com/albertliuspielbery-cloud/fridge-museum/actions/workflows/ios-shots.yml | Claude 可跑 |
 
-- Secrets：`ASC_KEY_ID`、`ASC_ISSUER_ID`、`ASC_KEY_P8`、`APPLE_TEAM_ID`（Albert 設的，Admin 權限金鑰）。
+- Secrets（Albert 設的）：
+  - `ASC_KEY_ID`、`ASC_ISSUER_ID`、`ASC_KEY_P8`：App Store Connect API 金鑰（Admin 權限）。上傳、上架資料、內購、準備識別碼都用這組。
+  - `APPLE_TEAM_ID`：上傳和 CloudKit 用。
+  - `CLOUDKIT_MANAGEMENT_TOKEN`：CloudKit 流程用，約一年到期，到期要請 Albert 在 CloudKit Console 重發。
+  - `GITHUB_TOKEN` 是 GitHub 自動給的。變數 `APP_BUNDLE_ID` 可以不設。
 - `tools/gh_ci.py`：看執行結果（runs）、等跑完（wait）、讀錯誤（notes）、重跑（rerun）、觸發截圖（dispatch ios-shots.yml）、取截圖（shots）。token 用 GH_TOKEN 或 `git credential fill`。
 - 其他流程：「CloudKit 資料結構（開發環境）」`cloudkit-schema.yml`（Albert 按，之後到 CloudKit Console 部署到正式環境）。
-- 沒有 Mac：CI 是唯一的編譯器。雲端環境的 proxy 擋掉 Actions log 和 artifact 下載，看錯誤用 annotations（`ci/annotate_log.py`），看畫面用 `git fetch origin ci-shots`。
+- 沒有 Mac：CI 是唯一的編譯器。在 Albert 的 Windows 電腦上可以用 API 讀 log、annotations 和 artifact（`tools/gh_ci.py`）。以前的雲端環境 proxy 會擋 log，那時才只看 annotations（`ci/annotate_log.py`）。看畫面用 `git fetch origin ci-shots`。
+- 這台電腦沒有設 git 身分：commit 要用 `git -c user.name=Claude -c user.email=noreply@anthropic.com commit …`。
+- Git Bash 裡用 `git show <ref>:<路徑>` 時，前面要加 `MSYS_NO_PATHCONV=1`。
+- 改 App 文字：直接改 `.xcstrings`，key 就是中文原文，所以 Swift 裡的 `Text("…")` 和 key 要一起改。
+  - **不要再跑 `tools/make_strings.py`**：它停在 1.3，會蓋掉 iPad 的裝置變化，也會把 InfoPlist 的「這台裝置」改回「手機」。
+  - 新增含「手機／phone」的字串後，對 Localizable 和 `StoreKit/Paywall.xcstrings` 跑 `tools/ipad_strings.py`。
+- `.claude/worktrees/` 底下有十幾個舊的代理工作區，裡面是舊版文件，不要讀。
 - push 到 main 會自動跑模擬器編譯＋單元測試（153 個測試）。
 
-### TestFlight 還要做的
+### TestFlight 還要做的（10/28 的清單，2026-11 已全部做完，留著當歷史）
 1. ~~再跑一次「App 內購買項目」~~（10/28 已跑）。到 ASC 確認商品是否已是 Ready to Submit（沙盒才拿得到價格）。之後最好換成實機付費頁截圖（存成 `ci/iap_review.png` 重跑）。
 2. App Store Connect →「價格與供應狀況」：App 本身的地區只勾 TW/HK/US/CA/GB/AU/SG。
 3. ~~TestFlight 內部測試群組加 Albert~~（已完成，1.0 已安裝）。
@@ -218,12 +237,23 @@
 
 - [x] Albert：iPhone 安裝 TestFlight 1.0，回報問題 → 1.0.1 修正：放棄儲存（不要這張／全部不要）、陰影去除、降低發熱、設定齒輪移到右上角。
 - [x] 1.1.0（Albert 10/28 要求）：重複作品提醒、小朋友頭像、美術館多選批次設定、拍給（新照片的小朋友）、連拍、備份提醒、付費頁新文案（Albert 已同意）。三輪獨立審查 GO。
-- [ ] Albert：實機測 1.1.0（從 1.0.x 升級、陰影、連拍、重複提醒真實照片、發熱）。
+- [x] Albert：實機測 1.1.0（10/29 回報「我測過了」）。
 - [x] 上架資料：`appstore/listing.json`＋`appstore/screenshots/`（加標題截圖），用「App Store 上架資料」流程寫入 ASC；隱私「不收集資料」、免費＋7 地區、內容版權、審查聯絡人都已填。2026-10-29 送審。
-- [ ] 等審查結果（Apple 寄信）。通過後由 Albert 按「發佈」。被退件就修好再送。
-- [ ] 上架後：早鳥價 NT$150（首月）要在 ASC 排價格。
-- [ ] 確認內購商品狀態；設定 App 銷售地區（價格與供應狀況）。
-- [ ] App Store 上架資料：中英文名稱、副標「寶貝的畫，一張都不用丟」、說明、關鍵字、截圖、隱私問卷（不收集資料）。
-- [ ] 上架後：早鳥價 NT$150 一個月、兌換碼（比照星光）。
-- [ ] 之後的方向：語音小故事強化、年度作品書印刷（主要營收）、去年今日提醒、LINE 分享給祖父母。（iCloud 同步已在 1.2.0 做好，見「1.2.0 iCloud 同步」。）
+- [x] 1.1.0 審查：11/4 通過並上架。1.3.0：11/6 前上架。1.4.0：11/11 送審，結果要問 Albert。
+- [ ] 早鳥價 NT$150：**從沒排過**（11/27 查對話紀錄）。先問 Albert 還要不要；不要的話，刪掉第 3 節、DECISIONS 三和 metadata.md 第 4 節註解裡的早鳥說法。
+- [x] 內購商品 11/4 跟 1.1.0 一起通過；銷售地區 7 個已設定（10/29）。
+- [x] App Store 上架資料、隱私問卷（不收集資料）：10/29 起每版都用「App Store 上架資料」流程寫入。
+- [x] 兌換碼：11/4 已建好一批 500 組（細節在交接包 02，不放公開 repo）。App 設定裡有「兌換代碼」（1.3.0 起）。
+- [ ] 之後的方向：
+  - 語音小故事強化。
+  - 年度作品書印刷（主要營收）。
+  - 去年今日（一年前的今天）：Claude 提過 4 次，Albert 都沒選。理由是使用者還沒用滿一年，現在做效益不大。
+  - 11/6 他沒選的候選功能：成長時間軸、學期作品集 PDF、電子相框、家人按愛心（不開留言，避開使用者內容審查）、鎖定畫面小工具、全部匯出。Claude 當時建議 1.5 做作品集和電子相框。
+  - 已經做好的：iCloud 同步（1.2.0）、分享卡片可以傳 LINE（1.2.0）、家庭美術館（1.3.0）。
+- [ ] 家庭邀請附說明文字：Albert 11/5 反映「邀請只有給出連結」。
+  - 現在用的是 Apple 內建的分享畫面：用「訊息」寄會帶標題，用 LINE 寄只有連結。
+  - Claude 提議改成 App 自己附一段說明再分享（小改版，要實機測 LINE 會不會帶出文字），他還沒回覆要不要做。
+  - 暫時的做法：請他寄出連結後，在 LINE 自己補一句說明。
+- [ ] 家庭邀請的分享畫面上，圖示是 Apple 預設的文件圖，因為沒給 `CKShare` 縮圖。可以換成 App 圖示。
+- [ ] PLAN-1.4 ① 寫的「家人還在 1.3 時，提示他更新到最新版」沒有做。
 - 未決：無。

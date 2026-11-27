@@ -1,4 +1,6 @@
-# 冰箱美術館（iPhone App）
+# 冰箱美術館（iPhone／iPad App）
+
+> 這份 README 是 1.0 時寫的，有些地方已經過時，例如「只有 iPhone」「CloudKit 關閉」。**現況以 `HANDOFF.md` 為準**，決策理由在 `DECISIONS.md`。
 
 把孩子的畫作和勞作拍下來，App 會自動：
 
