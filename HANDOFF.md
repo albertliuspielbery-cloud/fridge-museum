@@ -11,7 +11,7 @@
 | 項目 | 狀態 |
 |---|---|
 | iOS App | **1.3.0** 已上架（家庭美術館、iCloud 同步、主畫面小工具、分享卡片、冰箱 5 色、兌換代碼）。**1.4.0** 2026-11-11 送審（手動發布）：iPad 版、最近刪除、找重複作品、顏色自動標籤，全部免費；建置版本是 main `07bbe46` 那次上傳，App 程式碼和 `a77a74e` 一樣。審查結果要問 Albert，通過後由他按「發布此版本」。 |
-| repo | main 以 `git log origin/main` 為準。新工作一律 `git fetch` 後從 `origin/main` 開 `fix/<名稱>` 分支；本機的舊分支（例如 `fix/1.4-ipad`）都已合併，不要在上面改。11/3 有其他對話直接推過 main，合併前先看 origin/main 有沒有新的 commit。 |
+| repo | main 以 `git log origin/main` 為準。新工作一律 `git fetch` 後從 `origin/main` 開 `fix/<名稱>` 分支；本機只留 main 一個分支，舊分支 11/27 已清掉（都已合併，GitHub 上還在）。11/3 有其他對話直接推過 main，合併前先看 origin/main 有沒有新的 commit。 |
 | 審查紀錄 | 1.1.0：10/29 連同內購送審，11/4 通過。1.2.x 只上 TestFlight。1.3.0：11/5 送審，11/6 前上架。1.4.0：11/11 送審，有兩個建置，送的是較新的那個（main `07bbe46` 上傳）。到目前沒有被退件過。 |
 | 商店識別碼 | App Store App ID `6827847598`（版本頁 https://appstoreconnect.apple.com/apps/6827847598/distribution/ios/version/inflight ）；內購「完整版」Apple ID `6827913603`。 |
 | CloudKit | 正式環境已部署到 1.4.0 的資料結構（`deletedAt`、`autoTags`）。 |
@@ -103,7 +103,6 @@
 - 改 App 文字：直接改 `.xcstrings`，key 就是中文原文，所以 Swift 裡的 `Text("…")` 和 key 要一起改。
   - **不要再跑 `tools/make_strings.py`**：它停在 1.3，會蓋掉 iPad 的裝置變化，也會把 InfoPlist 的「這台裝置」改回「手機」。
   - 新增含「手機／phone」的字串後，對 Localizable 和 `StoreKit/Paywall.xcstrings` 跑 `tools/ipad_strings.py`。
-- `.claude/worktrees/` 底下有十幾個舊的代理工作區，裡面是舊版文件，不要讀。
 - push 到 main 會自動跑模擬器編譯＋單元測試（153 個測試）。
 
 ### TestFlight 還要做的（10/28 的清單，2026-11 已全部做完，留著當歷史）
